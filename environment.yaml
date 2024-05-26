@@ -1,0 +1,14 @@
+name: just-agents
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.10
+  - pip
+  - loguru
+  - click
+  - pip:
+      - litellm
+      - jupyter
+      - pydantic>=2.7.1
+      - numpydoc

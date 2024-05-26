@@ -1,16 +1,13 @@
-from just_agents.chat_agent import ChatAgent
+#from just_agents.chat_agent import ChatAgent
 import json
 from dotenv import load_dotenv
+
+import just_agents.llm_options
+from just_agents.llm_session import LLMSession
+
 load_dotenv()
 
-llama3 = {
-    "model": "groq/llama3-70b-8192",
-    "temperature": 0.7,
-    "api_base": "https://api.groq.com/openai/v1",
-}
-
-
-def get_current_weather(location, unit="fahrenheit"):
+def get_current_weather(location):
     """Get the current weather in a given location"""
     if "tokyo" in location.lower():
         return json.dumps({"location": "Tokyo", "temperature": "10", "unit": "celsius"})
@@ -22,5 +19,5 @@ def get_current_weather(location, unit="fahrenheit"):
         return json.dumps({"location": location, "temperature": "unknown"})
 
 
-agent:ChatAgent = ChatAgent(llama3, functions=[get_current_weather])
-print(agent("What's the weather like in San Francisco, Tokyo, and Paris?"))
+session:LLMSession = LLMSession(llm_options=just_agents.llm_options.LLAMA3, functions=[get_current_weather])
+print(session.query("What's the weather like in San Francisco, Tokyo, and Paris?"))
