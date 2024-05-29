@@ -7,8 +7,9 @@ dependencies:
   - pip
   - loguru
   - click
+  - requests
   - pip:
       - litellm
       - jupyter
-      - pydantic>=2.7.1
       - numpydoc
+      - semanticscholar>=0.8.1

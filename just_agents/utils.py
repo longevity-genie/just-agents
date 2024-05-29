@@ -14,5 +14,5 @@ def load_config(resource: str, package: str = "just_agents.config") -> Dict[str,
         return yaml.safe_load( (Path("config") / resource).open("r") )
     else:
         # Load from package resources
-        with resources.open_text(package, 'agent.yaml') as file:
+        with resources.open_text(package, 'agent_prompts.yaml') as file:
             return yaml.safe_load(file)

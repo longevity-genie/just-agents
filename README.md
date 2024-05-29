@@ -23,7 +23,3 @@ It is assumed that a typical agent has role, goal and the background story.
 ```
 
 ```
-
-We also use pydantic 2 for its convenience with classes. 
-It is probably the only complex dependencies we have. 
-At the same time, pydantic allows better type-safety and is easy to grasp after you spend a bit with docs or entry tutorial.
