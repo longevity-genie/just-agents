@@ -25,13 +25,12 @@ class ChatAgent(LLMSession):
         :return:
         """
         super().__post_init__()
-        agent_template: Optional[Template] = Template(self.config["agent_prompt"])
+        agent_template: str = str(self.config["agent_prompt"])
 
-        self.agent_prompt = agent_template.substitute(role = self.role,
+        self.agent_prompt = agent_template.format(role = self.role,
                 goal = self.goal,
                 backstory = self.backstory,
                 task = self.task
             )
-        print(self.agent_prompt)
         if self.agent_prompt is not None:
             self.instruct(self.agent_prompt)

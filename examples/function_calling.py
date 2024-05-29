@@ -1,5 +1,7 @@
 #from just_agents.chat_agent import ChatAgent
 import json
+import pprint
+
 from dotenv import load_dotenv
 
 import just_agents.llm_options
@@ -19,5 +21,9 @@ def get_current_weather(location):
         return json.dumps({"location": location, "temperature": "unknown"})
 
 
-session: LLMSession = LLMSession(llm_options=just_agents.llm_options.LLAMA3, functions=[get_current_weather])
-print(session.query("What's the weather like in San Francisco, Tokyo, and Paris?"))
+session: LLMSession = LLMSession(
+    llm_options=just_agents.llm_options.LLAMA3,
+    functions=[get_current_weather]
+)
+session.memory.add_on_message(lambda m: pprint.pprint(m.content) if m.content is not None else None)
+session.query("What's the weather like in San Francisco, Tokyo, and Paris?")

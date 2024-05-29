@@ -4,8 +4,8 @@ agent_prompt:
    Your task is to: ${task}'
 
 advanced_agent_prompt:
-  'You are ${role}. ${backstory}
-  Your personal goal is: ${goal}
+  'You are {role}. {backstory}
+  Your personal goal is: {goal}
   To give the best complete final answer to the task use the exact following format:
   Thought: I now can give a great answer
   Final Answer: my best complete final answer to the task.

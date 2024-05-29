@@ -1,17 +1,13 @@
-import pprint
-from dataclasses import field, dataclass
-
-from litellm import ModelResponse, completion
+from litellm import ModelResponse, completion, Message
 from typing import Any, Dict, List, Optional, Callable
 import litellm
 import json
-from loguru import logger
-
-import pathlib
+from just_agents.memory import *
+from litellm.utils import Choices
 
 from just_agents.llm_options import LLAMA3
+from just_agents.memory import Memory
 
-OnMessageCallable = Callable[[Dict[str, Any]], None]
 OnCompletion = Callable[[ModelResponse], None]
 
 @dataclass(kw_only=True)
@@ -19,26 +15,11 @@ class LLMSession:
     llm_options: Dict[str, Any] = field(default_factory=lambda: LLAMA3)
     functions: List[Callable] = None
     available_functions: Dict[str, Callable] = field(default_factory=lambda: {})
-    messages: List[Dict[str, str]] = field(default_factory=list)
-    on_message: list[OnMessageCallable] = field(default_factory=list)
+
     on_response: list[OnCompletion] = field(default_factory=list)
+    memory: Memory = field(default_factory=lambda: Memory())
 
     def __post_init__(self):
-        if self.functions is not None:
-            self._prepare_tools(self.functions)
-
-    def add_on_message(self, handler: OnMessageCallable):
-        self.on_message.append(handler)
-
-    def remove_on_message(self, handler: OnMessageCallable):
-        self.on_message = [m for m in self.on_message if m == handler]
-
-
-    def _post_init(self) -> None:
-        """
-        post init method of the model
-        :return:
-        """
         if self.functions is not None:
             self._prepare_tools(self.functions)
 
@@ -51,24 +32,11 @@ class LLMSession:
         for handler in self.on_response:
             handler(response)
 
-
-    def add_message(self, message: Dict[str, str], run_callbacks: bool = True):
-        self.messages.append(message)
-        if run_callbacks:
-            for handler in self.on_message:
-                handler(message)
-
-    def add_message_from_response(self, response: ModelResponse, run_callbacks: bool = True):
-        """
-        extract messages from response and logs them
-        :param response:
-        :param run_callbacks:
-        :return:
-        """
-        content: str = response.choices[0].message.get("content")
-        answer = {"role": "assistant", "content": content}
-        self.add_message(answer, run_callbacks)
-        return content
+    @staticmethod
+    def message_from_response(response: ModelResponse):
+        choice: Choices = response.choices[0]
+        message: Message = choice.message
+        return message
 
 
     def instruct(self, prompt: str):
@@ -77,8 +45,8 @@ class LLMSession:
         :param prompt:
         :return:
         """
-        system_instruction = {"role": "system", "content": prompt}
-        self.add_message(system_instruction, True)
+        system_instruction =  Message(content = prompt, role = "system")
+        self.memory.add_message(system_instruction, True)
         return system_instruction
 
     def query(self, prompt: str, stream: bool = False, run_callbacks: bool = True) -> str:
@@ -89,16 +57,19 @@ class LLMSession:
         :param run_callbacks:
         :return:
         """
-        question: Dict = {"role": "user", "content": prompt}
-        self.add_message(question)
+        question = Message(role="user", content=prompt)
+        self.memory.add_message(question)
         options: Dict = self.llm_options
-        response: ModelResponse = completion(messages=self.messages, stream=stream, **options)
+        response: ModelResponse = completion(messages=self.memory.messages, stream=stream, **options)
         self._process_response(response)
         executed_response = self._process_function_calls(response)
         if executed_response is not None:
             response = executed_response
             self._process_response(response)
-        return self.add_message_from_response(response, run_callbacks)
+        answer = self.message_from_response(response)
+        self.memory.add_message(answer, run_callbacks)
+        return self.memory.last_message.content if self.memory.last_message is not None and self.memory.last_message.content is not None else str(self.memory.last_message)
+
 
     def _process_function_calls(self, response: ModelResponse) -> Optional[ModelResponse]:
         """
@@ -110,7 +81,8 @@ class LLMSession:
         tool_calls = response_message.get("tool_calls")
 
         if tool_calls and (self.functions is not None):
-            self.messages.append(response_message)
+            message = self.message_from_response(response)
+            self.memory.add_message(message)
             for tool_call in tool_calls:
                 function_name = tool_call.function.name
                 function_to_call = self.available_functions[function_name]
@@ -119,16 +91,9 @@ class LLMSession:
                     function_response = function_to_call(**function_args)
                 except Exception as e:
                     function_response = str(e)
-
-                self.messages.append(
-                    {
-                        "tool_call_id": tool_call.id,
-                        "role": "tool",
-                        "name": function_name,
-                        "content": function_response,
-                    }
-                )
-            return completion(messages=self.messages, stream=False, **self.llm_options)
+                result = Message(role="tool", content=function_response, name=function_name, tool_call_id=tool_call.id)
+                self.memory.add_message(result)
+            return completion(messages=self.memory.messages, stream=False, **self.llm_options)
         return None
 
     def _prepare_tools(self, functions: List[Any]):
