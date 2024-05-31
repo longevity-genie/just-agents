@@ -1,6 +1,10 @@
+import pprint
 from typing import Optional
+import requests
+from typing import List, Dict, Any
 
 from semanticscholar import SemanticScholar
+from semanticscholar.PaginatedResults import PaginatedResults
 from semanticscholar.Paper import Paper
 
 def get_semantic_paper(query: str,
@@ -21,7 +25,7 @@ def get_semantic_paper(query: str,
         :param str query: plain-text search query string.
         :param str year: (optional) restrict results to the given range of \
                publication year.
-        :param list publication_type: (optional) restrict results to the given \
+        :param list publication_types: (optional) restrict results to the given \
                publication type list.
         :param bool open_access_pdf: (optional) restrict results to papers \
                with public PDFs.
@@ -47,5 +51,59 @@ def get_semantic_paper(query: str,
         :returns: query results
     """
     sch = SemanticScholar()
-    results = sch.search_paper(query)
+    results: PaginatedResults = sch.search_paper(query,
+                               year=year,
+                               publication_types=publication_types,
+                               open_access_pdf=open_access_pdf,
+                               venue=venue,
+                               fields_of_study=fields_of_study,
+                               fields=fields,
+                               publication_date_or_year=publication_date_or_year,
+                               min_citation_count=min_citation_count,
+                               limit=limit,
+                               bulk=bulk,
+                               sort=sort
+                               )
     return results
+
+def hybrid_search(text: str,
+                  collections = ["aging_papers_paragraphs_bge_base_en_v1.5", "aging_papers_paragraphs_specter2"],
+                  limit: int = 10,
+                  db: str = "https://localhost:9200",
+                  verbose: bool = False,
+                  host: str = "https://api.longevity-genie.info") -> dict[str, any]:
+    """
+    Searching in academic literature
+
+    Parameters:
+    - text (str): The text to search for.
+    - collections (List[str]): A list of collection names to search within
+    - limit (int): The maximum number of results to return.
+    - db (str): The database URL to query.
+    - verbose (bool): Whether to include verbose output. Default is False.
+    - host (str): The host URL for the search endpoint. Default is "https://agingkills.eu".
+
+    Returns:
+    - Dict[str, Any]: The JSON response from the hybrid search API.
+    """
+
+    # Endpoint for the hybrid search
+    endpoint = f"{host}/hybrid_search"
+
+    # Payload to send in the POST request
+    payload = {
+        "text": text,
+        "collections": collections,
+        "limit": limit,
+        "db": db,
+        "verbose": verbose
+    }
+
+    # Perform the POST request
+    response = requests.post(endpoint, json=payload)
+
+    # Raise an exception if the request was unsuccessful
+    response.raise_for_status()
+
+    # Return the JSON response
+    return response.json()

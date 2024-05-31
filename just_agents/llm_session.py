@@ -1,3 +1,5 @@
+from pathlib import Path
+
 from litellm import ModelResponse, completion, Message
 from typing import Any, Dict, List, Optional, Callable
 import litellm
@@ -13,15 +15,15 @@ OnCompletion = Callable[[ModelResponse], None]
 @dataclass(kw_only=True)
 class LLMSession:
     llm_options: Dict[str, Any] = field(default_factory=lambda: LLAMA3)
-    functions: List[Callable] = None
-    available_functions: Dict[str, Callable] = field(default_factory=lambda: {})
+    tools: List[Callable] = None
+    available_tools: Dict[str, Callable] = field(default_factory=lambda: {})
 
     on_response: list[OnCompletion] = field(default_factory=list)
     memory: Memory = field(default_factory=lambda: Memory())
 
     def __post_init__(self):
-        if self.functions is not None:
-            self._prepare_tools(self.functions)
+        if self.tools is not None:
+            self._prepare_tools(self.tools)
 
     def _process_response(self, response: ModelResponse):
         """
@@ -49,7 +51,7 @@ class LLMSession:
         self.memory.add_message(system_instruction, True)
         return system_instruction
 
-    def query(self, prompt: str, stream: bool = False, run_callbacks: bool = True) -> str:
+    def query(self, prompt: str, stream: bool = False, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
         """
         Query large language model
         :param prompt:
@@ -68,7 +70,10 @@ class LLMSession:
             self._process_response(response)
         answer = self.message_from_response(response)
         self.memory.add_message(answer, run_callbacks)
-        return self.memory.last_message.content if self.memory.last_message is not None and self.memory.last_message.content is not None else str(self.memory.last_message)
+        result = self.memory.last_message.content if self.memory.last_message is not None and self.memory.last_message.content is not None else str(self.memory.last_message)
+        if output is not None:
+            output.write_text(result)
+        return result
 
 
     def _process_function_calls(self, response: ModelResponse) -> Optional[ModelResponse]:
@@ -80,18 +85,18 @@ class LLMSession:
         response_message = response.choices[0].message
         tool_calls = response_message.get("tool_calls")
 
-        if tool_calls and (self.functions is not None):
+        if tool_calls and (self.tools is not None):
             message = self.message_from_response(response)
             self.memory.add_message(message)
             for tool_call in tool_calls:
                 function_name = tool_call.function.name
-                function_to_call = self.available_functions[function_name]
+                function_to_call = self.available_tools[function_name]
                 function_args = json.loads(tool_call.function.arguments)
                 try:
                     function_response = function_to_call(**function_args)
                 except Exception as e:
                     function_response = str(e)
-                result = Message(role="tool", content=function_response, name=function_name, tool_call_id=tool_call.id)
+                result = Message(role="tool", content=function_response, name=function_name, tool_call_id=tool_call.id) #TODO need to track arguemnts , arguments=function_args
                 self.memory.add_message(result)
             return completion(messages=self.memory.messages, stream=False, **self.llm_options)
         return None
@@ -104,10 +109,10 @@ class LLMSession:
         :return:
         """
         tools = []
-        self.available_functions = {}
+        self.available_tools = {}
         for fun in functions:
             function_description = litellm.utils.function_to_dict(fun)
-            self.available_functions[function_description["name"]] = fun
+            self.available_tools[function_description["name"]] = fun
             tools.append({"type": "function", "function": function_description})
         self.llm_options["tools"] = tools
         self.llm_options["tool_choice"] = "auto"
