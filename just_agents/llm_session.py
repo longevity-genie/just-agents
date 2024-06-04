@@ -70,7 +70,7 @@ class LLMSession:
             self._process_response(response)
         answer = self.message_from_response(response)
         self.memory.add_message(answer, run_callbacks)
-        result = self.memory.last_message.content if self.memory.last_message is not None and self.memory.last_message.content is not None else str(self.memory.last_message)
+        result: str = self.memory.last_message.content if self.memory.last_message is not None and self.memory.last_message.content is not None else str(self.memory.last_message)
         if output is not None:
             output.write_text(result)
         return result

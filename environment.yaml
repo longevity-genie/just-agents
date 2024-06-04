@@ -8,6 +8,7 @@ dependencies:
   - loguru
   - click
   - requests
+  - pytest
   - pip:
       - litellm
       - jupyter

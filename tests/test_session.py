@@ -1,13 +1,12 @@
 #from just_agents.chat_agent import ChatAgent
 import json
 import pprint
-import pytest
+
 from dotenv import load_dotenv
 
 import just_agents.llm_options
 from just_agents.llm_session import LLMSession
 
-load_dotenv()
 
 def get_current_weather(location: str):
     """Gets the current weather in a given location"""
@@ -20,10 +19,12 @@ def get_current_weather(location: str):
     else:
         return json.dumps({"location": location, "temperature": "unknown"})
 
-
-session: LLMSession = LLMSession(
-    llm_options=just_agents.llm_options.LLAMA3,
-    tools=[get_current_weather]
-)
-session.memory.add_on_message(lambda m: pprint.pprint(m.content) if m.content is not None else None)
-session.query("What's the weather like in San Francisco, Tokyo, and Paris?")
+def test_function_calling():
+    load_dotenv()
+    session: LLMSession = LLMSession(
+        llm_options=just_agents.llm_options.LLAMA3,
+        tools=[get_current_weather]
+    )
+    result = session.query("What's the weather like in San Francisco, Tokyo, and Paris?")
+    assert "72°F" in result
+    assert "22" in result

@@ -10,6 +10,24 @@ There is no need in complicated chains and other abstractions, in fact popular l
 We wrote this libraries while being pissed of by high complexity and wanted something controlled and simple.
 Of course, you might comment that we do not have the ecosystem like, for example, tools and loaders. In reality, most of langchain tools are just very simple functions wrapped in their classes, you can always quickly look at them and re-implement them easier.
 
+# Installation
+
+If you want to install as pip package use:
+```
+pip install just-agents
+```
+
+If you want to contribute to the project you can use micromamba or other anaconda to install the environment
+```
+micromamba create -f environment.yaml
+micromamba activate just-agents
+```
+then you can edit the library. Optionaly you can install it locally with:
+```
+pip install -e .
+```
+
+
 # Warning, the library is work in progress
 
 

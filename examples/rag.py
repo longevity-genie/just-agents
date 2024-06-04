@@ -30,9 +30,9 @@ scientist.memory.add_on_message(lambda m: logger.info(f"MESSAGE: {m}"))
 current_folder: Path = Path(__file__).parent
 example_prompts = current_folder / "example_prompts.yaml"
 output = Path(__file__).parent.parent / "output" / "examples"
-promtps = yaml.safe_load(example_prompts.open("r"))
+prompts = yaml.safe_load(example_prompts.open("r"))
 
-rapamycin = promtps["rapamycin_case"]["with_requirements"]
+rapamycin = prompts["rapamycin_case"]["with_requirements"]
 
 result = scientist.query(rapamycin, output=output / "rapamycin" / "with_requirements.txt")
 print("RESULT IS:")
