@@ -14,6 +14,9 @@ jobs:
       matrix:
         python-version: ["3.10", "3.11"]
 
+    env:
+      GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+
     steps:
       - uses: actions/checkout@v3
 
@@ -62,3 +65,4 @@ jobs:
           $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pytest
         env:
           MAMBA_ROOT_PREFIX: $HOME/micromamba
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
