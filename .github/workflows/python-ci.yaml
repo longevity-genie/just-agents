@@ -57,5 +57,3 @@ jobs:
           $HOME/micromamba/micromamba run -n just-agents which python
           $HOME/micromamba/micromamba run -n just-agents which pytest
           $HOME/micromamba/micromamba run -n just-agents pytest
-        env:
-          MAMBA_ROOT_PREFIX: $HOME/micromamba
