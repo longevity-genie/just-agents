@@ -46,8 +46,16 @@ jobs:
           $HOME/micromamba/micromamba env list
           ls -al $HOME/micromamba/envs/just-agents
 
+      - name: Install just-agents package
+        run: |
+          $HOME/micromamba/micromamba run -n just-agents pip install -e .
+        env:
+          MAMBA_ROOT_PREFIX: $HOME/micromamba
+
       - name: Run tests
         run: |
           $HOME/micromamba/micromamba run -n just-agents which python
           $HOME/micromamba/micromamba run -n just-agents which pytest
           $HOME/micromamba/micromamba run -n just-agents pytest
+        env:
+          MAMBA_ROOT_PREFIX: $HOME/micromamba
