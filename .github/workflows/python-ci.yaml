@@ -31,20 +31,25 @@ jobs:
       - name: Create environment
         run: |
           $HOME/micromamba/micromamba create --root-prefix $HOME/micromamba --name just-agents -y -c conda-forge python=${{ matrix.python-version }}
-          $HOME/micromamba/micromamba env list
-
-      - name: Install dependencies
-        run: |
-          $HOME/micromamba/micromamba install --root-prefix $HOME/micromamba -n just-agents -f environment.yaml -y -c conda-forge
-
-      - name: Set up Micromamba environment
-        run: |
-          echo "$HOME/micromamba/bin:$HOME/micromamba/envs/just-agents/bin" >> $GITHUB_PATH
+        env:
+          MAMBA_ROOT_PREFIX: $HOME/micromamba
 
       - name: Verify environment creation
         run: |
           $HOME/micromamba/micromamba env list
           ls -al $HOME/micromamba/envs/just-agents
+        env:
+          MAMBA_ROOT_PREFIX: $HOME/micromamba
+
+      - name: Install dependencies
+        run: |
+          $HOME/micromamba/micromamba install --root-prefix $HOME/micromamba -n just-agents -f environment.yaml -y -c conda-forge
+        env:
+          MAMBA_ROOT_PREFIX: $HOME/micromamba
+
+      - name: Set up Micromamba environment
+        run: |
+          echo "$HOME/micromamba/bin:$HOME/micromamba/envs/just-agents/bin" >> $GITHUB_PATH
 
       - name: Install just-agents package
         run: |
@@ -57,3 +62,5 @@ jobs:
           $HOME/micromamba/micromamba run -n just-agents which python
           $HOME/micromamba/micromamba run -n just-agents which pytest
           $HOME/micromamba/micromamba run -n just-agents pytest
+        env:
+          MAMBA_ROOT_PREFIX: $HOME/micromamba
