@@ -1,0 +1,53 @@
+name: Python CI
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+
+    strategy:
+      matrix:
+        python-version: ["3.10", "3.11"]
+
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Install Micromamba
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y curl
+          mkdir -p $HOME/micromamba
+          curl -L https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj -C $HOME/micromamba --strip-components=1 bin/micromamba
+
+      - name: Verify Micromamba Installation
+        run: |
+          $HOME/micromamba/micromamba --version
+
+      - name: Create environment
+        run: |
+          $HOME/micromamba/micromamba create --root-prefix $HOME/micromamba --name just-agents -y -c conda-forge python=${{ matrix.python-version }}
+          $HOME/micromamba/micromamba env list
+
+      - name: Install dependencies
+        run: |
+          $HOME/micromamba/micromamba install --root-prefix $HOME/micromamba -n just-agents -f environment.yaml -y -c conda-forge
+
+      - name: Set up Micromamba environment
+        run: |
+          echo "$HOME/micromamba/bin:$HOME/micromamba/envs/just-agents/bin" >> $GITHUB_PATH
+
+      - name: Verify environment creation
+        run: |
+          $HOME/micromamba/micromamba env list
+          ls -al $HOME/micromamba/envs/just-agents
+
+      - name: Run tests
+        run: |
+          $HOME/micromamba/micromamba run -n just-agents which python
+          $HOME/micromamba/micromamba run -n just-agents which pytest
+          $HOME/micromamba/micromamba run -n just-agents pytest
