@@ -25,8 +25,7 @@ jobs:
           curl -L https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj -C $HOME/micromamba --strip-components=1 bin/micromamba
 
       - name: Verify Micromamba Installation
-        run: |
-          $HOME/micromamba/micromamba --version
+        run: $HOME/micromamba/micromamba --version
 
       - name: Create environment
         run: |
@@ -48,19 +47,18 @@ jobs:
           MAMBA_ROOT_PREFIX: $HOME/micromamba
 
       - name: Set up Micromamba environment
-        run: |
-          echo "$HOME/micromamba/bin:$HOME/micromamba/envs/just-agents/bin" >> $GITHUB_PATH
+        run: echo "$HOME/micromamba/bin:$HOME/micromamba/envs/just-agents/bin" >> $GITHUB_PATH
 
       - name: Install just-agents package
         run: |
-          $HOME/micromamba/micromamba run -n just-agents pip install -e .
+          $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e .
         env:
           MAMBA_ROOT_PREFIX: $HOME/micromamba
 
       - name: Run tests
         run: |
-          $HOME/micromamba/micromamba run -n just-agents which python
-          $HOME/micromamba/micromamba run -n just-agents which pytest
-          $HOME/micromamba/micromamba run -n just-agents pytest
+          $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents which python
+          $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents which pytest
+          $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pytest
         env:
           MAMBA_ROOT_PREFIX: $HOME/micromamba
