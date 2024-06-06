@@ -35,3 +35,12 @@ class Memory:
     @property
     def last_message(self) -> Optional[Message]:
         return self.messages[-1] if len(self.messages) > 0 else None
+
+
+    def add_messages(self, messages: list, run_callbacks: bool = True):
+        for message in messages:
+            msg = Message(content=message["content"], role=message["role"])
+            self.messages.append(msg)
+            if run_callbacks:
+                for handler in self.on_message:
+                    handler(message)

@@ -51,7 +51,7 @@ class LLMSession:
         self.memory.add_message(system_instruction, True)
         return system_instruction
 
-    def query(self, prompt: str, stream: bool = False, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
+    def query(self, prompt: str = None, stream: bool = False, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
         """
         Query large language model
         :param prompt:
@@ -59,8 +59,9 @@ class LLMSession:
         :param run_callbacks:
         :return:
         """
-        question = Message(role="user", content=prompt)
-        self.memory.add_message(question)
+        if prompt is not None:
+            question = Message(role="user", content=prompt)
+            self.memory.add_message(question)
         options: Dict = self.llm_options
         response: ModelResponse = completion(messages=self.memory.messages, stream=stream, **options)
         self._process_response(response)
