@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 from just_agents.chat_agent import ChatAgent
 from just_agents.llm_options import LLAMA3
-
+import copy
 from loguru import logger
 from just_agents.tools.search import literature_search
 
@@ -75,15 +75,16 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
     {answer}
     ```
     """
+    pprint.pprint(for_review)
 
-    critic: ChatAgent = ChatAgent(llm_options = LLAMA3,
+    critic: ChatAgent = ChatAgent(llm_options = copy.deepcopy(LLAMA3),
                                   role = "critic",
                                   goal = "criticise answers to questions, provide evaluations and improvements",
                                   task="evaluate the answer according to the criteria provided and make recommendations to improve")
 
     # ADDING CRITICS HANDLERS:
     critic.memory.add_on_message(lambda m: logger.debug(f"CRITIC MESSAGE: {m}"))
-    print(f"critic messages: {critic.memory.messages}")
+    #print(f"critic messages: {critic.memory.messages}")
 
     review_results = critic.query(for_review, output=output / prompt_name / f"{sub_prompt}_answer_review.txt")
     logger.info(f"REVIEW RESULTS: {review_results}")

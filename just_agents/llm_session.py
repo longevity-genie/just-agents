@@ -108,7 +108,7 @@ async def _resp_async_generator(memory: Memory, options: Dict, available_tools: 
 @dataclass(kw_only=True)
 class LLMSession:
     llm_options: Dict[str, Any] = field(default_factory=lambda: LLAMA3)
-    tools: List[Callable] = None
+    tools: List[Callable] = field(default_factory=list)
     available_tools: Dict[str, Callable] = field(default_factory=lambda: {})
 
     on_response: list[OnCompletion] = field(default_factory=list)

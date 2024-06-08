@@ -50,6 +50,5 @@ class ChatAgent(LLMSession):
         super().__post_init__()
         agent_template: str = str(self.config["agent_prompt"])
         self.agent_prompt = self._render_template(agent_template, self.use_mako)
-        pprint.pprint(self.agent_prompt)
         if self.agent_prompt is not None:
             self.instruct(self.agent_prompt)
