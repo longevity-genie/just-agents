@@ -23,7 +23,6 @@ def purchase_example():
 
     exchanges: int = 3
     customer.memory.add_on_message(lambda m: logger.info(f"Customer: {m}") if m.role == "user" else logger.info(f"Storekeeper: {m}"))
-
     customer_reply = "Hi."
     for _ in range(exchanges):
         storekeeper_reply = storekeeper.query(customer_reply)

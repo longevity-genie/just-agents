@@ -191,6 +191,8 @@ class LLMSession:
         result: str = self.memory.last_message.content if self.memory.last_message is not None and self.memory.last_message.content is not None else str(
             self.memory.last_message)
         if output is not None:
+            if not output.parent.exists():
+                output.parent.mkdir(parents=True, exist_ok=True)
             output.write_text(result)
         return result
 

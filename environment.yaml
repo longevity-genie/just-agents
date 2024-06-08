@@ -6,10 +6,10 @@ dependencies:
   - python=3.10
   - pip
   - loguru
-  - click
   - requests
-  - pytest
-  - typer
+  - pytest #for tests
+  - typer #for CLI
+  - twine #for publishing
   - pip:
       - litellm>=1.40.6
       - jupyter

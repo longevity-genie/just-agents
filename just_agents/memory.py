@@ -16,6 +16,9 @@ class Memory:
     def add_on_message(self, handler: OnMessageCallable):
         self.on_message.append(handler)
 
+    def add_on_tool_result(self, handler: OnMessageCallable):
+        self.add_on_message(lambda m: handler(m) if m.role == "tool" else None)
+
     def add_on_tool_call(self, fun: OnFunctionCallable):
         """
         Adds handler only to function calls to track what exactly was called
@@ -33,6 +36,12 @@ class Memory:
 
     def remove_on_message(self, handler: OnMessageCallable):
         self.on_message = [m for m in self.on_message if m == handler]
+
+    def add_system_message(self, prompt: str, run_callbacks: bool = True):
+        return self.add_message(Message(role="system", content=prompt), run_callbacks=run_callbacks)
+
+    def add_user_message(self, prompt: str, run_callbacks: bool = True):
+        return self.add_message(Message(role="user", content=prompt), run_callbacks=run_callbacks)
 
 
     def add_message(self, message: Message, run_callbacks: bool = True):

@@ -65,4 +65,4 @@ for _ in range(exchanges):
 
 All prompts that we use are stored in yaml files that you can easily overload.
 
-The only complex dependency that we use is Mako for prompt templates.
+The only complex (but not mandatory) dependency that we use is Mako for prompt templates

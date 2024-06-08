@@ -67,7 +67,6 @@ def get_semantic_paper(query: str,
     return results
 
 
-
 def hybrid_search(text: str,
                   collections = ["aging_papers_paragraphs_bge_base_en_v1.5", "aging_papers_paragraphs_specter2"],
                   limit: int = 10,
@@ -111,6 +110,7 @@ def hybrid_search(text: str,
     # Return the JSON response
     results = response.json()
     return ".".join(results).replace("\\n", "\n") if string else results
+
 
 def literature_search(query: str, limit: int = 20):
     """
