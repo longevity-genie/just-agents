@@ -1,5 +1,5 @@
 import pprint
-from typing import Optional
+from typing import Optional, Union
 import requests
 from typing import List, Dict, Any
 
@@ -66,14 +66,16 @@ def get_semantic_paper(query: str,
                                )
     return results
 
+
+
 def hybrid_search(text: str,
                   collections = ["aging_papers_paragraphs_bge_base_en_v1.5", "aging_papers_paragraphs_specter2"],
                   limit: int = 10,
                   db: str = "https://localhost:9200",
                   verbose: bool = False,
-                  host: str = "https://api.longevity-genie.info") -> dict[str, any]:
+                  host: str = "https://api.longevity-genie.info", string: bool = True) -> Union[str, list[str]]:
     """
-    Searching in academic literature
+    Searching in academic literature. Note: do not change default parameters for db and collections unless there are explicit users or systems instructions
 
     Parameters:
     - text (str): The text to search for.
@@ -82,9 +84,10 @@ def hybrid_search(text: str,
     - db (str): The database URL to query.
     - verbose (bool): Whether to include verbose output. Default is False.
     - host (str): The host URL for the search endpoint. Default is "https://agingkills.eu".
+    - string (str): if result should be concatenated to str and not list
 
     Returns:
-    - Dict[str, Any]: The JSON response from the hybrid search API.
+    - List[str]: response from the hybrid search API.
     """
 
     # Endpoint for the hybrid search
@@ -106,4 +109,14 @@ def hybrid_search(text: str,
     response.raise_for_status()
 
     # Return the JSON response
-    return response.json()
+    results = response.json()
+    return ".".join(results).replace("\\n", "\n") if string else results
+
+def literature_search(query: str, limit: int = 20):
+    """
+    Search in the academic literature
+    :param query:
+    :param limit: limit number of results
+    :return: extracts from scientific papers where SOURCE field is the id of the paper
+    """
+    hybrid_search(text=query, limit=limit)

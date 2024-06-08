@@ -1,10 +1,11 @@
 import pprint
 from abc import abstractmethod, ABC
 from dataclasses import dataclass, field
-from typing import Dict, TypeAlias, Callable, List, Optional
-from litellm.utils import Message
+from typing import Dict, TypeAlias, Callable, List, Optional, Union
+from litellm.utils import Message, ChatCompletionMessageToolCall, Function
 
 OnMessageCallable = Callable[[Message], None]
+OnFunctionCallable = Callable[[Function], None]
 
 @dataclass
 class Memory:
@@ -14,6 +15,21 @@ class Memory:
 
     def add_on_message(self, handler: OnMessageCallable):
         self.on_message.append(handler)
+
+    def add_on_tool_call(self, fun: OnFunctionCallable):
+        """
+        Adds handler only to function calls to track what exactly was called
+        :param fun:
+        :return:
+        """
+        def tool_handler(message: Message) -> None:
+            if hasattr(message, 'tool_calls') and message.tool_calls is not None:
+                for call in message.tool_calls:
+                    #if call.function is Function:
+                    fun(call.function)
+        self.add_on_message(tool_handler)
+
+
 
     def remove_on_message(self, handler: OnMessageCallable):
         self.on_message = [m for m in self.on_message if m == handler]
