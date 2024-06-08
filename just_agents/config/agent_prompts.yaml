@@ -1,7 +1,7 @@
 agent_prompt:
-  'You are ${role}. ${backstory}
-   Your personal goal is: ${goal}
-   Your task is to: ${task}'
+  'You are ${role}. ${backstory}.
+  Your personal goal is: ${goal}.
+  Your task is to: ${task}.'
 
 advanced_agent_prompt:
   'You are {role}. {backstory}
