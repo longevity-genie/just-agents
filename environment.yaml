@@ -11,7 +11,7 @@ dependencies:
   - pytest
   - typer
   - pip:
-      - litellm
+      - litellm>=1.40.6
       - jupyter
       - numpydoc
       - semanticscholar>=0.8.1

@@ -119,4 +119,4 @@ def literature_search(query: str, limit: int = 20):
     :param limit: limit number of results
     :return: extracts from scientific papers where SOURCE field is the id of the paper
     """
-    hybrid_search(text=query, limit=limit)
+    return hybrid_search(text=query, limit=limit)

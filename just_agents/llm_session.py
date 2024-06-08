@@ -208,7 +208,6 @@ class LLMSession:
             message = self.message_from_response(response)
             self.memory.add_message(message)
             for tool_call in tool_calls:
-                print(f"Calling function {function_name}({function_args})")
                 function_name = tool_call.function.name
                 function_to_call = self.available_tools[function_name]
                 function_args = json.loads(tool_call.function.arguments)
