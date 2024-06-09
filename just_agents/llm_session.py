@@ -1,3 +1,4 @@
+import pprint
 from pathlib import Path
 
 from litellm.utils import ChatCompletionMessageToolCall, Function
@@ -8,22 +9,22 @@ import json
 from just_agents.memory import *
 from litellm.utils import Choices
 
-from just_agents.llm_options import LLAMA3
+from just_agents.llm_options import LLAMA3, LLMOptions
 from just_agents.memory import Memory
 from starlette.responses import ContentStream
 import time
 
 OnCompletion = Callable[[ModelResponse], None]
+GetKey = Callable[[], str] #useful for key rotation
 
+
+@dataclass
 class FunctionParser:
-    id:str = ""
-    name:str = ""
-    arguments:str = ""
+    id: str = ""
+    name: str = ""
+    arguments: str = ""
 
-    def __init__(self, id:str):
-        self.id = id
-
-    def parsed(self, name:str, arguments:str):
+    def parsed(self, name: str, arguments: str):
         if name:
             self.name += name
         if arguments:
@@ -32,82 +33,83 @@ class FunctionParser:
             return True
         return False
 
+class AsyncSession(ABC):
 
-def get_chunk(i:int, delta:str, options: Dict):
-    chunk = {
-        "id": i,
-        "object": "chat.completion.chunk",
-        "created": time.time(),
-        "model": options["model"],
-        "choices": [{"delta": {"content": delta}}],
-    }
-    return json.dumps(chunk)
-
-
-def process_function(parser:FunctionParser, available_tools: Dict[str, Callable]):
-    function_args = json.loads(parser.arguments)
-    function_to_call = available_tools[parser.name]
-    try:
-        function_response = function_to_call(**function_args)
-    except Exception as e:
-        function_response = str(e)
-    message = Message(role="tool", content=function_response, name=parser.name,
-                     tool_call_id=parser.id)  # TODO need to track arguemnts , arguments=function_args
-    return message
+    def get_chunk(self, i: int, delta: str, options: Dict):
+        chunk = {
+            "id": i,
+            "object": "chat.completion.chunk",
+            "created": time.time(),
+            "model": options["model"],
+            "choices": [{"delta": {"content": delta}}],
+        }
+        return json.dumps(chunk)
 
 
-def get_tool_call_message(parsers:list[FunctionParser]) -> Message:
-    tool_calls = []
-    for parser in parsers:
-        tool_calls.append({"type":"function",
-            "id":parser.id, "function":{"name":parser.name, "arguments":parser.arguments}})
-    return Message(role="assistant", content=None, tool_calls=tool_calls)
+    def process_function(self, parser: FunctionParser, available_tools: Dict[str, Callable]):
+        function_args = json.loads(parser.arguments)
+        function_to_call = available_tools[parser.name]
+        try:
+            function_response = function_to_call(**function_args)
+        except Exception as e:
+            function_response = str(e)
+        message = Message(role="tool", content=function_response, name=parser.name,
+                         tool_call_id=parser.id)  # TODO need to track arguments , arguments=function_args
+        return message
 
 
-async def _resp_async_generator(memory: Memory, options: Dict, available_tools: Dict[str, Callable]):
-    response: ModelResponse = completion(messages=memory.messages, stream=True, **options)
-    parser:FunctionParser = None
-    function_response = None
-    tool_calls_message = None
-    tool_messages:list[Message] = []
-    parsers:list[FunctionParser] = []
-    deltas:list[str] = []
-    for i, part in enumerate(response):
-        delta: str = part["choices"][0]["delta"].get("content")  # type: ignore
-        if delta:
-            deltas.append(delta)
-            yield f"data: {get_chunk(i, delta, options)}\n\n"
+    def get_tool_call_message(self, parsers: list[FunctionParser]) -> Message:
+        tool_calls = []
+        for parser in parsers:
+            tool_calls.append({"type":"function",
+                "id": parser.id, "function": {"name": parser.name, "arguments": parser.arguments}})
+        return Message(role="assistant", content=None, tool_calls=tool_calls)
 
-        tool_calls = part["choices"][0]["delta"].get("tool_calls")
-        if tool_calls and (available_tools is not None):
-            if not parser:
-                parser = FunctionParser(id = tool_calls[0].id)
-            if parser.parsed(tool_calls[0].function.name, tool_calls[0].function.arguments):
-                tool_messages.append(process_function(parser, available_tools))
-                parsers.append(parser)
-                parser = None
 
-    if len(tool_messages) > 0:
-        memory.add_message(get_tool_call_message(parsers))
-        for message in tool_messages:
-            memory.add_message(message)
-        response = completion(messages=memory.messages, stream=True, **options)
-        deltas = []
+    async def _resp_async_generator(self, memory: Memory, options: Dict, available_tools: Dict[str, Callable]):
+        response: ModelResponse = completion(messages=memory.messages, stream=True, **options)
+        parser: FunctionParser = None
+        function_response = None # note used so far
+        tool_calls_message = None # note used so far
+        tool_messages: list[Message] = []
+        parsers: list[FunctionParser] = []
+        deltas: list[str] = []
         for i, part in enumerate(response):
             delta: str = part["choices"][0]["delta"].get("content")  # type: ignore
             if delta:
                 deltas.append(delta)
-                yield f"data: {get_chunk(i, delta, options)}\n\n"
-        memory.add_message(Message(role="assistant", content="".join(deltas)))
-    elif len(deltas) > 0:
-        memory.add_message(Message(role="assistant", content="".join(deltas)))
+                yield f"data: {self.get_chunk(i, delta, options)}\n\n"
 
-    yield "data: [DONE]\n\n"
+            tool_calls = part["choices"][0]["delta"].get("tool_calls")
+            if tool_calls and (available_tools is not None):
+                if not parser:
+                    parser = FunctionParser(id = tool_calls[0].id)
+                if parser.parsed(tool_calls[0].function.name, tool_calls[0].function.arguments):
+                    tool_messages.append(self.process_function(parser, available_tools))
+                    parsers.append(parser)
+                    parser = None #maybe Optional?
+
+        if len(tool_messages) > 0:
+            memory.add_message(self.get_tool_call_message(parsers))
+            for message in tool_messages:
+                memory.add_message(message)
+            response = completion(messages=memory.messages, stream=True, **options)
+            deltas = []
+            for i, part in enumerate(response):
+                delta: str = part["choices"][0]["delta"].get("content")  # type: ignore
+                if delta:
+                    deltas.append(delta)
+                    yield f"data: {self.get_chunk(i, delta, options)}\n\n"
+            memory.add_message(Message(role="assistant", content="".join(deltas)))
+        elif len(deltas) > 0:
+            memory.add_message(Message(role="assistant", content="".join(deltas)))
+
+        yield "data: [DONE]\n\n"
 
 
 @dataclass(kw_only=True)
-class LLMSession:
-    llm_options: Dict[str, Any] = field(default_factory=lambda: LLAMA3)
+class LLMSession(AsyncSession):
+    llm_options: LLMOptions = field(default_factory=lambda: LLAMA3)
     tools: List[Callable] = field(default_factory=list)
     available_tools: Dict[str, Callable] = field(default_factory=lambda: {})
 
@@ -144,7 +146,7 @@ class LLMSession:
         self.memory.add_message(system_instruction, True)
         return system_instruction
 
-    def query(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
+    def query(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Optional[GetKey] = None) -> str:
         """
         Query large language model
         :param prompt:
@@ -155,7 +157,7 @@ class LLMSession:
 
         question = Message(role="user", content=prompt)
         self.memory.add_message(question, run_callbacks)
-        return self._query(run_callbacks, output)
+        return self._query(run_callbacks, output, key_getter=key_getter)
 
 
     def query_all(self, messages: list, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
@@ -175,12 +177,13 @@ class LLMSession:
 
 
     def _stream(self) -> ContentStream:
-        return _resp_async_generator(self.memory, self.llm_options, self.available_tools)
+        return self._resp_async_generator(self.memory, self.llm_options.to_dict(), self.available_tools)
 
 
-    def _query(self, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
-        options: Dict = self.llm_options
-        response: ModelResponse = completion(messages=self.memory.messages, stream=False, **options)
+    def _query(self, run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Optional[GetKey] = None) -> str:
+        options: Dict = self.llm_options.to_dict()
+        api_key = key_getter() if key_getter is not None else None
+        response: ModelResponse = completion(messages=self.memory.messages, stream=False, api_key=api_key, **options)
         self._process_response(response)
         executed_response = self._process_function_calls(response)
         if executed_response is not None:
@@ -217,9 +220,9 @@ class LLMSession:
                     function_response = function_to_call(**function_args)
                 except Exception as e:
                     function_response = str(e)
-                result = Message(role="tool", content=function_response, name=function_name, tool_call_id=tool_call.id) #TODO need to track arguemnts , arguments=function_args
+                result = Message(role="tool", content=function_response, name=function_name, tool_call_id=tool_call.id)
                 self.memory.add_message(result)
-            return completion(messages=self.memory.messages, stream=False, **self.llm_options)
+            return completion(messages=self.memory.messages, stream=False, **self.llm_options.to_dict())
         return None
 
     def _prepare_tools(self, functions: List[Any]):
@@ -235,5 +238,4 @@ class LLMSession:
             function_description = litellm.utils.function_to_dict(fun)
             self.available_tools[function_description["name"]] = fun
             tools.append({"type": "function", "function": function_description})
-        self.llm_options["tools"] = tools
-        self.llm_options["tool_choice"] = "auto"
+        self.llm_options = self.llm_options.copy(tools=tools, tool_choice="auto")

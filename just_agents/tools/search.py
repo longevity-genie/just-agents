@@ -112,7 +112,7 @@ def hybrid_search(text: str,
     return ".".join(results).replace("\\n", "\n") if string else results
 
 
-def literature_search(query: str, limit: int = 20):
+def literature_search(query: str, limit: int = 10):
     """
     Search in the academic literature
     :param query:

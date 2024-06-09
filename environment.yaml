@@ -11,7 +11,7 @@ dependencies:
   - typer #for CLI
   - twine #for publishing
   - pip:
-      - litellm>=1.40.6
+      - litellm>=1.40.7
       - jupyter
       - numpydoc
       - semanticscholar>=0.8.1

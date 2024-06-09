@@ -14,6 +14,8 @@ from just_agents.tools.search import literature_search
 
 import typer
 
+from just_agents.utils import rotate_env_keys
+
 app = typer.Typer(no_args_is_help=True)
 
 def configure_logger(level: str) -> None:
@@ -37,7 +39,7 @@ def search(query: str, limit: int = 10):
 
 
 @app.command()
-def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requirements", log_level: str = "INFO"):
+def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requirements", log_level: str = "DEBUG"):
     configure_logger(log_level)
     logger.add("logs/rag_rapamycin.txt", rotation="1 MB")
     load_dotenv()
@@ -62,7 +64,7 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
     scientist.memory.add_on_tool_call(lambda f: logger.debug(f"SCIENTIST FUNCTION: {f}"))
     scientist.memory.add_on_tool_result(lambda m: logger.debug(f"SCIENTIST TOOL result from {m.name} with tool call id {m.tool_call_id} is {m.content}"))
 
-    answer = scientist.query(question, output=output / prompt_name / f"{sub_prompt}_initial_answer.txt")
+    answer = scientist.query(question, output=output / prompt_name / f"{sub_prompt}_initial_answer.txt", key_getter=rotate_env_keys)
     logger.info(f"INITIAL ANSWER: {answer}")
 
     for_review = f"""
@@ -86,8 +88,10 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
     critic.memory.add_on_message(lambda m: logger.debug(f"CRITIC MESSAGE: {m}"))
     #print(f"critic messages: {critic.memory.messages}")
 
-    review_results = critic.query(for_review, output=output / prompt_name / f"{sub_prompt}_answer_review.txt")
+    review_results = critic.query(for_review, output=output / prompt_name / f"{sub_prompt}_answer_review.txt", key_getter=rotate_env_keys)
     logger.info(f"REVIEW RESULTS: {review_results}")
+
+
 
 
 
