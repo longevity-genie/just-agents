@@ -10,28 +10,6 @@ There is no need in complicated chains and other abstractions, in fact popular l
 We wrote this libraries while being pissed of by high complexity and wanted something controlled and simple.
 Of course, you might comment that we do not have the ecosystem like, for example, tools and loaders. In reality, most of langchain tools are just very simple functions wrapped in their classes, you can always quickly look at them and re-implement them easier.
 
-# Installation
-
-If you want to install as pip package use:
-```
-pip install just-agents
-```
-
-If you want to contribute to the project you can use micromamba or other anaconda to install the environment
-```
-micromamba create -f environment.yaml
-micromamba activate just-agents
-```
-then you can edit the library. Optionaly you can install it locally with:
-```
-pip install -e .
-```
-
-
-# Warning, the library is work in progress
-
-
-
 # How it works
 
 We use litellm library to interact with LLMs. 
@@ -53,16 +31,32 @@ storekeeper: ChatAgent = ChatAgent(llm_options = LLAMA3,
                                   role = "helpful storekeeper", goal="earn profit by selling what customers need", task="sell to the customer")
 
 
-exchanges: int = 3
+exchanges: int = 3 # how many times the agents will exchange messages
 customer.memory.add_on_message(lambda m: logger.info(f"Customer: {m}") if m.role == "user" else logger.info(f"Storekeeper: {m}"))
 
 customer_reply = "Hi."
 for _ in range(exchanges):
     storekeeper_reply = storekeeper.query(customer_reply)
     customer_reply = customer.query(storekeeper_reply)
-
 ```
 
 All prompts that we use are stored in yaml files that you can easily overload.
 
 The only complex (but not mandatory) dependency that we use is Mako for prompt templates
+
+# Installation
+
+If you want to install as pip package use:
+```
+pip install just-agents
+```
+
+If you want to contribute to the project you can use micromamba or other anaconda to install the environment
+```
+micromamba create -f environment.yaml
+micromamba activate just-agents
+```
+then you can edit the library. Optionally you can install it locally with:
+```
+pip install -e .
+```
