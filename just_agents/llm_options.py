@@ -16,6 +16,7 @@ class LLMOptions:
     extras: Dict[str, Any] = field(default_factory=lambda: {})
     tools: list = field(default_factory=lambda : [])
     tool_choice: Optional[str] = field(default_factory=lambda: None) #"auto"
+    api_key: str = ""
 
     def to_dict(self):
         data = asdict(self)

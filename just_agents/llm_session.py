@@ -14,109 +14,33 @@ from just_agents.memory import Memory
 from starlette.responses import ContentStream
 import time
 
+from just_agents.streaming.abstract_streaming import AbstractStreaming
+from just_agents.streaming.openai_streaming import AsyncSession
+from just_agents.streaming.qwen_streaming import QwenStreaming
+
 OnCompletion = Callable[[ModelResponse], None]
 GetKey = Callable[[], str] #useful for key rotation
 
 
-@dataclass
-class FunctionParser:
-    id: str = ""
-    name: str = ""
-    arguments: str = ""
 
-    def parsed(self, name: str, arguments: str):
-        if name:
-            self.name += name
-        if arguments:
-            self.arguments += arguments
-        if len(self.name) > 0 and len(self.arguments) > 0 and self.arguments.endswith("}"):
-            return True
-        return False
-
-class AsyncSession(ABC):
-
-    def get_chunk(self, i: int, delta: str, options: Dict):
-        chunk = {
-            "id": i,
-            "object": "chat.completion.chunk",
-            "created": time.time(),
-            "model": options["model"],
-            "choices": [{"delta": {"content": delta}}],
-        }
-        return json.dumps(chunk)
-
-
-    def process_function(self, parser: FunctionParser, available_tools: Dict[str, Callable]):
-        function_args = json.loads(parser.arguments)
-        function_to_call = available_tools[parser.name]
-        try:
-            function_response = function_to_call(**function_args)
-        except Exception as e:
-            function_response = str(e)
-        message = Message(role="tool", content=function_response, name=parser.name,
-                         tool_call_id=parser.id)  # TODO need to track arguments , arguments=function_args
-        return message
-
-
-    def get_tool_call_message(self, parsers: list[FunctionParser]) -> Message:
-        tool_calls = []
-        for parser in parsers:
-            tool_calls.append({"type":"function",
-                "id": parser.id, "function": {"name": parser.name, "arguments": parser.arguments}})
-        return Message(role="assistant", content=None, tool_calls=tool_calls)
-
-
-    async def _resp_async_generator(self, memory: Memory, options: Dict, available_tools: Dict[str, Callable]):
-        response: ModelResponse = completion(messages=memory.messages, stream=True, **options)
-        parser: FunctionParser = None
-        function_response = None # note used so far
-        tool_calls_message = None # note used so far
-        tool_messages: list[Message] = []
-        parsers: list[FunctionParser] = []
-        deltas: list[str] = []
-        for i, part in enumerate(response):
-            delta: str = part["choices"][0]["delta"].get("content")  # type: ignore
-            if delta:
-                deltas.append(delta)
-                yield f"data: {self.get_chunk(i, delta, options)}\n\n"
-
-            tool_calls = part["choices"][0]["delta"].get("tool_calls")
-            if tool_calls and (available_tools is not None):
-                if not parser:
-                    parser = FunctionParser(id = tool_calls[0].id)
-                if parser.parsed(tool_calls[0].function.name, tool_calls[0].function.arguments):
-                    tool_messages.append(self.process_function(parser, available_tools))
-                    parsers.append(parser)
-                    parser = None #maybe Optional?
-
-        if len(tool_messages) > 0:
-            memory.add_message(self.get_tool_call_message(parsers))
-            for message in tool_messages:
-                memory.add_message(message)
-            response = completion(messages=memory.messages, stream=True, **options)
-            deltas = []
-            for i, part in enumerate(response):
-                delta: str = part["choices"][0]["delta"].get("content")  # type: ignore
-                if delta:
-                    deltas.append(delta)
-                    yield f"data: {self.get_chunk(i, delta, options)}\n\n"
-            memory.add_message(Message(role="assistant", content="".join(deltas)))
-        elif len(deltas) > 0:
-            memory.add_message(Message(role="assistant", content="".join(deltas)))
-
-        yield "data: [DONE]\n\n"
 
 
 @dataclass(kw_only=True)
-class LLMSession(AsyncSession):
+class LLMSession:
     llm_options: LLMOptions = field(default_factory=lambda: LLAMA3)
     tools: List[Callable] = field(default_factory=list)
     available_tools: Dict[str, Callable] = field(default_factory=lambda: {})
 
     on_response: list[OnCompletion] = field(default_factory=list)
     memory: Memory = field(default_factory=lambda: Memory())
+    streaming: AbstractStreaming = None
 
     def __post_init__(self):
+        if self.llm_options.model.find("qwen") != -1:
+            self.streaming = QwenStreaming()
+        else:
+            self.streaming = AsyncSession()
+
         if self.tools is not None:
             self._prepare_tools(self.tools)
 
@@ -177,7 +101,7 @@ class LLMSession(AsyncSession):
 
 
     def _stream(self) -> ContentStream:
-        return self._resp_async_generator(self.memory, self.llm_options.to_dict(), self.available_tools)
+        return self.streaming.resp_async_generator(self.memory, self.llm_options.to_dict(), self.available_tools)
 
 
     def _query(self, run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Optional[GetKey] = None) -> str:
