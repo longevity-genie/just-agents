@@ -19,12 +19,22 @@ def get_current_weather(location: str):
     else:
         return json.dumps({"location": location, "temperature": "unknown"})
 
-def test_function_calling():
+def test_sync_llama_function_calling():
     load_dotenv()
     session: LLMSession = LLMSession(
         llm_options=just_agents.llm_options.LLAMA3,
         tools=[get_current_weather]
     )
     result = session.query("What's the weather like in San Francisco, Tokyo, and Paris?")
+    assert "72°F" in result
+    assert "22" in result
+
+def test_async_gwen2_function_calling():
+    load_dotenv()
+    session: LLMSession = LLMSession(
+        llm_options=just_agents.llm_options.OPEN_ROUTER_Qwen_2_72B_Instruct,
+        tools=[get_current_weather]
+    )
+    result = session.query_all_messages("What's the weather like in San Francisco, Tokyo, and Paris?")
     assert "72°F" in result
     assert "22" in result

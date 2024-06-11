@@ -1,3 +1,4 @@
+import copy
 import pprint
 from pathlib import Path
 
@@ -9,7 +10,7 @@ import json
 from just_agents.memory import *
 from litellm.utils import Choices
 
-from just_agents.llm_options import LLAMA3, LLMOptions
+from just_agents.llm_options import LLAMA3
 from just_agents.memory import Memory
 from starlette.responses import ContentStream
 import time
@@ -27,7 +28,7 @@ GetKey = Callable[[], str] #useful for key rotation
 
 @dataclass(kw_only=True)
 class LLMSession:
-    llm_options: LLMOptions = field(default_factory=lambda: LLAMA3)
+    llm_options: Dict[str, Any] = field(default_factory=lambda: LLAMA3)
     tools: List[Callable] = field(default_factory=list)
     available_tools: Dict[str, Callable] = field(default_factory=lambda: {})
 
@@ -36,7 +37,9 @@ class LLMSession:
     streaming: AbstractStreaming = None
 
     def __post_init__(self):
-        if self.llm_options.model.find("qwen") != -1:
+        if self.llm_options is not None:
+            self.llm_options = copy.deepcopy(self.llm_options) #just a satefy requirement to avoid shared dictionaries
+        if "qwen" in self.llm_options["model"].lower():
             self.streaming = QwenStreaming()
         else:
             self.streaming = AsyncSession()
@@ -84,7 +87,7 @@ class LLMSession:
         return self._query(run_callbacks, output, key_getter=key_getter)
 
 
-    def query_all(self, messages: list, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
+    def query_all_messages(self, messages: list[dict], run_callbacks: bool = True, output: Optional[Path] = None) -> str:
         self.memory.add_messages(messages, run_callbacks)
         return self._query(run_callbacks, output)
 
@@ -93,21 +96,43 @@ class LLMSession:
         self.memory.add_messages(messages, run_callbacks)
         return self._stream()
 
-
     def stream(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> ContentStream:
+        """
+        streaming method
+        :param prompt:
+        :param run_callbacks:
+        :param output:
+        :return:
+        """
         question = Message(role="user", content=prompt)
         self.memory.add_message(question, run_callbacks)
-        return self._stream()
+
+        # Start the streaming process
+        content_stream = self._stream()
+
+        # If output file is provided, write the stream to the file
+        if output is not None:
+            try:
+                with output.open('w') as file:
+                    if isinstance(content_stream, ContentStream):
+                        for content in content_stream:
+                            file.write(content)
+                    else:
+                        raise TypeError("ContentStream expected from self._stream()")
+            except Exception as e:
+                print(f"Error writing to file: {e}")
+
+        return content_stream
+
 
 
     def _stream(self) -> ContentStream:
-        return self.streaming.resp_async_generator(self.memory, self.llm_options.to_dict(), self.available_tools)
+        return self.streaming.resp_async_generator(self.memory, self.llm_options, self.available_tools)
 
 
     def _query(self, run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Optional[GetKey] = None) -> str:
-        options: Dict = self.llm_options.to_dict()
         api_key = key_getter() if key_getter is not None else None
-        response: ModelResponse = completion(messages=self.memory.messages, stream=False, api_key=api_key, **options)
+        response: ModelResponse = completion(messages=self.memory.messages, stream=False, api_key=api_key, **self.llm_options)
         self._process_response(response)
         executed_response = self._process_function_calls(response)
         if executed_response is not None:
@@ -146,7 +171,7 @@ class LLMSession:
                     function_response = str(e)
                 result = Message(role="tool", content=function_response, name=function_name, tool_call_id=tool_call.id)
                 self.memory.add_message(result)
-            return completion(messages=self.memory.messages, stream=False, **self.llm_options.to_dict())
+            return completion(messages=self.memory.messages, stream=False, **self.llm_options)
         return None
 
     def _prepare_tools(self, functions: List[Any]):
@@ -162,4 +187,5 @@ class LLMSession:
             function_description = litellm.utils.function_to_dict(fun)
             self.available_tools[function_description["name"]] = fun
             tools.append({"type": "function", "function": function_description})
-        self.llm_options = self.llm_options.copy(tools=tools, tool_choice="auto")
+        self.llm_options["tools"] = tools
+        self.llm_options["tool_choice"] = "auto"

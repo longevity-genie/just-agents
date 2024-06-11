@@ -1,62 +1,68 @@
 import json
 from dataclasses import dataclass
 from typing import Dict, Callable, Optional
+from enum import Enum, auto
 
 from litellm import ModelResponse, completion, Message
-
 from just_agents.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming, FunctionParser
 
-CLEARED:int = -2
-STOPED:int = -1
-WAITING:int = 0
-UNDETERMIND:int = 1
-PARSING:int = 2
+class ParserState(Enum):
+    """
+    States for the Qwen parser
+    """
+    CLEARED = auto()
+    STOPPED = auto()
+    WAITING = auto()
+    UNDETERMINED = auto()
+    PARSING = auto()
 
 @dataclass
 class QwenFunctionParser:
-    name:str = ""
-    arguments:str = ""
-    buffer:str = ""
-    state:int = WAITING
+    """
+    Qwen has differences in formats of how it streams stuff
+    """
+    name: str = ""
+    arguments: str = ""
+    buffer: str = ""
+    state: ParserState = ParserState.WAITING
 
-    def parsing(self, token:str) -> bool:
-        if self.state == STOPED or self.state == CLEARED:
+    def parsing(self, token: str) -> bool:
+        if self.state in {ParserState.STOPPED, ParserState.CLEARED}:
             return False
 
         self.buffer += token
 
-        if self.state == PARSING:
+        if self.state == ParserState.PARSING:
             return True
 
-        if self.state == WAITING and token.startswith("{"):
-            self.state = UNDETERMIND
+        if self.state == ParserState.WAITING and token.startswith("{"):
+            self.state = ParserState.UNDETERMINED
             return True
 
-        if self.state == UNDETERMIND and len(self.buffer) < 12:
+        if self.state == ParserState.UNDETERMINED and len(self.buffer) < 12:
             return True
 
-        if self.state == UNDETERMIND and len(self.buffer) >= 12:
-            if str(self.buffer).find("function") != -1:
-                self.state = PARSING
+        if self.state == ParserState.UNDETERMINED and len(self.buffer) >= 12:
+            if "function" in self.buffer:
+                self.state = ParserState.PARSING
                 return True
             else:
-                self.state = STOPED
+                self.state = ParserState.STOPPED
                 return False
 
     def need_cleared(self) -> bool:
-        return self.state == STOPED
-
+        return self.state == ParserState.STOPPED
 
     def clear(self) -> str:
-        self.state = CLEARED
+        self.state = ParserState.CLEARED
         return self.buffer
 
     def is_ready(self):
-        return self.state == PARSING
+        return self.state == ParserState.PARSING
 
     def get_function_parsers(self):
-        if self.state == PARSING:
+        if self.state == ParserState.PARSING:
             res = []
             data = self.buffer.replace("\n", "")
             data = "[" + data.replace("}}", "}},")[:-1] + "]"
@@ -65,7 +71,6 @@ class QwenFunctionParser:
                 res.append(FunctionParser(name=func["function"], arguments=json.dumps(func["parameters"])))
             return res
         return []
-
 
 @dataclass
 class QwenStreaming(AbstractStreaming):
@@ -78,16 +83,21 @@ class QwenStreaming(AbstractStreaming):
         except Exception as e:
             function_response = str(e)
         message = Message(role="function", content=function_response, name=parser.name,
-                         tool_call_id=parser.id)  # TODO need to track arguments , arguments=function_args
+                          tool_call_id=parser.id)  # TODO need to track arguments , arguments=function_args
         return message
 
-
     async def resp_async_generator(self, memory: Memory, options: Dict, available_tools: Dict[str, Callable]):
+        """
+        parses and streams results of the function
+        :param memory:
+        :param options:
+        :param available_tools:
+        :return:
+        """
         response: ModelResponse = completion(messages=memory.messages, stream=True, **options)
         parser: QwenFunctionParser = QwenFunctionParser()
         deltas: list[str] = []
         tool_messages: list[Message] = []
-        parsers: list[FunctionParser] = []
 
         for i, part in enumerate(response):
             delta: str = part["choices"][0]["delta"].get("content")  # type: ignore

@@ -1,5 +1,6 @@
 import json
 import time
+from abc import ABC
 from dataclasses import dataclass
 from typing import Dict, Callable
 
@@ -23,7 +24,7 @@ class FunctionParser:
         return False
 
 
-class AbstractStreaming:
+class AbstractStreaming(ABC):
 
     async def resp_async_generator(self, memory: Memory, options: Dict, available_tools: Dict[str, Callable]):
         pass

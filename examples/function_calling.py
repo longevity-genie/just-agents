@@ -33,5 +33,7 @@ session: LLMSession = LLMSession(
     llm_options=llm_options,
     tools=[get_current_weather]
 )
-session.memory.add_on_message(lambda m: pprint.pprint(m.content) if m.content is not None else None)
+session.memory.add_on_message(lambda m: pprint.pprint(m) if m.content is not None else None)
+#session.memory.add_on_message(lambda m: pprint.pprint(m.content) if m.content is not None else None)
 session.query("What's the weather like in San Francisco, Tokyo, and Paris?", key_getter=key_getter)
+#for QWEN we get: Message(content='{\n  "function": "get_current_weather",\n  "parameters": {\n    "location": ["San Francisco", "Tokyo", "Paris"]\n  }\n}', role='assistant')

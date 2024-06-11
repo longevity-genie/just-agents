@@ -62,10 +62,13 @@ class Memory:
         return self.messages[-1] if len(self.messages) > 0 else None
 
 
-    def add_messages(self, messages: list, run_callbacks: bool = True):
+    def add_messages(self, messages: list[Message | dict], run_callbacks: bool = True):
         for message in messages:
-            msg = Message(content=message["content"], role=message["role"])
-            self.messages.append(msg)
+            if message is Message:
+                self.messages.append(message)
+            else:
+                msg = Message(content=message["content"], role=message["role"])
+                self.messages.append(msg)
             if run_callbacks:
                 for handler in self.on_message:
                     handler(message)

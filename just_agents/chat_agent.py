@@ -1,12 +1,9 @@
-import dataclasses
-import pathlib
-import pprint
-from string import Template
-
 from dataclasses import dataclass, field
+from typing import Any, Dict, Optional
+
 from just_agents.llm_session import LLMSession
-from typing import Any, Dict, List, Optional
 from just_agents.utils import load_config
+
 
 @dataclass
 class ChatAgent(LLMSession):
