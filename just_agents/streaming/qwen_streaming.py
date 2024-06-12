@@ -1,6 +1,6 @@
 import json
 from dataclasses import dataclass
-from typing import Dict, Callable, Optional
+from typing import Dict, Callable, Optional, AsyncGenerator
 from enum import Enum, auto
 
 from litellm import ModelResponse, completion, Message
@@ -86,7 +86,7 @@ class QwenStreaming(AbstractStreaming):
                           tool_call_id=parser.id)  # TODO need to track arguments , arguments=function_args
         return message
 
-    async def resp_async_generator(self, memory: Memory, options: Dict, available_tools: Dict[str, Callable]):
+    async def resp_async_generator(self, memory: Memory, options: Dict, available_tools: Dict[str, Callable], key_getter: Callable[[], str] = None) -> AsyncGenerator[str, None]:
         """
         parses and streams results of the function
         :param memory:
@@ -94,7 +94,8 @@ class QwenStreaming(AbstractStreaming):
         :param available_tools:
         :return:
         """
-        response: ModelResponse = completion(messages=memory.messages, stream=True, **options)
+        api_key = key_getter() if key_getter is not None else None
+        response: ModelResponse = completion(messages=memory.messages, stream=True, api_key=api_key, **options)
         parser: QwenFunctionParser = QwenFunctionParser()
         deltas: list[str] = []
         tool_messages: list[Message] = []

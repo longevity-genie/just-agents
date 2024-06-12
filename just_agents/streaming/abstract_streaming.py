@@ -1,8 +1,8 @@
 import json
 import time
-from abc import ABC
+from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Callable
+from typing import Dict, Callable, AsyncGenerator, Optional
 
 from litellm import Message
 
@@ -25,8 +25,26 @@ class FunctionParser:
 
 
 class AbstractStreaming(ABC):
+    """
+    Class that is required to implement the streaming logic
+    """
 
-    async def resp_async_generator(self, memory: Memory, options: Dict, available_tools: Dict[str, Callable]):
+
+    @abstractmethod
+    async def resp_async_generator(
+            self,
+            memory: Memory,
+            options: Dict,
+            available_tools: Dict[str, Callable],
+            key_getter: Callable[[], str] = None
+    ) -> AsyncGenerator:
+        """
+        Async generator that fills memory with streaming data
+        :param memory:
+        :param options:
+        :param available_tools:
+        :return:
+        """
         pass
 
     def _process_function(self, parser: FunctionParser, available_tools: Dict[str, Callable]):

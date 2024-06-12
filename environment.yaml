@@ -13,7 +13,7 @@ dependencies:
   - starlette
   - jupyter
   - pip:
-      - litellm>=1.40.78
+      - litellm>=1.40.8
       - numpydoc
       - semanticscholar>=0.8.1
       - Mako>=1.3.5

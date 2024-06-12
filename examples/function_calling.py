@@ -1,4 +1,5 @@
 #from just_agents.chat_agent import ChatAgent
+import asyncio
 import json
 import os
 import pprint
@@ -24,8 +25,12 @@ def get_current_weather(location: str):
 
 llm_options = just_agents.llm_options.LLAMA3
 key_getter = rotate_env_keys
+prompt = "What's the weather like in San Francisco, Tokyo, and Paris?"
+
+#QWEN 2 does not work!
 #llm_options = just_agents.llm_options.OPEN_ROUTER_Qwen_2_72B_Instruct
 #key_getter=lambda: os.getenv("OPEN_ROUTER_KEY")
+
 #llm_options = just_agents.llm_options.FIREWORKS_Qwen_2_72B_Instruct
 #key_getter=lambda: os.getenv("FIREWORKS_AI_API_KEY")
 
@@ -35,5 +40,9 @@ session: LLMSession = LLMSession(
 )
 session.memory.add_on_message(lambda m: pprint.pprint(m) if m.content is not None else None)
 #session.memory.add_on_message(lambda m: pprint.pprint(m.content) if m.content is not None else None)
-session.query("What's the weather like in San Francisco, Tokyo, and Paris?", key_getter=key_getter)
+session.query(prompt, key_getter=key_getter)
 #for QWEN we get: Message(content='{\n  "function": "get_current_weather",\n  "parameters": {\n    "location": ["San Francisco", "Tokyo", "Paris"]\n  }\n}', role='assistant')
+
+
+result = asyncio.run(session.stream_async(prompt, key_getter=key_getter))
+print("stream finished")

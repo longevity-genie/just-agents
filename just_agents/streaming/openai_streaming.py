@@ -1,3 +1,5 @@
+from typing import AsyncGenerator
+
 from litellm import ModelResponse, completion
 
 from just_agents.memory import *
@@ -7,8 +9,13 @@ from just_agents.streaming.abstract_streaming import AbstractStreaming, Function
 
 class AsyncSession(AbstractStreaming):
 
-    async def resp_async_generator(self, memory: Memory, options: Dict, available_tools: Dict[str, Callable]):
-        response: ModelResponse = completion(messages=memory.messages, stream=True, **options)
+    async def resp_async_generator(self, memory: Memory,
+                                   options: Dict,
+                                   available_tools: Dict[str, Callable],
+                                   key_getter: Callable[[], str] = None
+                                   ) -> AsyncGenerator[str, None]:
+        api_key = key_getter() if key_getter is not None else None
+        response: ModelResponse = completion(messages=memory.messages, stream=True, api_key=api_key, **options)
         parser: Optional[FunctionParser] = None
         tool_messages: list[Message] = []
         parsers: list[FunctionParser] = []

@@ -1,20 +1,15 @@
 import copy
-import pprint
-from pathlib import Path
-
-from litellm.utils import ChatCompletionMessageToolCall, Function
-from litellm import ModelResponse, completion, acompletion, Message
-from typing import Any, Dict, List, Optional, Callable
-import litellm
 import json
-from just_agents.memory import *
+from pathlib import Path
+from typing import Any, AsyncGenerator
+
+import litellm
+from litellm import ModelResponse, completion
 from litellm.utils import Choices
 
 from just_agents.llm_options import LLAMA3
+from just_agents.memory import *
 from just_agents.memory import Memory
-from starlette.responses import ContentStream
-import time
-
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
 from just_agents.streaming.qwen_streaming import QwenStreaming
@@ -87,16 +82,27 @@ class LLMSession:
         return self._query(run_callbacks, output, key_getter=key_getter)
 
 
-    def query_all_messages(self, messages: list[dict], run_callbacks: bool = True, output: Optional[Path] = None) -> str:
+    def query_all_messages(self, messages: list[dict], run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Optional[GetKey] = None) -> str:
         self.memory.add_messages(messages, run_callbacks)
-        return self._query(run_callbacks, output)
+        return self._query(run_callbacks, output, key_getter=key_getter)
 
 
-    def stream_all(self, messages: list, run_callbacks: bool = True) -> ContentStream:
+    def stream_all(self, messages: list, run_callbacks: bool = True): # -> ContentStream:
+        #TODO this function is super-dangerous as it does not seem to clean memory!
+        #TODO: should we add memory cleanup?
         self.memory.add_messages(messages, run_callbacks)
         return self._stream()
 
-    def stream(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> ContentStream:
+    async def stream_async(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Callable[[], str] = None) -> List[Any]:
+        """temporary function that allows testing the stream function which Alex wrote but I do not fully understand"""
+        collected_data = []
+        async for item in self.stream(prompt, run_callbacks, output, key_getter=key_getter):
+            collected_data.append(item)
+            # You can also process each item here if needed
+        return collected_data
+
+
+    def stream(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Callable[[], str] = None) -> AsyncGenerator[Any, None]: # -> ContentStream:
         """
         streaming method
         :param prompt:
@@ -108,13 +114,16 @@ class LLMSession:
         self.memory.add_message(question, run_callbacks)
 
         # Start the streaming process
-        content_stream = self._stream()
+        content_stream = self._stream(key_getter=key_getter)
 
         # If output file is provided, write the stream to the file
         if output is not None:
             try:
                 with output.open('w') as file:
-                    if isinstance(content_stream, ContentStream):
+                    if True: #if isinstance(content_stream, ContentStream):
+                        #looks like ContentStream is only used for typehinting
+                        # while it brings pretty heavy starlette dependency
+                        # let's temporally comment it out
                         for content in content_stream:
                             file.write(content)
                     else:
@@ -126,8 +135,8 @@ class LLMSession:
 
 
 
-    def _stream(self) -> ContentStream:
-        return self.streaming.resp_async_generator(self.memory, self.llm_options, self.available_tools)
+    def _stream(self, key_getter: Optional[GetKey] = None) -> AsyncGenerator[Any, None]: # -> ContentStream:
+        return self.streaming.resp_async_generator(self.memory, self.llm_options, self.available_tools, key_getter=key_getter )
 
 
     def _query(self, run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Optional[GetKey] = None) -> str:
