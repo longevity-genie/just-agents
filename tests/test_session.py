@@ -2,6 +2,7 @@
 import json
 import pprint
 
+import pytest
 from dotenv import load_dotenv
 
 import just_agents.llm_options
@@ -29,6 +30,7 @@ def test_sync_llama_function_calling():
     assert "72°F" in result
     assert "22" in result
 
+@pytest.mark.skip(reason="so far qwen inference we are using has issues with json function calling")
 def test_async_gwen2_function_calling():
     load_dotenv()
     session: LLMSession = LLMSession(

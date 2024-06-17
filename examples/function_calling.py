@@ -3,6 +3,8 @@ import asyncio
 import json
 import os
 import pprint
+
+import litellm
 import pytest
 from dotenv import load_dotenv
 
@@ -27,12 +29,18 @@ llm_options = just_agents.llm_options.LLAMA3
 key_getter = rotate_env_keys
 prompt = "What's the weather like in San Francisco, Tokyo, and Paris?"
 
+#llm_options = just_agents.llm_options.OPENAI_GPT4o
+#key_getter=lambda: os.getenv("OPENAI_API_KEY")
+
 #QWEN 2 does not work!
 #llm_options = just_agents.llm_options.OPEN_ROUTER_Qwen_2_72B_Instruct
 #key_getter=lambda: os.getenv("OPEN_ROUTER_KEY")
 
-#llm_options = just_agents.llm_options.FIREWORKS_Qwen_2_72B_Instruct
-#key_getter=lambda: os.getenv("FIREWORKS_AI_API_KEY")
+#llm_options = just_agents.llm_options.DEEPINFRA_Qwen_2_72B_Instruct
+#key_getter=lambda:  os.getenv("TOGETHERAI_API_KEY")
+
+#llm_options = just_agents.llm_options.MISTRAL_8x22B
+#key_getter=lambda: os.getenv("MISTRAL_API_KEY")
 
 session: LLMSession = LLMSession(
     llm_options=llm_options,
