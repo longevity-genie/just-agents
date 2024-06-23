@@ -95,6 +95,9 @@ class QwenStreaming(AbstractStreaming):
         :return:
         """
         api_key = key_getter() if key_getter is not None else None
+        if api_key is None:
+            api_key = options.pop("api_key", None)
+
         response: ModelResponse = completion(messages=memory.messages, stream=True, api_key=api_key, **options)
         parser: QwenFunctionParser = QwenFunctionParser()
         deltas: list[str] = []

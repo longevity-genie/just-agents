@@ -15,6 +15,8 @@ class AsyncSession(AbstractStreaming):
                                    key_getter: Callable[[], str] = None
                                    ) -> AsyncGenerator[str, None]:
         api_key = key_getter() if key_getter is not None else None
+        if api_key is None:
+            api_key = options.pop("api_key", None)
         response: ModelResponse = completion(messages=memory.messages, stream=True, api_key=api_key, **options)
         parser: Optional[FunctionParser] = None
         tool_messages: list[Message] = []
