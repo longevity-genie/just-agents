@@ -67,8 +67,11 @@ class Memory:
             if message is Message:
                 self.messages.append(message)
             else:
-                msg = Message(content=message["content"], role=message["role"])
-                self.messages.append(msg)
+                message = Message(content=message["content"], role=message["role"])
+                self.messages.append(message)
             if run_callbacks:
                 for handler in self.on_message:
                     handler(message)
+
+    def clear_messages(self):
+        self.messages.clear()

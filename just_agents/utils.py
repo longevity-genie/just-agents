@@ -5,8 +5,24 @@ import yaml
 from pathlib import Path
 from typing import Optional, Dict, Any
 import importlib.resources as resources
-
 from dotenv import load_dotenv
+import copy
+
+class RotateKeys():
+    keys:list[str]
+    def __init__(self, file_path:str):
+        with open(file_path) as f:
+            self.keys = f.readlines()
+    def __call__(self, *args, **kwargs):
+        return random.choice(self.keys).strip()
+
+
+def prepare_options(options:dict[str, any]):
+    res = options.copy()
+    key_getter = res.pop("key_getter", None)
+    if key_getter is not None:
+        res["api_key"] = key_getter()
+    return res
 
 
 def rotate_env_keys() -> str:

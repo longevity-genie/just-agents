@@ -13,12 +13,9 @@ from just_agents.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
 from just_agents.streaming.qwen_streaming import QwenStreaming
+from just_agents.utils import prepare_options
 
 OnCompletion = Callable[[ModelResponse], None]
-GetKey = Callable[[], str] #useful for key rotation
-
-
-
 
 
 @dataclass(kw_only=True)
@@ -34,6 +31,8 @@ class LLMSession:
     def __post_init__(self):
         if self.llm_options is not None:
             self.llm_options = copy.deepcopy(self.llm_options) #just a satefy requirement to avoid shared dictionaries
+            if (self.llm_options.get("key_getter") is not None) and (self.llm_options.get("api_key") is not None):
+                print("Warning api_key will be rewriten by key_getter. Both are present in llm_options.")
         if "qwen" in self.llm_options["model"].lower():
             self.streaming = QwenStreaming()
         else:
@@ -68,7 +67,7 @@ class LLMSession:
         self.memory.add_message(system_instruction, True)
         return system_instruction
 
-    def query(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Optional[GetKey] = None) -> str:
+    def query(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
         """
         Query large language model
         :param prompt:
@@ -79,30 +78,28 @@ class LLMSession:
 
         question = Message(role="user", content=prompt)
         self.memory.add_message(question, run_callbacks)
-        return self._query(run_callbacks, output, key_getter=key_getter)
+        return self._query(run_callbacks, output)
 
 
-    def query_all_messages(self, messages: list[dict], run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Optional[GetKey] = None) -> str:
+    def query_all_messages(self, messages: list[dict], run_callbacks: bool = True, output: Optional[Path] = None) -> str:
         self.memory.add_messages(messages, run_callbacks)
-        return self._query(run_callbacks, output, key_getter=key_getter)
+        return self._query(run_callbacks, output)
 
 
     def stream_all(self, messages: list, run_callbacks: bool = True): # -> ContentStream:
-        #TODO this function is super-dangerous as it does not seem to clean memory!
-        #TODO: should we add memory cleanup?
         self.memory.add_messages(messages, run_callbacks)
         return self._stream()
 
-    async def stream_async(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Callable[[], str] = None) -> List[Any]:
+    async def stream_async(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> List[Any]:
         """temporary function that allows testing the stream function which Alex wrote but I do not fully understand"""
         collected_data = []
-        async for item in self.stream(prompt, run_callbacks, output, key_getter=key_getter):
+        async for item in self.stream(prompt, run_callbacks, output):
             collected_data.append(item)
             # You can also process each item here if needed
         return collected_data
 
 
-    def stream(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Callable[[], str] = None) -> AsyncGenerator[Any, None]: # -> ContentStream:
+    def stream(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> AsyncGenerator[Any, None]: # -> ContentStream:
         """
         streaming method
         :param prompt:
@@ -114,7 +111,7 @@ class LLMSession:
         self.memory.add_message(question, run_callbacks)
 
         # Start the streaming process
-        content_stream = self._stream(key_getter=key_getter)
+        content_stream = self._stream()
 
         # If output file is provided, write the stream to the file
         if output is not None:
@@ -135,13 +132,13 @@ class LLMSession:
 
 
 
-    def _stream(self, key_getter: Optional[GetKey] = None) -> AsyncGenerator[Any, None]: # -> ContentStream:
-        return self.streaming.resp_async_generator(self.memory, self.llm_options, self.available_tools, key_getter=key_getter )
+    def _stream(self) -> AsyncGenerator[Any, None]: # -> ContentStream:
+        return self.streaming.resp_async_generator(self.memory, self.llm_options, self.available_tools)
 
 
-    def _query(self, run_callbacks: bool = True, output: Optional[Path] = None, key_getter: Optional[GetKey] = None) -> str:
-        api_key = key_getter() if key_getter is not None else None
-        response: ModelResponse = completion(messages=self.memory.messages, stream=False, api_key=api_key, **self.llm_options)
+    def _query(self, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
+        options = prepare_options(self.llm_options)
+        response: ModelResponse = completion(messages=self.memory.messages, stream=False, **options)#, api_key=api_key)
         self._process_response(response)
         executed_response = self._process_function_calls(response)
         if executed_response is not None:
@@ -180,7 +177,8 @@ class LLMSession:
                     function_response = str(e)
                 result = Message(role="tool", content=function_response, name=function_name, tool_call_id=tool_call.id)
                 self.memory.add_message(result)
-            return completion(messages=self.memory.messages, stream=False, **self.llm_options)
+            options = prepare_options(self.llm_options)
+            return completion(messages=self.memory.messages, stream=False, **options)
         return None
 
     def _prepare_tools(self, functions: List[Any]):

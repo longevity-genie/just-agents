@@ -5,19 +5,17 @@ from litellm import ModelResponse, completion
 from just_agents.memory import *
 from just_agents.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming, FunctionParser
+from just_agents.utils import prepare_options
 
 
 class AsyncSession(AbstractStreaming):
 
     async def resp_async_generator(self, memory: Memory,
                                    options: Dict,
-                                   available_tools: Dict[str, Callable],
-                                   key_getter: Callable[[], str] = None
+                                   available_tools: Dict[str, Callable]
                                    ) -> AsyncGenerator[str, None]:
-        api_key = key_getter() if key_getter is not None else None
-        if api_key is None:
-            api_key = options.pop("api_key", None)
-        response: ModelResponse = completion(messages=memory.messages, stream=True, api_key=api_key, **options)
+        options = prepare_options(options)
+        response: ModelResponse = completion(messages=memory.messages, stream=True, **options)
         parser: Optional[FunctionParser] = None
         tool_messages: list[Message] = []
         parsers: list[FunctionParser] = []

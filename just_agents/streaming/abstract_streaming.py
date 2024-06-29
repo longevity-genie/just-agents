@@ -35,8 +35,7 @@ class AbstractStreaming(ABC):
             self,
             memory: Memory,
             options: Dict,
-            available_tools: Dict[str, Callable],
-            key_getter: Callable[[], str] = None
+            available_tools: Dict[str, Callable]
     ) -> AsyncGenerator:
         """
         Async generator that fills memory with streaming data
