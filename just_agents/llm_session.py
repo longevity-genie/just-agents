@@ -12,7 +12,6 @@ from just_agents.memory import *
 from just_agents.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
-from just_agents.streaming.qwen_streaming import QwenStreaming
 from just_agents.utils import prepare_options
 
 OnCompletion = Callable[[ModelResponse], None]
@@ -33,10 +32,8 @@ class LLMSession:
             self.llm_options = copy.deepcopy(self.llm_options) #just a satefy requirement to avoid shared dictionaries
             if (self.llm_options.get("key_getter") is not None) and (self.llm_options.get("api_key") is not None):
                 print("Warning api_key will be rewriten by key_getter. Both are present in llm_options.")
-        if "qwen" in self.llm_options["model"].lower():
-            self.streaming = QwenStreaming()
-        else:
-            self.streaming = AsyncSession()
+
+        self.streaming = AsyncSession()
 
         if self.tools is not None:
             self._prepare_tools(self.tools)
