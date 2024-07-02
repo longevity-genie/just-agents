@@ -78,7 +78,7 @@ class LLMSession:
         return self._query(run_callbacks, output)
 
 
-    def query_all_messages(self, messages: list[dict], run_callbacks: bool = True, output: Optional[Path] = None) -> str:
+    def query_add_all(self, messages: list[dict], run_callbacks: bool = True, output: Optional[Path] = None) -> str:
         self.memory.add_messages(messages, run_callbacks)
         return self._query(run_callbacks, output)
 
