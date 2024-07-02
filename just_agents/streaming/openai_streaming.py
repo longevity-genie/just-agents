@@ -5,7 +5,7 @@ from litellm import ModelResponse, completion
 from just_agents.memory import *
 from just_agents.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming, FunctionParser
-from just_agents.utils import prepare_options
+from just_agents.utils import rotate_completion
 
 
 class AsyncSession(AbstractStreaming):
@@ -14,8 +14,8 @@ class AsyncSession(AbstractStreaming):
                                    options: Dict,
                                    available_tools: Dict[str, Callable]
                                    ) -> AsyncGenerator[str, None]:
-        options = prepare_options(options)
-        response: ModelResponse = completion(messages=memory.messages, stream=True, **options)
+
+        response: ModelResponse = rotate_completion(messages=memory.messages, stream=True, options=options)
         parser: Optional[FunctionParser] = None
         tool_messages: list[Message] = []
         parsers: list[FunctionParser] = []

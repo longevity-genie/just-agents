@@ -12,7 +12,7 @@ from just_agents.memory import *
 from just_agents.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
-from just_agents.utils import prepare_options
+from just_agents.utils import rotate_completion
 
 OnCompletion = Callable[[ModelResponse], None]
 
@@ -134,8 +134,7 @@ class LLMSession:
 
 
     def _query(self, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
-        options = prepare_options(self.llm_options)
-        response: ModelResponse = completion(messages=self.memory.messages, stream=False, **options)#, api_key=api_key)
+        response: ModelResponse = rotate_completion(messages=self.memory.messages, stream=False, options=self.llm_options)
         self._process_response(response)
         executed_response = self._process_function_calls(response)
         if executed_response is not None:
@@ -174,8 +173,7 @@ class LLMSession:
                     function_response = str(e)
                 result = Message(role="tool", content=function_response, name=function_name, tool_call_id=tool_call.id)
                 self.memory.add_message(result)
-            options = prepare_options(self.llm_options)
-            return completion(messages=self.memory.messages, stream=False, **options)
+            return rotate_completion(messages=self.memory.messages, stream=False, options=self.llm_options)
         return None
 
     def _prepare_tools(self, functions: List[Any]):

@@ -6,23 +6,47 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 import importlib.resources as resources
 from dotenv import load_dotenv
-import copy
+from litellm import Message, ModelResponse, completion
+
 
 class RotateKeys():
     keys:list[str]
+
     def __init__(self, file_path:str):
         with open(file_path) as f:
-            self.keys = f.readlines()
+            text = f.read().strip()
+            self.keys = text.split("\n")
+
     def __call__(self, *args, **kwargs):
-        return random.choice(self.keys).strip()
+        return random.choice(self.keys)
+
+    def remove(self, key:str):
+        self.keys.remove(key)
+
+    def len(self):
+        return len(self.keys)
 
 
-def prepare_options(options:dict[str, any]):
-    res = options.copy()
-    key_getter = res.pop("key_getter", None)
+def rotate_completion(messages:list[Message], options:dict[str, str], stream:bool, remove_key_on_error:bool = True, max_tries:int = -1) -> ModelResponse:
+    opt = options.copy()
+    key_getter:RotateKeys = opt.pop("key_getter", None)
     if key_getter is not None:
-        res["api_key"] = key_getter()
-    return res
+        if max_tries < 1:
+            max_tries = key_getter.len()
+        else:
+            if remove_key_on_error:
+                max_tries = min(max_tries, key_getter.len())
+        for _ in range(max_tries):
+            opt["api_key"] = key_getter()
+            try:
+                response = completion(messages=messages, stream=stream, **opt)
+                return response
+            except Exception as e:
+                if remove_key_on_error:
+                    key_getter.remove(opt["api_key"])
+        raise e
+    else:
+        return completion(messages=messages, stream=stream, **opt)
 
 
 def rotate_env_keys() -> str:
