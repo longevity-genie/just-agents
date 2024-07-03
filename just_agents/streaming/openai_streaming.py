@@ -11,8 +11,8 @@ from just_agents.utils import rotate_completion
 class AsyncSession(AbstractStreaming):
 
     async def resp_async_generator(self, memory: Memory,
-                                   options: Dict,
-                                   available_tools: Dict[str, Callable]
+                                   options: dict,
+                                   available_tools: dict[str, Callable]
                                    ) -> AsyncGenerator[str, None]:
 
         response: ModelResponse = rotate_completion(messages=memory.messages, stream=True, options=options)

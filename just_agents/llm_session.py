@@ -19,9 +19,9 @@ OnCompletion = Callable[[ModelResponse], None]
 
 @dataclass(kw_only=True)
 class LLMSession:
-    llm_options: Dict[str, Any] = field(default_factory=lambda: LLAMA3)
-    tools: List[Callable] = field(default_factory=list)
-    available_tools: Dict[str, Callable] = field(default_factory=lambda: {})
+    llm_options: dict[str, Any] = field(default_factory=lambda: LLAMA3)
+    tools: list[Callable] = field(default_factory=list)
+    available_tools: dict[str, Callable] = field(default_factory=lambda: {})
 
     on_response: list[OnCompletion] = field(default_factory=list)
     memory: Memory = field(default_factory=lambda: Memory())
@@ -87,7 +87,7 @@ class LLMSession:
         self.memory.add_messages(messages, run_callbacks)
         return self._stream()
 
-    async def stream_async(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> List[Any]:
+    async def stream_async(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> list[Any]:
         """temporary function that allows testing the stream function which Alex wrote but I do not fully understand"""
         collected_data = []
         async for item in self.stream(prompt, run_callbacks, output):
@@ -176,7 +176,7 @@ class LLMSession:
             return rotate_completion(messages=self.memory.messages, stream=False, options=self.llm_options)
         return None
 
-    def _prepare_tools(self, functions: List[Any]):
+    def _prepare_tools(self, functions: list[Any]):
         """
         Prepares functions as tools that LLM can call.
         Note, the functions should have comments explaining LLM how to use them
