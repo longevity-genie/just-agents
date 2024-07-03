@@ -39,7 +39,7 @@ class AsyncSession(AbstractStreaming):
             memory.add_message(self._get_tool_call_message(parsers))
             for message in tool_messages:
                 memory.add_message(message)
-            response = completion(messages=memory.messages, stream=True, **options)
+            response = rotate_completion(messages=memory.messages, stream=True, options=options)
             deltas = []
             for i, part in enumerate(response):
                 delta: str = part["choices"][0]["delta"].get("content")  # type: ignore
