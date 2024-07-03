@@ -2,7 +2,7 @@ import pprint
 from abc import abstractmethod, ABC
 from dataclasses import dataclass, field
 from typing import Dict, TypeAlias, Callable, List, Optional, Union
-from litellm.utils import Message, ChatCompletionMessageToolCall, Function
+from litellm.utils import Message, Function
 
 OnMessageCallable = Callable[[Message], None]
 OnFunctionCallable = Callable[[Function], None]
