@@ -49,7 +49,7 @@ def rotate_completion(messages:list[Message], options:dict[str, str], stream:boo
         if last_exception:
             raise last_exception
         else:
-            raise Exception("Run out of tries to execute completion. Check your keys!")
+            raise Exception(f"Run out of tries to execute completion. Check your keys! Keys {key_getter.len()} left.")
     else:
         return completion(messages=messages, stream=stream, **opt)
 
