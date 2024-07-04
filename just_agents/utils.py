@@ -36,15 +36,20 @@ def rotate_completion(messages:list[Message], options:dict[str, str], stream:boo
         else:
             if remove_key_on_error:
                 max_tries = min(max_tries, key_getter.len())
+        last_exception = None
         for _ in range(max_tries):
             opt["api_key"] = key_getter()
             try:
                 response = completion(messages=messages, stream=stream, **opt)
                 return response
             except Exception as e:
+                last_exception = e
                 if remove_key_on_error:
                     key_getter.remove(opt["api_key"])
-        raise e
+        if last_exception:
+            raise last_exception
+        else:
+            raise Exception("Run out of tries to execute completion. Check your keys!")
     else:
         return completion(messages=messages, stream=stream, **opt)
 
