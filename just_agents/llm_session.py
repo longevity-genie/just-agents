@@ -8,10 +8,12 @@ from litellm import ModelResponse, completion
 from litellm.utils import Choices
 
 from just_agents.llm_options import LLAMA3
-from just_agents.memory import *
 from just_agents.memory import Memory
+from dataclasses import dataclass, field
+from typing import Callable, Optional
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
+from just_agents.streaming.qwen2_streaming import Qwen2AsyncSession
 from just_agents.utils import rotate_completion
 
 OnCompletion = Callable[[ModelResponse], None]
@@ -33,7 +35,10 @@ class LLMSession:
             if (self.llm_options.get("key_getter") is not None) and (self.llm_options.get("api_key") is not None):
                 print("Warning api_key will be rewriten by key_getter. Both are present in llm_options.")
 
-        self.streaming = AsyncSession()
+        if "qwen2" in self.llm_options["model"].lower():
+            self.streaming = Qwen2AsyncSession()
+        else:
+            self.streaming = AsyncSession()
 
         if self.tools is not None:
             self._prepare_tools(self.tools)
@@ -50,7 +55,7 @@ class LLMSession:
     @staticmethod
     def message_from_response(response: ModelResponse):
         choice: Choices = response.choices[0]
-        message: Message = choice.message
+        message: dict = choice.message
         return message
 
 
@@ -60,7 +65,7 @@ class LLMSession:
         :param prompt:
         :return:
         """
-        system_instruction =  Message(content = prompt, role = "system")
+        system_instruction =  {"content":prompt, "role":"system"}
         self.memory.add_message(system_instruction, True)
         return system_instruction
 
@@ -73,7 +78,7 @@ class LLMSession:
         :return:
         """
 
-        question = Message(role="user", content=prompt)
+        question = {"role":"user", "content":prompt}
         self.memory.add_message(question, run_callbacks)
         return self._query(run_callbacks, output)
 
@@ -104,7 +109,7 @@ class LLMSession:
         :param output:
         :return:
         """
-        question = Message(role="user", content=prompt)
+        question = {"role":"user", "content":prompt}
         self.memory.add_message(question, run_callbacks)
 
         # Start the streaming process
@@ -171,7 +176,7 @@ class LLMSession:
                     function_response = function_to_call(**function_args)
                 except Exception as e:
                     function_response = str(e)
-                result = Message(role="tool", content=function_response, name=function_name, tool_call_id=tool_call.id)
+                result = {"role":"tool", "content":function_response, "name":function_name, "tool_call_id":tool_call.id}
                 self.memory.add_message(result)
             return rotate_completion(messages=self.memory.messages, stream=False, options=self.llm_options)
         return None

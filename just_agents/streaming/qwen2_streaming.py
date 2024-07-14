@@ -1,13 +1,24 @@
 from typing import AsyncGenerator
-
 from litellm import ModelResponse, completion
 from typing import Callable, Optional
 from just_agents.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming, FunctionParser
 from just_agents.utils import rotate_completion
+import json
 
 
-class AsyncSession(AbstractStreaming):
+class Qwen2AsyncSession(AbstractStreaming):
+
+    def _process_function(self, parser: FunctionParser, available_tools: dict[str, Callable]):
+        function_args = json.loads(parser.arguments)
+        function_to_call = available_tools[parser.name]
+        try:
+            function_response = function_to_call(**function_args)
+        except Exception as e:
+            function_response = str(e)
+        message = {"role":"function", "content":function_response, "name":parser.name,
+                         "tool_call_id":parser.id}  # TODO need to track arguments , arguments=function_args
+        return message
 
     async def resp_async_generator(self, memory: Memory,
                                    options: dict,

@@ -4,8 +4,6 @@ from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Callable, AsyncGenerator, Optional
 
-from litellm import Message
-
 from just_agents.memory import Memory
 
 @dataclass
@@ -53,16 +51,16 @@ class AbstractStreaming(ABC):
             function_response = function_to_call(**function_args)
         except Exception as e:
             function_response = str(e)
-        message = Message(role="tool", content=function_response, name=parser.name,
-                         tool_call_id=parser.id)  # TODO need to track arguments , arguments=function_args
+        message = {"role":"tool", "content":function_response, "name":parser.name,
+                         "tool_call_id":parser.id}  # TODO need to track arguments , arguments=function_args
         return message
 
-    def _get_tool_call_message(self, parsers: list[FunctionParser]) -> Message:
+    def _get_tool_call_message(self, parsers: list[FunctionParser]) -> dict:
         tool_calls = []
         for parser in parsers:
             tool_calls.append({"type":"function",
                 "id": parser.id, "function": {"name": parser.name, "arguments": parser.arguments}})
-        return Message(role="assistant", content=None, tool_calls=tool_calls)
+        return {"role":"assistant", "content":None, "tool_calls":tool_calls}
 
     def _get_chunk(self, i: int, delta: str, options: Dict):
         chunk = {

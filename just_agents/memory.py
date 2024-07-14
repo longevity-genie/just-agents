@@ -1,16 +1,15 @@
 from dataclasses import dataclass, field
 from typing import Callable, Optional
-from litellm.utils import Message
 from litellm.types.utils import Function
 
-OnMessageCallable = Callable[[Message], None]
+OnMessageCallable = Callable[[dict], None]
 OnFunctionCallable = Callable[[Function], None]
 
 @dataclass
 class Memory:
 
     on_message: list[OnMessageCallable] = field(default_factory=list)
-    messages: list[Message] = field(default_factory=list)
+    messages: list[dict] = field(default_factory=list)
 
     def add_on_message(self, handler: OnMessageCallable):
         self.on_message.append(handler)
@@ -24,7 +23,7 @@ class Memory:
         :param fun:
         :return:
         """
-        def tool_handler(message: Message) -> None:
+        def tool_handler(message: dict) -> None:
             if hasattr(message, 'tool_calls') and message.tool_calls is not None:
                 for call in message.tool_calls:
                     #if call.function is Function:
@@ -37,13 +36,13 @@ class Memory:
         self.on_message = [m for m in self.on_message if m == handler]
 
     def add_system_message(self, prompt: str, run_callbacks: bool = True):
-        return self.add_message(Message(role="system", content=prompt), run_callbacks=run_callbacks)
+        return self.add_message({"role":"system", "content":prompt}, run_callbacks=run_callbacks)
 
     def add_user_message(self, prompt: str, run_callbacks: bool = True):
-        return self.add_message(Message(role="user", content=prompt), run_callbacks=run_callbacks)
+        return self.add_message({"role":"user", "content":prompt}, run_callbacks=run_callbacks)
 
 
-    def add_message(self, message: Message, run_callbacks: bool = True):
+    def add_message(self, message: dict, run_callbacks: bool = True):
         """
         adds message to the memory
         :param message:
@@ -57,17 +56,13 @@ class Memory:
                 handler(message)
 
     @property
-    def last_message(self) -> Optional[Message]:
+    def last_message(self) -> Optional[dict]:
         return self.messages[-1] if len(self.messages) > 0 else None
 
 
-    def add_messages(self, messages: list[Message | dict], run_callbacks: bool = True):
+    def add_messages(self, messages: list[dict], run_callbacks: bool = True):
         for message in messages:
-            if message is Message:
-                self.messages.append(message)
-            else:
-                message = Message(content=message["content"], role=message["role"])
-                self.messages.append(message)
+            self.messages.append(message)
             if run_callbacks:
                 for handler in self.on_message:
                     handler(message)
