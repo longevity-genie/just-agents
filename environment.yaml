@@ -17,3 +17,4 @@ dependencies:
       - numpydoc
       - semanticscholar>=0.8.1
       - Mako>=1.3.5
+      - qwen_agent>=0.0.6
