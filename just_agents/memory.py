@@ -50,7 +50,6 @@ class Memory:
         :return:
         """
         self.messages.append(message)
-
         if run_callbacks:
             for handler in self.on_message:
                 handler(message)

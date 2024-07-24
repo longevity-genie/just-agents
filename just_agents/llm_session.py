@@ -1,19 +1,18 @@
 import copy
 import json
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Any, AsyncGenerator
+from typing import Callable, Optional
 
 import litellm
-from litellm import ModelResponse, completion
+from litellm import ModelResponse
 from litellm.utils import Choices
 
 from just_agents.llm_options import LLAMA3
 from just_agents.memory import Memory
-from dataclasses import dataclass, field
-from typing import Callable, Optional
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
-from just_agents.streaming.qwen2_streaming import Qwen2AsyncSession
 from just_agents.utils import rotate_completion
 
 OnCompletion = Callable[[ModelResponse], None]
@@ -36,6 +35,7 @@ class LLMSession:
                 print("Warning api_key will be rewriten by key_getter. Both are present in llm_options.")
 
         if "qwen2" in self.llm_options["model"].lower():
+            from just_agents.streaming.qwen2_streaming import Qwen2AsyncSession
             self.streaming = Qwen2AsyncSession()
         else:
             self.streaming = AsyncSession()
@@ -77,8 +77,7 @@ class LLMSession:
         :param output:
         :return:
         """
-
-        question = {"role":"user", "content":prompt}
+        question = {"role": "user", "content": prompt}
         self.memory.add_message(question, run_callbacks)
         return self._query(run_callbacks, output)
 
@@ -131,7 +130,6 @@ class LLMSession:
                 print(f"Error writing to file: {e}")
 
         return content_stream
-
 
 
     def _stream(self) -> AsyncGenerator[Any, None]: # -> ContentStream:

@@ -1,6 +1,4 @@
-#from just_agents.chat_agent import ChatAgent
 import json
-import pprint
 
 import pytest
 from dotenv import load_dotenv
@@ -23,7 +21,7 @@ def get_current_weather(location: str):
 def test_sync_llama_function_calling():
     load_dotenv()
     session: LLMSession = LLMSession(
-        llm_options=just_agents.llm_options.LLAMA3,
+        llm_options=just_agents.llm_options.LLAMA3_1,
         tools=[get_current_weather]
     )
     result = session.query("What's the weather like in San Francisco, Tokyo, and Paris?")

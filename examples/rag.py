@@ -6,8 +6,9 @@ from typing import Dict, Any
 import yaml
 from dotenv import load_dotenv
 
+from just_agents import llm_options
 from just_agents.chat_agent import ChatAgent
-from just_agents.llm_options import LLAMA3
+from just_agents import llm_options
 import copy
 from loguru import logger
 from just_agents.tools.search import literature_search
@@ -42,7 +43,7 @@ def search(query: str, limit: int = 10):
 def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requirements", log_level: str = "DEBUG"):
     configure_logger(log_level)
     logger.add("logs/rag_rapamycin.txt", rotation="1 MB")
-    load_dotenv()
+    load_dotenv(override=True)
 
 
     # setting up relative paths to define output and load prompts
@@ -53,7 +54,7 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
     question = prompts[prompt_name][sub_prompt]
 
 
-    scientist: ChatAgent = ChatAgent(llm_options = LLAMA3,
+    scientist: ChatAgent = ChatAgent(llm_options = llm_options.OPENAI_GPT4o,
                                     role = "scientist",
                                     goal = "Research the topics in the most comprehensive way, using search in academic literature and providing sources",
                                     task="Address the research question in the most comprehensive way",
@@ -64,7 +65,7 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
     scientist.memory.add_on_tool_call(lambda f: logger.debug(f"SCIENTIST FUNCTION: {f}"))
     scientist.memory.add_on_tool_result(lambda m: logger.debug(f"SCIENTIST TOOL result from {m.name} with tool call id {m.tool_call_id} is {m.content}"))
 
-    answer = scientist.query(question, output=output / prompt_name / f"{sub_prompt}_initial_answer.txt", key_getter=rotate_env_keys)
+    answer = scientist.query(question, output=output / prompt_name / f"{sub_prompt}_initial_answer.txt") #, key_getter=rotate_env_keys)
     logger.info(f"INITIAL ANSWER: {answer}")
 
     for_review = f"""
@@ -79,7 +80,7 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
     """
     pprint.pprint(for_review)
 
-    critic: ChatAgent = ChatAgent(llm_options = copy.deepcopy(LLAMA3),
+    critic: ChatAgent = ChatAgent(llm_options = llm_options.OPENAI_GPT4o,
                                   role = "critic",
                                   goal = "criticise answers to questions, provide evaluations and improvements",
                                   task="evaluate the answer according to the criteria provided and make recommendations to improve")
@@ -88,7 +89,7 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
     critic.memory.add_on_message(lambda m: logger.debug(f"CRITIC MESSAGE: {m}"))
     #print(f"critic messages: {critic.memory.messages}")
 
-    review_results = critic.query(for_review, output=output / prompt_name / f"{sub_prompt}_answer_review.txt", key_getter=rotate_env_keys)
+    review_results = critic.query(for_review, output=output / prompt_name / f"{sub_prompt}_answer_review.txt") #, key_getter=rotate_env_keys)
     logger.info(f"REVIEW RESULTS: {review_results}")
 
 

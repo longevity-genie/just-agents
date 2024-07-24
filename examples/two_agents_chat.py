@@ -5,8 +5,10 @@ from just_agents.llm_options import LLAMA3
 from loguru import logger
 
 import typer
+import litellm
 
 app = typer.Typer(no_args_is_help=True)
+litellm.set_verbose=True
 
 @app.command()
 def purchase_example():
@@ -22,7 +24,7 @@ def purchase_example():
 
 
     exchanges: int = 3
-    customer.memory.add_on_message(lambda m: logger.info(f"Customer: {m}") if m.role == "user" else logger.info(f"Storekeeper: {m}"))
+    customer.memory.add_on_message(lambda m: logger.info(f"Customer: {m}") if m['role'] == "user" else logger.info(f"Storekeeper: {m}"))
     customer_reply = "Hi."
     for _ in range(exchanges):
         storekeeper_reply = storekeeper.query(customer_reply)

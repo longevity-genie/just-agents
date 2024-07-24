@@ -9,12 +9,9 @@ dependencies:
   - requests
   - pytest #for tests
   - typer #for CLI
-  - twine #for publishing
-  - starlette
-  - jupyter
+  - twine>=5.1.1 #for publishing
   - pip:
-      - litellm>=1.40.8
+      - litellm>=1.41.28
       - numpydoc
-      - semanticscholar>=0.8.1
+      - semanticscholar>=0.8.4
       - Mako>=1.3.5
-      - qwen_agent>=0.0.6
