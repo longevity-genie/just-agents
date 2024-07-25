@@ -41,7 +41,6 @@ class Memory:
     def add_user_message(self, prompt: str, run_callbacks: bool = True):
         return self.add_message({"role":"user", "content":prompt}, run_callbacks=run_callbacks)
 
-
     def add_message(self, message: dict, run_callbacks: bool = True):
         """
         adds message to the memory

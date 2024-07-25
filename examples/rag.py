@@ -64,7 +64,7 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
     scientist.memory.add_on_tool_call(lambda f: logger.debug(f"SCIENTIST FUNCTION: {f}"))
     scientist.memory.add_on_tool_result(lambda m: logger.debug(f"SCIENTIST TOOL result from {m.name} with tool call id {m.tool_call_id} is {m.content}"))
 
-    answer = scientist.query(question, output=output / prompt_name / f"{sub_prompt}_initial_answer.txt", key_getter=rotate_env_keys)
+    answer = scientist.query(question, output=output / prompt_name / f"{sub_prompt}_initial_answer.txt")
     logger.info(f"INITIAL ANSWER: {answer}")
 
     for_review = f"""
@@ -88,7 +88,7 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
     critic.memory.add_on_message(lambda m: logger.debug(f"CRITIC MESSAGE: {m}"))
     #print(f"critic messages: {critic.memory.messages}")
 
-    review_results = critic.query(for_review, output=output / prompt_name / f"{sub_prompt}_answer_review.txt", key_getter=rotate_env_keys)
+    review_results = critic.query(for_review, output=output / prompt_name / f"{sub_prompt}_answer_review.txt")
     logger.info(f"REVIEW RESULTS: {review_results}")
 
 

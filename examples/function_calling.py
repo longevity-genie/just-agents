@@ -1,11 +1,8 @@
 #from just_agents.chat_agent import ChatAgent
 import asyncio
 import json
-import os
 import pprint
 
-import litellm
-import pytest
 from dotenv import load_dotenv
 
 import just_agents.llm_options
@@ -25,7 +22,7 @@ def get_current_weather(location: str):
     else:
         return json.dumps({"location": location, "temperature": "unknown"})
 
-llm_options = just_agents.llm_options.LLAMA3
+llm_options = just_agents.llm_options.LLAMA3_1
 key_getter = rotate_env_keys
 prompt = "What's the weather like in San Francisco, Tokyo, and Paris?"
 
@@ -46,11 +43,11 @@ session: LLMSession = LLMSession(
     llm_options=llm_options,
     tools=[get_current_weather]
 )
-session.memory.add_on_message(lambda m: pprint.pprint(m) if m.content is not None else None)
+session.memory.add_on_message(lambda m: pprint.pprint(m) if "content" in m is not None else None)
 #session.memory.add_on_message(lambda m: pprint.pprint(m.content) if m.content is not None else None)
-session.query(prompt, key_getter=key_getter)
+session.query(prompt)
 #for QWEN we get: Message(content='{\n  "function": "get_current_weather",\n  "parameters": {\n    "location": ["San Francisco", "Tokyo", "Paris"]\n  }\n}', role='assistant')
 
 
-result = asyncio.run(session.stream_async(prompt, key_getter=key_getter))
+result = asyncio.run(session.stream_async(prompt))
 print("stream finished")

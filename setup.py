@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = '0.0.6'
+VERSION = '0.0.7'
 DESCRIPTION = 'Just Agents'
 LONG_DESCRIPTION = 'LLM Agents that are implemented without unnecessary complexity'
 
@@ -21,11 +21,11 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    install_requires=["litellm>=1.40.8", "numpydoc", "loguru", "requests", "Mako"],
+    install_requires=["litellm>=1.42.1", "numpydoc", "loguru", "requests", "Mako>=1.3.5", "typer>=0.12.3"],
     extras_require={
         'tools': [
             # some default tools
-            'semanticscholar>=0.8.1'
+            'semanticscholar>=0.8.4'
         ]
     },
     keywords=['python', 'llm', 'science', 'review', 'agents', 'AI'],

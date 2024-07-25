@@ -13,7 +13,6 @@ from dataclasses import dataclass, field
 from typing import Callable, Optional
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
-from just_agents.streaming.qwen2_streaming import Qwen2AsyncSession
 from just_agents.utils import rotate_completion
 
 OnCompletion = Callable[[ModelResponse], None]
@@ -36,6 +35,7 @@ class LLMSession:
                 print("Warning api_key will be rewriten by key_getter. Both are present in llm_options.")
 
         if "qwen2" in self.llm_options["model"].lower():
+            from just_agents.streaming.qwen2_streaming import Qwen2AsyncSession
             self.streaming = Qwen2AsyncSession()
         else:
             self.streaming = AsyncSession()
@@ -53,9 +53,11 @@ class LLMSession:
             handler(response)
 
     @staticmethod
-    def message_from_response(response: ModelResponse):
+    def message_from_response(response: ModelResponse) -> dict:
         choice: Choices = response.choices[0]
-        message: dict = choice.message
+        message: dict = choice.message.to_dict(exclude_none=True, exclude_unset=True) #converting to dictionary and deleting nonw
+        if "function_call" in message and message["function_call"] is None:
+            del message["function_call"]
         return message
 
 
@@ -78,7 +80,7 @@ class LLMSession:
         :return:
         """
 
-        question = {"role":"user", "content":prompt}
+        question = {"role": "user", "content": prompt}
         self.memory.add_message(question, run_callbacks)
         return self._query(run_callbacks, output)
 
@@ -144,8 +146,7 @@ class LLMSession:
         response = self._process_function_calls(response)
         answer = self.message_from_response(response)
         self.memory.add_message(answer, run_callbacks)
-        result: str = self.memory.last_message.content if self.memory.last_message is not None and self.memory.last_message.content is not None else str(
-            self.memory.last_message)
+        result: str = self.memory.last_message["content"] if "content" in self.memory.last_message else str(self.memory.last_message)
         if output is not None:
             if not output.parent.exists():
                 output.parent.mkdir(parents=True, exist_ok=True)
