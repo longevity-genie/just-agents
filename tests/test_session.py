@@ -7,6 +7,7 @@ from dotenv import load_dotenv
 
 import just_agents.llm_options
 from just_agents.llm_session import LLMSession
+import asyncio
 
 
 def get_current_weather(location: str):
@@ -27,6 +28,24 @@ def test_sync_llama_function_calling():
         tools=[get_current_weather]
     )
     result = session.query("What's the weather like in San Francisco, Tokyo, and Paris?")
+    assert "72" in result
+    assert "22" in result
+    assert "10" in result
+
+async def process_stream(async_generator):
+    async for item in async_generator:
+        pass
+
+def test_stream_llama_function_calling():
+    load_dotenv()
+    session: LLMSession = LLMSession(
+        llm_options=just_agents.llm_options.LLAMA3_1,
+        tools=[get_current_weather]
+    )
+    stream = session.stream("What's the weather like in San Francisco, Tokyo, and Paris?")
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(process_stream(stream))
+    result = session.memory.last_message["content"]
     assert "72" in result
     assert "22" in result
     assert "10" in result
