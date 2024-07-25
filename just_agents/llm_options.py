@@ -12,7 +12,14 @@ OPENAI_GPT4o: Dict = {
 
 
 LLAMA3: Dict = {
-    "model": "groq/llama3-70b-8192",
+    "model": "groq/llama3-groq-70b-8192-tool-use-preview",
+    "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0,
+    "tools": []
+}
+
+LLAMA3_1: Dict = {
+    "model": "groq/llama-3.1-70b-versatile",
     "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0,
     "tools": []

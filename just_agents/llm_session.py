@@ -141,10 +141,7 @@ class LLMSession:
     def _query(self, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
         response: ModelResponse = rotate_completion(messages=self.memory.messages, stream=False, options=self.llm_options)
         self._process_response(response)
-        executed_response = self._process_function_calls(response)
-        if executed_response is not None:
-            response = executed_response
-            self._process_response(response)
+        response = self._process_function_calls(response)
         answer = self.message_from_response(response)
         self.memory.add_message(answer, run_callbacks)
         result: str = self.memory.last_message.content if self.memory.last_message is not None and self.memory.last_message.content is not None else str(
@@ -162,24 +159,29 @@ class LLMSession:
         :param response_message:
         :return:
         """
-        response_message = response.choices[0].message
-        tool_calls = response_message.get("tool_calls")
+        proceed = True
+        while proceed:
+            proceed = False
+            response_message = response.choices[0].message
+            tool_calls = response_message.get("tool_calls")
 
-        if tool_calls and (self.tools is not None):
-            message = self.message_from_response(response)
-            self.memory.add_message(message)
-            for tool_call in tool_calls:
-                function_name = tool_call.function.name
-                function_to_call = self.available_tools[function_name]
-                function_args = json.loads(tool_call.function.arguments)
-                try:
-                    function_response = function_to_call(**function_args)
-                except Exception as e:
-                    function_response = str(e)
-                result = {"role":"tool", "content":function_response, "name":function_name, "tool_call_id":tool_call.id}
-                self.memory.add_message(result)
-            return rotate_completion(messages=self.memory.messages, stream=False, options=self.llm_options)
-        return None
+            if tool_calls and (self.tools is not None):
+                proceed = True
+                message = self.message_from_response(response)
+                self.memory.add_message(message)
+                for tool_call in tool_calls:
+                    function_name = tool_call.function.name
+                    function_to_call = self.available_tools[function_name]
+                    function_args = json.loads(tool_call.function.arguments)
+                    try:
+                        function_response = function_to_call(**function_args)
+                    except Exception as e:
+                        function_response = str(e)
+                    result = {"role":"tool", "content":function_response, "name":function_name, "tool_call_id":tool_call.id}
+                    self.memory.add_message(result)
+                response = rotate_completion(messages=self.memory.messages, stream=False, options=self.llm_options)
+                self._process_response(response)
+        return response
 
     def _prepare_tools(self, functions: list[Any]):
         """

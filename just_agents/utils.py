@@ -27,9 +27,10 @@ class RotateKeys():
         return len(self.keys)
 
 
-def rotate_completion(messages:list[Message], options:dict[str, str], stream:bool, remove_key_on_error:bool = True, max_tries:int = -1) -> ModelResponse:
+def rotate_completion(messages:list[Message], options:dict[str, str], stream:bool, remove_key_on_error:bool = True, max_tries:int = 2) -> ModelResponse:
     opt = options.copy()
     key_getter:RotateKeys = opt.pop("key_getter", None)
+    backup_opt:dict = opt.pop("backup_options", None)
     if key_getter is not None:
         if max_tries < 1:
             max_tries = key_getter.len()
@@ -46,6 +47,8 @@ def rotate_completion(messages:list[Message], options:dict[str, str], stream:boo
                 last_exception = e
                 if remove_key_on_error:
                     key_getter.remove(opt["api_key"])
+        if backup_opt:
+            return completion(messages=messages, stream=stream, **backup_opt)
         if last_exception:
             raise last_exception
         else:

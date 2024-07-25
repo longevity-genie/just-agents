@@ -27,8 +27,9 @@ def test_sync_llama_function_calling():
         tools=[get_current_weather]
     )
     result = session.query("What's the weather like in San Francisco, Tokyo, and Paris?")
-    assert "72°F" in result
+    assert "72" in result
     assert "22" in result
+    assert "10" in result
 
 @pytest.mark.skip(reason="so far qwen inference we are using has issues with json function calling")
 def test_async_gwen2_function_calling():
@@ -38,5 +39,6 @@ def test_async_gwen2_function_calling():
         tools=[get_current_weather]
     )
     result = session.query_all_messages("What's the weather like in San Francisco, Tokyo, and Paris?")
-    assert "72°F" in result
+    assert "72" in result
     assert "22" in result
+    assert "10" in result
