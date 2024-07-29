@@ -21,7 +21,7 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    install_requires=["litellm>=1.42.1", "numpydoc", "loguru", "requests", "Mako>=1.3.5", "typer>=0.12.3"],
+    install_requires=["litellm>=1.42.5", "numpydoc", "loguru", "requests", "Mako>=1.3.5", "typer>=0.12.3"],
     extras_require={
         'tools': [
             # some default tools
