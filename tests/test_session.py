@@ -8,6 +8,7 @@ from dotenv import load_dotenv
 import just_agents.llm_options
 from just_agents.llm_session import LLMSession
 import asyncio
+from mock import *
 
 
 def get_current_weather(location: str):
@@ -49,6 +50,19 @@ def test_stream_llama_function_calling():
     assert "72" in result
     assert "22" in result
     assert "10" in result
+
+
+def test_stream_genetics_llama_function_calling():
+    load_dotenv()
+    session: LLMSession = LLMSession(
+        llm_options=just_agents.llm_options.LLAMA3_1,
+        tools=[hybrid_search, rsid_lookup, gene_lookup, pathway_lookup, disease_lookup, sequencing_info, clinical_trails_full_trial]
+    )
+    stream = session.stream("What is the influence of different alleles in rs10937739?")
+    loop = asyncio.get_event_loop()
+    loop.run_until_complete(process_stream(stream))
+    result = session.memory.last_message["content"]
+    assert "pro-longevity influence"
 
 @pytest.mark.skip(reason="so far qwen inference we are using has issues with json function calling")
 def test_async_gwen2_function_calling():
