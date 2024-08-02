@@ -5,7 +5,8 @@ def hybrid_search(query: str) -> str:
     return f"Mocked hybrid search result for query: {query}"
 
 def rsid_lookup(rsid: str) -> str:
-    """Mock function for rsid lookup."""
+    """Retrieves information about rsid. It could be the effects of longevity or its influence on diseases.
+     rsid is identifier for single nucleotide polymorphism, and looks like rs123 where instead of 123 could be any integer."""
     return f"{rsid} has pro-longevity influence"
 
 def gene_lookup(gene: str) -> str:

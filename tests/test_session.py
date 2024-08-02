@@ -62,7 +62,7 @@ def test_stream_genetics_llama_function_calling():
     loop = asyncio.get_event_loop()
     loop.run_until_complete(process_stream(stream))
     result = session.memory.last_message["content"]
-    assert "pro-longevity influence"
+    assert "pro-longevity influence" in result
 
 @pytest.mark.skip(reason="so far qwen inference we are using has issues with json function calling")
 def test_async_gwen2_function_calling():
