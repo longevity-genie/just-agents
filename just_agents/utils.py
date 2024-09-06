@@ -57,6 +57,7 @@ def rotate_completion(messages: list[dict], options: dict[str, str], stream: boo
         return completion(messages=messages, stream=stream, **opt)
 
 
+
 def rotate_env_keys() -> str:
     load_dotenv()
     keys = []
