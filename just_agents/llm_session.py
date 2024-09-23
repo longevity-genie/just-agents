@@ -34,11 +34,18 @@ class LLMSession:
             if (self.llm_options.get("key_getter") is not None) and (self.llm_options.get("api_key") is not None):
                 print("Warning api_key will be rewriten by key_getter. Both are present in llm_options.")
 
-        if "qwen2" in self.llm_options["model"].lower():
+        streaming_method = self.llm_options.pop("just_streaming_method", None)
+        if streaming_method is None:
+            self.streaming = AsyncSession()
+        elif streaming_method.lower() == "qwen2":
             from just_agents.streaming.qwen2_streaming import Qwen2AsyncSession
             self.streaming = Qwen2AsyncSession()
+        elif streaming_method.lower() == "chain_of_thought":
+            from just_agents.streaming.chain_of_thought import ChainOfThought
+            self.streaming = ChainOfThought()
         else:
-            self.streaming = AsyncSession()
+            raise ValueError("just_streaming_method is incorrect. "
+                             "It should be one of this ['qwen2', 'chain_of_thought']")
 
         if self.tools is not None:
             self._prepare_tools(self.tools)
