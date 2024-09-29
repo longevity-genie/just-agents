@@ -44,6 +44,26 @@ All prompts that we use are stored in yaml files that you can easily overload.
 
 The only complex (but not mandatory) dependency that we use is Mako for prompt templates
 
+Now you could use chai of thought agent with function call.
+
+```python
+from just_agents.cot_agent import ChainOfThoughtAgent
+
+def count_letters(character:str, word:str) -> str:
+    """ Returns the number of character occurrences in the word. """
+    count:int = 0
+    for char in word:
+        if char == character:
+            count += 1
+    print("Function: ", character, " occurres in ", word, " ", count, " times.")
+    return str(count)
+
+opt = just_agents.llm_options.OPENAI_GPT4oMINI.copy()
+agent: ChainOfThoughtAgent = ChainOfThoughtAgent(opt, tools=[count_letters])
+result, thoughts = agent.query("Count the number of occurrences of the letter ’L’ in the word - ’LOLLAPALOOZA’.")
+```
+
+
 # Installation
 
 If you want to install as pip package use:
