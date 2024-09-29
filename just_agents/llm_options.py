@@ -10,6 +10,11 @@ OPENAI_GPT4o: Dict = {
     "temperature": 0.0
 }
 
+OPENAI_GPT4oMINI: Dict = {
+    "model": "gpt-4o-mini",
+    "temperature": 0.0
+}
+
 
 LLAMA3: Dict = {
     "model": "groq/llama3-groq-70b-8192-tool-use-preview",

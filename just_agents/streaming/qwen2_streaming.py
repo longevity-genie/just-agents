@@ -3,6 +3,8 @@ from litellm import ModelResponse, completion
 from typing import Callable, Optional
 from just_agents.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming, FunctionParser
+from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
+from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
 from just_agents.utils import rotate_completion
 import json
 from qwen_agent.llm import get_chat_model
@@ -10,6 +12,9 @@ import litellm
 
 
 class Qwen2AsyncSession(AbstractStreaming):
+
+    def __init__(self, output_streaming: AbstractStreamingProtocol = OpenaiStreamingProtocol()):
+        self.output_streaming = output_streaming
 
     def _process_function(self, name: str, arguments: str, available_tools: dict[str, Callable]):
         function_args = json.loads(arguments)
@@ -50,7 +55,7 @@ class Qwen2AsyncSession(AbstractStreaming):
                 if len(content) > 0:
                     delta = content[prev_len:]
                     prev_len = len(content)
-                    yield f"data: {self._get_chunk(i, delta, options)}\n\n"
+                    yield self.output_streaming.get_chunk(i, delta, options)
 
             fncall_msgs = [rsp for rsp in messages if rsp.get('function_call', None)]
             memory.add_messages(messages)
@@ -60,4 +65,4 @@ class Qwen2AsyncSession(AbstractStreaming):
                 for msg in fncall_msgs:
                     function_call = msg['function_call']
                     memory.add_message(self._process_function(function_call["name"], function_call['arguments'], available_tools))
-        yield "data: [DONE]\n\n"
+        yield self.output_streaming.done()

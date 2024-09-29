@@ -3,6 +3,7 @@ import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
 from typing import Dict, Callable, AsyncGenerator, Optional
+from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
 
 from just_agents.memory import Memory
 
@@ -26,7 +27,7 @@ class AbstractStreaming(ABC):
     """
     Class that is required to implement the streaming logic
     """
-
+    output_streaming: AbstractStreamingProtocol
 
     @abstractmethod
     async def resp_async_generator(
@@ -61,13 +62,3 @@ class AbstractStreaming(ABC):
             tool_calls.append({"type":"function",
                 "id": parser.id, "function": {"name": parser.name, "arguments": parser.arguments}})
         return {"role":"assistant", "content":None, "tool_calls":tool_calls}
-
-    def _get_chunk(self, i: int, delta: str, options: Dict):
-        chunk = {
-            "id": i,
-            "object": "chat.completion.chunk",
-            "created": time.time(),
-            "model": options["model"],
-            "choices": [{"delta": {"content": delta}}],
-        }
-        return json.dumps(chunk)

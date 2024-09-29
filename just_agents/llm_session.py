@@ -21,7 +21,7 @@ OnCompletion = Callable[[ModelResponse], None]
 @dataclass(kw_only=True)
 class LLMSession:
     llm_options: dict[str, Any] = field(default_factory=lambda: LLAMA3)
-    tools: list[Callable] = field(default_factory=list)
+    tools: list[Callable] = None
     available_tools: dict[str, Callable] = field(default_factory=lambda: {})
 
     on_response: list[OnCompletion] = field(default_factory=list)
@@ -78,6 +78,10 @@ class LLMSession:
         self.memory.add_message(system_instruction, True)
         return system_instruction
 
+
+    def update_options(self, key:str, value:Any):
+        self.llm_options[key] = value
+
     def query(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
         """
         Query large language model
@@ -89,17 +93,17 @@ class LLMSession:
 
         question = {"role": "user", "content": prompt}
         self.memory.add_message(question, run_callbacks)
-        return self._query(run_callbacks, output)
+        return self.proceed(run_callbacks, output)
 
 
     def query_add_all(self, messages: list[dict], run_callbacks: bool = True, output: Optional[Path] = None) -> str:
         self.memory.add_messages(messages, run_callbacks)
-        return self._query(run_callbacks, output)
+        return self.proceed(run_callbacks, output)
 
 
     def stream_all(self, messages: list, run_callbacks: bool = True): # -> ContentStream:
         self.memory.add_messages(messages, run_callbacks)
-        return self._stream()
+        return self.proceed_stream()
 
     async def stream_async(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> list[Any]:
         """temporary function that allows testing the stream function which Alex wrote but I do not fully understand"""
@@ -122,7 +126,7 @@ class LLMSession:
         self.memory.add_message(question, run_callbacks)
 
         # Start the streaming process
-        content_stream = self._stream()
+        content_stream = self.proceed_stream()
 
         # If output file is provided, write the stream to the file
         if output is not None:
@@ -143,11 +147,11 @@ class LLMSession:
 
 
 
-    def _stream(self) -> AsyncGenerator[Any, None]: # -> ContentStream:
+    def proceed_stream(self) -> AsyncGenerator[Any, None]: # -> ContentStream:
         return self.streaming.resp_async_generator(self.memory, self.llm_options, self.available_tools)
 
 
-    def _query(self, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
+    def proceed(self, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
         response: ModelResponse = rotate_completion(messages=self.memory.messages, stream=False, options=self.llm_options)
         self._process_response(response)
         response = self._process_function_calls(response)
@@ -182,7 +186,7 @@ class LLMSession:
                     function_to_call = self.available_tools[function_name]
                     function_args = json.loads(tool_call.function.arguments)
                     try:
-                        function_response = function_to_call(**function_args)
+                        function_response = str(function_to_call(**function_args))
                     except Exception as e:
                         function_response = str(e)
                     result = {"role":"tool", "content":function_response, "name":function_name, "tool_call_id":tool_call.id}
