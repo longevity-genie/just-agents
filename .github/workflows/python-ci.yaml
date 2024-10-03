@@ -66,3 +66,4 @@ jobs:
         env:
           MAMBA_ROOT_PREFIX: $HOME/micromamba
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+          OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

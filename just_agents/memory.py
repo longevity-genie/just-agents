@@ -15,7 +15,7 @@ class Memory:
         self.on_message.append(handler)
 
     def add_on_tool_result(self, handler: OnMessageCallable):
-        self.add_on_message(lambda m: handler(m) if m.role == "tool" else None)
+        self.add_on_message(lambda m: handler(m) if m['role'] == "tool" else None)
 
     def add_on_tool_call(self, fun: OnFunctionCallable):
         """
