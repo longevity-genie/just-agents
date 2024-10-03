@@ -1,5 +1,5 @@
 # just-agents
-[![Tests](https://github.com/longevity-genie/just-agents/actions/workflows/tests.yml/badge.svg)](https://github.com/longevity-genie/just-agents/actions/workflows/tests.yml)
+[![Python CI](https://github.com/longevity-genie/just-agents/actions/workflows/python-ci.yaml/badge.svg)](https://github.com/longevity-genie/just-agents/actions/workflows/python-ci.yaml)
 [![PyPI version](https://badge.fury.io/py/just-agents.svg)](https://badge.fury.io/py/just-agents)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 
