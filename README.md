@@ -1,5 +1,5 @@
 # just-agents
-LLM agents done right, no over-engineering and redundant complexity!
+LLM agents done right, no over-engineering and redundant complexity! 
 
 # Motivation
 
