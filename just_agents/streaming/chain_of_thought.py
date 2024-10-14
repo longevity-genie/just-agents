@@ -2,17 +2,19 @@ from typing import AsyncGenerator
 
 from litellm import ModelResponse, completion
 from typing import Callable, Optional
+
+from just_agents.llm_session import LLMSession
 from just_agents.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming, FunctionParser
 from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
-from just_agents.utils import rotate_completion
 import time
 import json
 
 class ChainOfThought(AbstractStreaming):
 
-    def __init__(self, output_streaming: AbstractStreamingProtocol = OpenaiStreamingProtocol()):
+    def __init__(self, llm_session: LLMSession, output_streaming: AbstractStreamingProtocol = OpenaiStreamingProtocol()):
+        super().__init__(llm_session)
         self.output_streaming = output_streaming
 
     async def resp_async_generator(self, memory: Memory,
@@ -27,7 +29,7 @@ class ChainOfThought(AbstractStreaming):
         opt["max_tokens"] = 300
         opt["response_format"] = {"type": "json_object"}
         for step_count in range(1, max_steps):
-            response = rotate_completion(messages=memory.messages, stream=False, options=opt)
+            response = self.llm_session.rotate_completion(stream=False)
             step_data = json.loads(response.choices[0].message.content)
             memory.add_message({"role": "assistant", "content": json.dumps(step_data)})
             print(step_count, " ", step_data)
@@ -41,7 +43,7 @@ class ChainOfThought(AbstractStreaming):
                             "content": "Please provide the final answer based solely on your reasoning above."})
 
         opt["max_tokens"] = 1200
-        response = rotate_completion(messages=memory.messages, stream=False, options=opt)
+        response = self.llm_session.rotate_completion(stream=False)
         final_data = json.loads(response.choices[0].message.content)
         # yield steps, total_thinking_time
         print("Final: ", final_data)

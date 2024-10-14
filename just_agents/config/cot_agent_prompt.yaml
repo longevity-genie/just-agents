@@ -25,3 +25,6 @@ content: "content"
 next_action: "next_action"
 action_continue: "continue"
 action_final: "final_answer"
+thought_max_tokes: 300
+max_steps: 25
+final_max_tokens: 1200

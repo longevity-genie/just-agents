@@ -2,16 +2,18 @@ from typing import AsyncGenerator
 
 from litellm import ModelResponse, completion
 from typing import Callable, Optional
+
+from just_agents.llm_session import LLMSession
 from just_agents.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming, FunctionParser
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
-from just_agents.utils import rotate_completion
 from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
 
 
 class AsyncSession(AbstractStreaming):
 
-    def __init__(self, output_streaming: AbstractStreamingProtocol = OpenaiStreamingProtocol()):
+    def __init__(self, llm_session: LLMSession, output_streaming: AbstractStreamingProtocol = OpenaiStreamingProtocol()):
+        super().__init__(llm_session)
         self.output_streaming = output_streaming
 
     async def resp_async_generator(self, memory: Memory,
@@ -21,7 +23,7 @@ class AsyncSession(AbstractStreaming):
         proceed = True
         while proceed:
             proceed = False
-            response: ModelResponse = rotate_completion(messages=memory.messages, stream=True, options=options)
+            response: ModelResponse = self.llm_session.rotate_completion(stream=True)
             parser: Optional[FunctionParser] = None
             tool_messages: list[dict] = []
             parsers: list[FunctionParser] = []

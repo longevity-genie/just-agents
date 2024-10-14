@@ -1,11 +1,12 @@
 from typing import AsyncGenerator
 from litellm import ModelResponse, completion
 from typing import Callable, Optional
+
+from just_agents.llm_session import LLMSession
 from just_agents.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming, FunctionParser
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
 from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
-from just_agents.utils import rotate_completion
 import json
 from qwen_agent.llm import get_chat_model
 import litellm
@@ -13,7 +14,9 @@ import litellm
 
 class Qwen2AsyncSession(AbstractStreaming):
 
-    def __init__(self, output_streaming: AbstractStreamingProtocol = OpenaiStreamingProtocol()):
+    def __init__(self, llm_session: LLMSession,
+                 output_streaming: AbstractStreamingProtocol = OpenaiStreamingProtocol()):
+        super().__init__(llm_session)
         self.output_streaming = output_streaming
 
     def _process_function(self, name: str, arguments: str, available_tools: dict[str, Callable]):
@@ -45,7 +48,7 @@ class Qwen2AsyncSession(AbstractStreaming):
         proceed = True
         while proceed:
             proceed = False
-            responces = llm.chat(messages=memory.messages, functions=functions, stream=True,
+            responces = llm.chat(messages=self.llm_session.memory.messages, functions=functions, stream=True,
                                  extra_generate_cfg=dict(parallel_function_calls=True))
             prev_len = 0
             messages = []

@@ -22,6 +22,13 @@ def get_current_weather(location: str):
     else:
         return json.dumps({"location": location, "temperature": "unknown"})
 
+async def process_stream(async_generator):
+    collected_data = []
+    async for item in async_generator:
+        collected_data.append(item)
+        # You can also process each item here if needed
+    return collected_data
+
 llm_options = just_agents.llm_options.LLAMA3_1
 key_getter = rotate_env_keys
 prompt = "What's the weather like in San Francisco, Tokyo, and Paris?"
@@ -35,6 +42,6 @@ session.memory.add_on_message(lambda m: pprint.pprint(m) if "content" in m is no
 session.query(prompt)
 
 print("And now same query but async mode for streaming. Note: we use asyncio.run here to run the stream")
-
-result = asyncio.run(session.stream_async(prompt))
+stream = session.stream(prompt)
+result = asyncio.run(process_stream(stream))
 print("stream finished")

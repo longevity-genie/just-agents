@@ -6,6 +6,7 @@ from typing import Dict, Callable, AsyncGenerator, Optional
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
 
 from just_agents.memory import Memory
+from just_agents.llm_session import LLMSession
 
 @dataclass
 class FunctionParser:
@@ -28,6 +29,9 @@ class AbstractStreaming(ABC):
     Class that is required to implement the streaming logic
     """
     output_streaming: AbstractStreamingProtocol
+
+    def __init__(self, llm_session: LLMSession):
+        self.llm_session: LLMSession = llm_session
 
     @abstractmethod
     async def resp_async_generator(
