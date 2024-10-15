@@ -20,42 +20,58 @@ from just_agents.rotate_keys import RotateKeys
 
 OnCompletion = Callable[[ModelResponse], None]
 
+# schema parameters:
+KEY_LIST_PATH = "key_list_path"
+STREAMING_METHOD = "streaming_method"
+BACKUP_OPTIONS = "backup_options"
+COMPLETION_REMOVE_KEY_ON_ERROR = "completion_remove_key_on_error"
+COMPLETION_MAX_TRIES = "completion_max_tries"
+
+#streaming methods:
+OPENAI = "openai"
+QWEN2 = "qwen2"
+CHAIN_OF_THOUGHT = "chain_of_thought"
+
+
+
 
 class LLMSession():
     available_tools: dict[str, Callable] = dict()
     memory: Memory = Memory()
     streaming: AbstractStreaming = None
     key_getter: RotateKeys = None
+    on_response: list[OnCompletion] = []
 
 
-    def __init__(self, llm_options: dict[str, Any] = None, agent_schema: str | Path | dict | None = None, init_system_prompt: bool = True,  tools: list[Callable] = None, on_response: list[OnCompletion] = []):
+    def __init__(self, llm_options: dict[str, Any] = None,
+                 agent_schema: str | Path | dict | None = None,
+                 tools: list[Callable] = None):
 
         self.agent_schema = resolve_agent_schema(agent_schema, "LLMSession", "llm_session_schema.yaml")
         self.llm_options: dict[str, Any] = resolve_llm_options(self.agent_schema, llm_options)
-        if self.agent_schema.get("key_getter", None) is not None:
-            self.key_getter = RotateKeys(self.agent_schema["key_getter"])
+        if self.agent_schema.get(KEY_LIST_PATH, None) is not None:
+            self.key_getter = RotateKeys(self.agent_schema[KEY_LIST_PATH])
         self.tools: list[Callable] = tools
-        self.on_response: list[OnCompletion] = on_response
 
         if self.llm_options is not None:
             self.llm_options = copy.deepcopy(self.llm_options) #just a satefy requirement to avoid shared dictionaries
             if (self.key_getter is not None) and (self.llm_options.get("api_key", None) is not None):
                 print("Warning api_key will be rewriten by key_getter. Both are present in llm_options.")
 
-        if init_system_prompt:
-            system_prompt = resolve_system_prompt(self.agent_schema)
-            if system_prompt is not None:
-                self.session.instruct(system_prompt)
 
-        streaming_method = self.agent_schema.get("streaming_method", None)
-        if streaming_method is None or streaming_method == "openai":
-            self.streaming = AsyncSession()
-        elif streaming_method.lower() == "qwen2":
+        system_prompt = resolve_system_prompt(self.agent_schema)
+        if system_prompt is not None:
+            self.instruct(system_prompt)
+
+        streaming_method = self.agent_schema.get(STREAMING_METHOD, None)
+        if streaming_method is None or streaming_method == OPENAI:
+            self.streaming = AsyncSession(self)
+        elif streaming_method.lower() == QWEN2:
             from just_agents.streaming.qwen2_streaming import Qwen2AsyncSession
-            self.streaming = Qwen2AsyncSession()
-        elif streaming_method.lower() == "chain_of_thought":
+            self.streaming = Qwen2AsyncSession(self)
+        elif streaming_method.lower() == CHAIN_OF_THOUGHT:
             from just_agents.streaming.chain_of_thought import ChainOfThought
-            self.streaming = ChainOfThought()
+            self.streaming = ChainOfThought(self)
         else:
             raise ValueError("just_streaming_method is incorrect. "
                              "It should be one of this ['qwen2', 'chain_of_thought']")
@@ -64,14 +80,23 @@ class LLMSession():
             self._prepare_tools(self.tools)
 
 
-    def rotate_completion(self, stream: bool, remove_key_on_error: bool = True,
-                          max_tries: int = 2) -> ModelResponse:
+    def add_on_response_listener(self, listener:OnCompletion):
+        self.on_response.append(listener)
+
+
+    def remove_on_response_listener(self, listener:OnCompletion):
+        if listener in self.on_response:
+            self.on_response.remove(listener)
+
+
+    def _rotate_completion(self, stream: bool) -> ModelResponse:
         opt = self.llm_options.copy()
+        max_tries = self.agent_schema.get(COMPLETION_MAX_TRIES, 2)
         if self.key_getter is not None:
             if max_tries < 1:
                 max_tries = self.key_getter.len()
             else:
-                if remove_key_on_error:
+                if self.agent_schema.get(COMPLETION_REMOVE_KEY_ON_ERROR, True):
                     max_tries = min(max_tries, self.key_getter.len())
             last_exception = None
             for _ in range(max_tries):
@@ -81,10 +106,10 @@ class LLMSession():
                     return response
                 except Exception as e:
                     last_exception = e
-                    if remove_key_on_error:
+                    if self.agent_schema.get(COMPLETION_REMOVE_KEY_ON_ERROR, True):
                         self.key_getter.remove(opt["api_key"])
 
-            backup_opt: dict = self.agent_schema.get("backup_options", None)
+            backup_opt: dict = self.agent_schema.get(BACKUP_OPTIONS, None)
             if backup_opt:
                 return completion(messages=self.memory.messages, stream=stream, **backup_opt)
             if last_exception:
@@ -122,7 +147,7 @@ class LLMSession():
         :return:
         """
         system_instruction =  {"content":prompt, "role":"system"}
-        self.memory.add_message(system_instruction, True)
+        self.memory.add_message(system_instruction)
         return system_instruction
 
 
@@ -160,11 +185,11 @@ class LLMSession():
 
 
     def proceed_stream(self) -> AsyncGenerator[Any, None]: # -> ContentStream:
-        return self.streaming.resp_async_generator(self.memory, self.llm_options, self.available_tools)
+        return self.streaming.resp_async_generator()
 
 
     def proceed(self) -> str:
-        response: ModelResponse = self.rotate_completion(stream=False)
+        response: ModelResponse = self._rotate_completion(stream=False)
         self._process_response(response)
         response = self._process_function_calls(response)
         answer = self.message_from_response(response)
@@ -199,7 +224,7 @@ class LLMSession():
                         function_response = str(e)
                     result = {"role":"tool", "content":function_response, "name":function_name, "tool_call_id":tool_call.id}
                     self.memory.add_message(result)
-                response = self.rotate_completion(stream=False)
+                response = self._rotate_completion(stream=False)
                 self._process_response(response)
         return response
 

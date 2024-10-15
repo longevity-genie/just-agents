@@ -19,6 +19,7 @@ system_prompt: "You are an expert AI assistant that explains your reasoning step
                   'next_action': 'continue'
               }```
   "
+system_prompt_path:
 final_prompt: "Please provide the final answer based solely on your reasoning above."
 title: "title"
 content: "content"
@@ -28,3 +29,9 @@ action_final: "final_answer"
 thought_max_tokes: 300
 max_steps: 25
 final_max_tokens: 1200
+llm_session:
+  just_streaming_method: "openai"
+  completion_remove_key_on_error: True
+  completion_max_tries: 2
+  backup_options:
+  key_list_path:

@@ -2,7 +2,6 @@ from typing import AsyncGenerator
 from litellm import ModelResponse, completion
 from typing import Callable, Optional
 
-from just_agents.llm_session import LLMSession
 from just_agents.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming, FunctionParser
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
@@ -14,10 +13,10 @@ import litellm
 
 class Qwen2AsyncSession(AbstractStreaming):
 
-    def __init__(self, llm_session: LLMSession,
-                 output_streaming: AbstractStreamingProtocol = OpenaiStreamingProtocol()):
+    def __init__(self, llm_session, output_streaming: AbstractStreamingProtocol = OpenaiStreamingProtocol()):
         super().__init__(llm_session)
         self.output_streaming = output_streaming
+
 
     def _process_function(self, name: str, arguments: str, available_tools: dict[str, Callable]):
         function_args = json.loads(arguments)
@@ -34,21 +33,21 @@ class Qwen2AsyncSession(AbstractStreaming):
         }  # TODO need to track arguments , arguments=function_args
         return message
 
-    async def resp_async_generator(self, memory: Memory,
-                                   options: dict,
-                                   available_tools: dict[str, Callable]
+    async def resp_async_generator(self
                                    ) -> AsyncGenerator[str, None]:
-        llm = get_chat_model(options)
+        from just_agents.llm_session import LLMSession
+        llm_session: LLMSession = self.session
+        llm = get_chat_model(llm_session.llm_options)
         functions = None
-        if available_tools:
+        if llm_session.available_tools:
             functions = []
-            for fun_name in available_tools:
-                functions.append(litellm.utils.function_to_dict(available_tools[fun_name]))
+            for fun_name in llm_session.available_tools:
+                functions.append(litellm.utils.function_to_dict(llm_session.available_tools[fun_name]))
 
         proceed = True
         while proceed:
             proceed = False
-            responces = llm.chat(messages=self.llm_session.memory.messages, functions=functions, stream=True,
+            responces = llm.chat(messages=llm_session.memory.messages, functions=functions, stream=True,
                                  extra_generate_cfg=dict(parallel_function_calls=True))
             prev_len = 0
             messages = []
@@ -58,14 +57,14 @@ class Qwen2AsyncSession(AbstractStreaming):
                 if len(content) > 0:
                     delta = content[prev_len:]
                     prev_len = len(content)
-                    yield self.output_streaming.get_chunk(i, delta, options)
+                    yield self.output_streaming.get_chunk(i, delta, llm_session.llm_options)
 
             fncall_msgs = [rsp for rsp in messages if rsp.get('function_call', None)]
-            memory.add_messages(messages)
+            llm_session.memory.add_messages(messages)
             # function_call = messages[-1].get('function_call', None)
-            if fncall_msgs and len(fncall_msgs) > 0 and available_tools:
+            if fncall_msgs and len(fncall_msgs) > 0 and llm_session.available_tools:
                 proceed = True
                 for msg in fncall_msgs:
                     function_call = msg['function_call']
-                    memory.add_message(self._process_function(function_call["name"], function_call['arguments'], available_tools))
+                    llm_session.memory.add_message(self._process_function(function_call["name"], function_call['arguments'], llm_session.available_tools))
         yield self.output_streaming.done()
