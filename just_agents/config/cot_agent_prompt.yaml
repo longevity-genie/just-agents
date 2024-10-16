@@ -1,3 +1,4 @@
+class: "ChainOfThoughtAgent"
 system_prompt: "You are an expert AI assistant that explains your reasoning step by step. 
   For each step, provide a title that describes what you're doing in that step, along with the content. 
   Decide if you need another step or if you're ready to give the final answer. 
@@ -29,6 +30,9 @@ action_final: "final_answer"
 thought_max_tokes: 300
 max_steps: 25
 final_max_tokens: 1200
+tools:
+#  - package:
+#    function:
 llm_session:
   just_streaming_method: "openai"
   completion_remove_key_on_error: True

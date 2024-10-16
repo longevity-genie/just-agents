@@ -7,6 +7,7 @@ import litellm
 from litellm import ModelResponse, completion
 from litellm.utils import Choices
 
+from just_agents.interfaces.IAgent import IAgent
 from just_agents.llm_options import LLAMA3
 from just_agents.memory import Memory
 from dataclasses import dataclass, field
@@ -14,8 +15,7 @@ from typing import Callable, Optional
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
 # from just_agents.utils import rotate_completion
-from just_agents.interfaces.IAddAllMessages import IAddAllMessages
-from just_agents.utils import resolve_agent_schema, resolve_llm_options, resolve_system_prompt
+from just_agents.utils import resolve_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
 from just_agents.rotate_keys import RotateKeys
 
 OnCompletion = Callable[[ModelResponse], None]
@@ -35,7 +35,7 @@ CHAIN_OF_THOUGHT = "chain_of_thought"
 
 
 
-class LLMSession():
+class LLMSession(IAgent):
     available_tools: dict[str, Callable] = dict()
     memory: Memory = Memory()
     streaming: AbstractStreaming = None
@@ -44,6 +44,7 @@ class LLMSession():
 
 
     def __init__(self, llm_options: dict[str, Any] = None,
+                 system_prompt:str = None,
                  agent_schema: str | Path | dict | None = None,
                  tools: list[Callable] = None):
 
@@ -52,14 +53,16 @@ class LLMSession():
         if self.agent_schema.get(KEY_LIST_PATH, None) is not None:
             self.key_getter = RotateKeys(self.agent_schema[KEY_LIST_PATH])
         self.tools: list[Callable] = tools
+        if self.tools is None:
+            self.tools = resolve_tools(self.agent_schema)
 
         if self.llm_options is not None:
             self.llm_options = copy.deepcopy(self.llm_options) #just a satefy requirement to avoid shared dictionaries
             if (self.key_getter is not None) and (self.llm_options.get("api_key", None) is not None):
                 print("Warning api_key will be rewriten by key_getter. Both are present in llm_options.")
 
-
-        system_prompt = resolve_system_prompt(self.agent_schema)
+        if system_prompt is None:
+            system_prompt = resolve_system_prompt(self.agent_schema)
         if system_prompt is not None:
             self.instruct(system_prompt)
 

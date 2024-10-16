@@ -1,11 +1,11 @@
-from just_agents.interfaces.IAddAllMessages import IAddAllMessages
+from just_agents.interfaces.IAgent import IAgent
 from just_agents.llm_session import LLMSession
 import json
 from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
 from pathlib import Path, PurePath
 import yaml
-from just_agents.utils import resolve_agent_schema, resolve_llm_options, resolve_system_prompt
+from just_agents.utils import resolve_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
 
 # schema parameters:
 LLM_SESSION = "llm_session"
@@ -17,19 +17,18 @@ ACTION_FINAL = "action_final"
 FINAL_MAX_TOKENS = "final_max_tokens"
 FINAL_PROMPT = "final_prompt"
 
-#
 
-class ChainOfThoughtAgent():
+class ChainOfThoughtAgent(IAgent):
 
     def __init__(self, llm_options: dict = None, agent_schema: str | Path | dict | None = None,
                  tools: list = None, output_streaming:AbstractStreamingProtocol = OpenaiStreamingProtocol()):
         self.agent_schema: dict = resolve_agent_schema(agent_schema, "ChainOfThoughtAgent", "cot_agent_prompt.yaml")
+        if tools is None:
+            tools = resolve_tools(self.agent_schema)
         self.session: LLMSession = LLMSession(llm_options=resolve_llm_options(self.agent_schema, llm_options),
+                                              system_prompt=resolve_system_prompt(self.agent_schema),
                                               agent_schema=self.agent_schema.get(LLM_SESSION, None), tools=tools)
 
-        system_prompt = resolve_system_prompt(self.agent_schema)
-        if system_prompt is not None:
-            self.session.instruct(system_prompt)
         self.output_streaming: AbstractStreamingProtocol = output_streaming
 
 

@@ -6,6 +6,8 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 import importlib.resources as resources
 from dotenv import load_dotenv
+import importlib
+from typing import Callable
 from litellm import Message, ModelResponse, completion
 import copy
 
@@ -67,6 +69,26 @@ def resolve_system_prompt(agent_schema: dict):
         if path.exists():
             system_prompt = path.read_text(encoding="utf8")
     return system_prompt
+
+
+def resolve_tools(agent_schema: dict) -> list[Callable]:
+    function_list:list[Callable] = []
+    tools = agent_schema.get('tools', None)
+    if tools is None:
+        return None
+    for entry in tools:
+        package_name: str = entry['package']
+        function_name: str = entry['function']
+        try:
+            # Dynamically import the package
+            package = importlib.import_module(package_name)
+            # Get the function from the package
+            func = getattr(package, function_name)
+            function_list.append(func)
+        except (ImportError, AttributeError) as e:
+            print(f"Error importing {function_name} from {package_name}: {e}")
+
+    return function_list
 
 
 def rotate_env_keys() -> str:

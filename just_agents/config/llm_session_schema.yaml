@@ -1,3 +1,4 @@
+class: "LLMSession"
 just_streaming_method: "openai"
 system_prompt_path:
 system_prompt:
@@ -5,3 +6,6 @@ completion_remove_key_on_error: True
 completion_max_tries: 2
 backup_options:
 key_list_path:
+tools:
+#  - package:
+#    function:
