@@ -1,6 +1,7 @@
 import asyncio
 from dotenv import load_dotenv
 from just_agents.cot_agent import ChainOfThoughtAgent
+import pytest
 
 import just_agents.llm_options
 
@@ -12,6 +13,7 @@ def count_letters(character:str, word:str) -> str:
             count += 1
     print("Function: ", character, " occurres in ", word, " ", count, " times.")
     return str(count)
+
 
 def test_function_query():
     load_dotenv(override = True)
@@ -26,6 +28,7 @@ def test_function_query():
 async def process_stream(async_generator):
     for item in async_generator:
         print(item)
+
 
 def test_stream_function_query():
     load_dotenv(override = True)

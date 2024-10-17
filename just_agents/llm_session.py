@@ -36,17 +36,19 @@ CHAIN_OF_THOUGHT = "chain_of_thought"
 
 
 class LLMSession(IAgent):
-    available_tools: dict[str, Callable] = dict()
-    memory: Memory = Memory()
-    streaming: AbstractStreaming = None
-    key_getter: RotateKeys = None
-    on_response: list[OnCompletion] = []
+    
 
 
     def __init__(self, llm_options: dict[str, Any] = None,
                  system_prompt:str = None,
                  agent_schema: str | Path | dict | None = None,
-                 tools: list[Callable] = None):
+                 tools: Optional[list[Callable]] = None):
+        self.on_response = []
+        self.available_tools: Optional[dict[str, Callable]] = {}
+        self.memory: Memory = Memory()
+        self.streaming: AbstractStreaming = None
+        self.key_getter: RotateKeys = None
+        self.on_response: list[OnCompletion] = []
 
         self.agent_schema = resolve_agent_schema(agent_schema, "LLMSession", "llm_session_schema.yaml")
         self.llm_options: dict[str, Any] = resolve_llm_options(self.agent_schema, llm_options)

@@ -29,19 +29,28 @@ async def process_stream(async_generator):
         # You can also process each item here if needed
     return collected_data
 
-llm_options = just_agents.llm_options.OPENAI_GPT4oMINI
+#llm_options = just_agents.llm_options.OPENAI_GPT4oMINI
+llm_options = just_agents.llm_options.LLAMA3_2
+
 key_getter = rotate_env_keys
 prompt = "What's the weather like in San Francisco, Tokyo, and Paris?"
 
-
+load_dotenv(override=True)
 session: LLMSession = LLMSession(
-    llm_options=llm_options,
+    llm_options=just_agents.llm_options.OPENAI_GPT4oMINI,
     tools=[get_current_weather]
 )
-session.memory.add_on_message(lambda m: pprint.pprint(m) if "content" in m is not None else None)
-session.query(prompt)
+result = session.query("What's the weather like in San Francisco, Tokyo, and Paris?")
 
+
+session.memory.add_on_message(lambda m: pprint.pprint(m) if "content" in m is not None else None)
+result = session.query(prompt)
+
+"""
 print("And now same query but async mode for streaming. Note: we use asyncio.run here to run the stream")
 stream = session.stream(prompt)
 result = asyncio.run(process_stream(stream))
 print("stream finished")
+"""
+print("RESULT+++++++++++++++++++++++++++++++++++++++++++++++")
+print(result)
