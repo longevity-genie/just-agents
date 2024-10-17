@@ -9,7 +9,7 @@ import just_agents.llm_options
 from just_agents.llm_session import LLMSession
 from just_agents.utils import rotate_env_keys
 
-load_dotenv()
+load_dotenv(override=True)
 
 def get_current_weather(location: str):
     """Gets the current weather in a given location"""
@@ -29,7 +29,7 @@ async def process_stream(async_generator):
         # You can also process each item here if needed
     return collected_data
 
-llm_options = just_agents.llm_options.LLAMA3_1
+llm_options = just_agents.llm_options.OPENAI_GPT4oMINI
 key_getter = rotate_env_keys
 prompt = "What's the weather like in San Francisco, Tokyo, and Paris?"
 
