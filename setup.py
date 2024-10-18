@@ -21,14 +21,10 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    install_requires=["litellm>=1.48.7", "numpydoc", "requests", "typer>=0.12.5"],
+    install_requires=["litellm>=1.49.5", "numpydoc", "requests", "typer>=0.12.5"],
     extras_require={
-        'templates' :[
-            # optional dependency for templating
-            "Mako>=1.3.5"
-        ],
         'tools': [
-            # some default tools
+            # subproject with useful tools for agents
             'semanticscholar>=0.8.4'
         ]
     },
@@ -43,7 +39,9 @@ setup(
         "Operating System :: Microsoft :: Windows",
     ],
     package_data={
-        'just_agents': ['config/agent_prompts.yaml'],
+        'just_agents': ['config/*.yaml'],
+        'just_agents_sandbox': ['config/*.yaml'],
+        
     },
     include_package_data=True,
 )

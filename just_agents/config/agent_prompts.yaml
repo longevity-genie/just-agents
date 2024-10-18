@@ -1,39 +1,16 @@
-agent_prompt_basic:
-  'You are ${role}. ${backstory}
-  Your personal goal is: ${goal}
-  Your task is to: ${task}'
+agent_prompt_basic: |
+  You are {role}. {backstory}
+  Your personal goal is: {goal}
+  Your task is to: {task}
 
 agent_prompt: |
-  % if role:
-      You are ${role}.
-  % endif
+  {role}
+  {backstory}
+  {goal}
+  {task}
 
-  % if backstory:
-      ${backstory}
-  % endif
-
-  % if goal:
-      Your personal goal is: ${goal}.
-  % endif
-
-  % if task:
-      To give the best complete final answer to the task use the exact following format:
-      Thought: I now can give a great answer
-      Final Answer: my best complete final answer to the task.
-      Your final answer must be the great and the most complete as possible, it must be outcome described.
-      I MUST use these formats, my job depends on it!
-      Current Task: ${task}
-      Begin! This is VERY important to you, use the tools available and give your best Final Answer, your job depends on it!
-  
-      Thought:
-  % endif
-
-  % if format:
-      The final answer must be in the following format: ${format}
-  % endif
-
-advanced_agent_prompt:
-  'You are {role}. {backstory}
+advanced_agent_prompt: |
+  You are {role}. {backstory}
   Your personal goal is: {goal}
   To give the best complete final answer to the task use the exact following format:
   Thought: I now can give a great answer
@@ -47,4 +24,4 @@ advanced_agent_prompt:
   Begin! This is VERY important to you, use the tools available and give your best Final Answer, your job depends on it!
 
   Thought:
-  {thoughts}'
+  {thoughts}

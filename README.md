@@ -82,6 +82,13 @@ result, thoughts = agent.query("Count the number of occurrences of the letter 'L
 
 This example shows how a Chain of Thought agent can use a custom function to count letter occurrences in a word. The agent can reason about the problem and use the provided tool to solve it.
 
+# Package structure
+
+- just_agents - core library
+- just_agents_sandbox - contains sandbox containers for safe code executions and code running agents
+- just_agents_examples - contains examples
+- just_agents_tools - contains useful tools that you can use in your agents
+
 # Installation
 
 If you want to install as pip package use:
