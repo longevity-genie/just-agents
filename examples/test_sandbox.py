@@ -1,10 +1,11 @@
-from llm_sandbox import SandboxSession
+from just_agents_sandbox.micromamba_session import MicromambaSession
 
 # Create a new sandbox session
 def test_sandbox():
-    with SandboxSession(image="mambaorg/micromamba:latest", keep_template=True) as session:
-        result = session.run("echo 'Hello world'")
-        print(result)
-
+    # Or default image
+    with  MicromambaSession(image="quay.io/longevity-genie/biosandbox:latest", lang="python", keep_template=True, verbose=True) as session:
+        session.execute_command("python --version")
+        result = session.run("print('Hello, World!')")
+        
 
 test_sandbox()
