@@ -9,19 +9,19 @@ from dotenv import load_dotenv
 from just_agents.chat_agent import ChatAgent
 from just_agents.llm_options import LLAMA3
 import copy
-from loguru import logger
 from just_agents.tools.search import literature_search
 
 import typer
+from typer import echo
 
 from just_agents.utils import rotate_env_keys
 
 app = typer.Typer(no_args_is_help=True)
 
-def configure_logger(level: str) -> None:
-    """Configure the logger to the specified log level."""
-    logger.remove()
-    logger.add(sys.stdout, level=level)
+def configure_output(level: str) -> None:
+    """Configure the output verbosity."""
+    # You might want to implement this based on the level
+    pass
 
 @app.command()
 def search(query: str, limit: int = 10):
@@ -30,20 +30,16 @@ def search(query: str, limit: int = 10):
     :param query:
     :return:
     """
-    logger.add("logs/rag_search.txt", rotation="1 MB")
-    logger.info(f"QUERY:\n{query}")
+    echo(f"QUERY:\n{query}")
     result: list[str] = literature_search(query, limit = limit)
 
-    logger.info(f"RESULT:\n{result}")
+    echo(f"RESULT:\n{result}")
     return result
 
-
 @app.command()
-def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requirements", log_level: str = "DEBUG"):
-    configure_logger(log_level)
-    logger.add("logs/rag_rapamycin.txt", rotation="1 MB")
+def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requirements", output_level: str = "DEBUG"):
+    configure_output(output_level)
     load_dotenv()
-
 
     # setting up relative paths to define output and load prompts
     current_folder: Path = Path(__file__).parent
@@ -59,13 +55,17 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
                                     task="Address the research question in the most comprehensive way",
                                     tools = [literature_search])
 
-    # ADDING LOGGER HANDLERS:
-    scientist.memory.add_on_message(lambda m: logger.debug(f"SCIENTIST MESSAGE: {m}"))
-    scientist.memory.add_on_tool_call(lambda f: logger.debug(f"SCIENTIST FUNCTION: {f}"))
-    scientist.memory.add_on_tool_result(lambda m: logger.debug(f"SCIENTIST TOOL result from {m.name} with tool call id {m.tool_call_id} is {m.content}"))
+    # ADDING ECHO HANDLERS:
+    scientist.memory.add_on_message(lambda m: echo(f"SCIENTIST MESSAGE: {m}"))
+    scientist.memory.add_on_tool_call(lambda f: echo(f"SCIENTIST FUNCTION: {f}"))
+    scientist.memory.add_on_tool_result(lambda m: echo(f"SCIENTIST TOOL result from {m.name} with tool call id {m.tool_call_id} is {m.content}"))
 
-    answer = scientist.query(question, output=output / prompt_name / f"{sub_prompt}_initial_answer.txt")
-    logger.info(f"INITIAL ANSWER: {answer}")
+    answer = scientist.query(question)
+    output_path = output / prompt_name / f"{sub_prompt}_initial_answer.txt"
+    if not output_path.parent.exists():
+        output_path.parent.mkdir(parents=True, exist_ok=True)
+    output_path.write_text(answer)
+    echo(f"INITIAL ANSWER: {answer}")
 
     for_review = f"""
     The question that the user asked was: 
@@ -85,15 +85,11 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
                                   task="evaluate the answer according to the criteria provided and make recommendations to improve")
 
     # ADDING CRITICS HANDLERS:
-    critic.memory.add_on_message(lambda m: logger.debug(f"CRITIC MESSAGE: {m}"))
+    critic.memory.add_on_message(lambda m: echo(f"CRITIC MESSAGE: {m}"))
     #print(f"critic messages: {critic.memory.messages}")
 
     review_results = critic.query(for_review, output=output / prompt_name / f"{sub_prompt}_answer_review.txt")
-    logger.info(f"REVIEW RESULTS: {review_results}")
-
-
-
-
+    echo(f"REVIEW RESULTS: {review_results}")
 
 if __name__ == "__main__":
     """

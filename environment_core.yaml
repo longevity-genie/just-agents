@@ -1,0 +1,13 @@
+name: just-agents-core #has dependencies only for core just-agents library
+channels:
+  - conda-forge
+  - defaults
+dependencies:
+  - python=3.11
+  - pip
+  - requests
+  - pytest>=8.3.3 #for tests
+  - typer>=0.12.5 #for CLI
+  - pip:
+      - litellm>=1.49.5
+      - numpydoc

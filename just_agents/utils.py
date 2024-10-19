@@ -6,56 +6,91 @@ from pathlib import Path
 from typing import Optional, Dict, Any
 import importlib.resources as resources
 from dotenv import load_dotenv
+import importlib
+from typing import Callable
 from litellm import Message, ModelResponse, completion
+import copy
+
+#
+# class RotateKeys():
+#     keys:list[str]
+#
+#     def __init__(self, file_path:str):
+#         with open(file_path) as f:
+#             text = f.read().strip()
+#             self.keys = text.split("\n")
+#
+#     def __call__(self, *args, **kwargs):
+#         return random.choice(self.keys)
+#
+#     def remove(self, key:str):
+#         self.keys.remove(key)
+#
+#     def len(self):
+#         return len(self.keys)
+
+def resolve_agent_schema(agent_schema: str | Path | dict):
+    if isinstance(agent_schema, str):
+        agent_schema = Path(agent_schema)
+    if isinstance(agent_schema, Path):
+        if not agent_schema.exists():
+            raise ValueError(
+                f"In constructor agent_schema path is not exists: ({str(agent_schema)})!")
+        with open(agent_schema) as f:
+            agent_schema = yaml.full_load(f)
+    if not isinstance(agent_schema, dict):
+        raise ValueError(
+            f"In constructor agent_schema parameter should be string, Path or dict!")
+
+    return agent_schema
+
+def _resolve_agent_schema(agent_schema: str | Path | dict | None, default_file_name: str):
+    if agent_schema is None:
+        agent_schema = Path(Path(__file__).parent, "config", default_file_name)
+
+    return resolve_agent_schema(agent_schema)
 
 
-class RotateKeys():
-    keys:list[str]
+def resolve_llm_options(agent_schema: dict, llm_options: dict):
+    if llm_options is None:
+        llm_options = agent_schema.get("options", None)
+    if llm_options is None:
+        raise ValueError(
+            "llm_options should not be None. You should pass it through llm_options or agent_schema['options'].")
 
-    def __init__(self, file_path:str):
-        with open(file_path) as f:
-            text = f.read().strip()
-            self.keys = text.split("\n")
-
-    def __call__(self, *args, **kwargs):
-        return random.choice(self.keys)
-
-    def remove(self, key:str):
-        self.keys.remove(key)
-
-    def len(self):
-        return len(self.keys)
+    return llm_options
 
 
-def rotate_completion(messages: list[dict], options: dict[str, str], stream: bool, remove_key_on_error: bool = True, max_tries: int = 2) -> ModelResponse:
-    opt = options.copy()
-    key_getter: RotateKeys = opt.pop("key_getter", None)
-    if key_getter is not None:
-        backup_opt: dict = opt.pop("backup_options", None)
-        if max_tries < 1:
-            max_tries = key_getter.len()
-        else:
-            if remove_key_on_error:
-                max_tries = min(max_tries, key_getter.len())
-        last_exception = None
-        for _ in range(max_tries):
-            opt["api_key"] = key_getter()
-            try:
-                response = completion(messages=messages, stream=stream, **opt)
-                return response
-            except Exception as e:
-                last_exception = e
-                if remove_key_on_error:
-                    key_getter.remove(opt["api_key"])
-        if backup_opt:
-            return completion(messages=messages, stream=stream, **backup_opt)
-        if last_exception:
-            raise last_exception
-        else:
-            raise Exception(f"Run out of tries to execute completion. Check your keys! Keys {key_getter.len()} left.")
-    else:
-        return completion(messages=messages, stream=stream, **opt)
+def resolve_system_prompt(agent_schema: dict):
+    system_prompt = agent_schema.get("system_prompt", None)
+    system_prompt_path = agent_schema.get("system_prompt_path", None)
+    if (system_prompt is not None) and (system_prompt_path is not None):
+        raise ValueError("You should use only one of system_prompt or system_prompt_path not both together.")
+    if system_prompt_path is not None:
+        path = Path(system_prompt_path)
+        if path.exists():
+            system_prompt = path.read_text(encoding="utf8")
+    return system_prompt
 
+
+def resolve_tools(agent_schema: dict) -> list[Callable]:
+    function_list:list[Callable] = []
+    tools = agent_schema.get('tools', None)
+    if tools is None:
+        return None
+    for entry in tools:
+        package_name: str = entry['package']
+        function_name: str = entry['function']
+        try:
+            # Dynamically import the package
+            package = importlib.import_module(package_name)
+            # Get the function from the package
+            func = getattr(package, function_name)
+            function_list.append(func)
+        except (ImportError, AttributeError) as e:
+            print(f"Error importing {function_name} from {package_name}: {e}")
+
+    return function_list
 
 
 def rotate_env_keys() -> str:

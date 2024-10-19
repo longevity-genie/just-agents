@@ -7,48 +7,120 @@ import litellm
 from litellm import ModelResponse, completion
 from litellm.utils import Choices
 
+from just_agents.interfaces.IAgent import IAgent
 from just_agents.llm_options import LLAMA3
 from just_agents.memory import Memory
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
-from just_agents.utils import rotate_completion
+# from just_agents.utils import rotate_completion
+from just_agents.utils import _resolve_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
+from just_agents.rotate_keys import RotateKeys
 
 OnCompletion = Callable[[ModelResponse], None]
 
+# schema parameters:
+KEY_LIST_PATH = "key_list_path"
+STREAMING_METHOD = "streaming_method"
+BACKUP_OPTIONS = "backup_options"
+COMPLETION_REMOVE_KEY_ON_ERROR = "completion_remove_key_on_error"
+COMPLETION_MAX_TRIES = "completion_max_tries"
 
-@dataclass(kw_only=True)
-class LLMSession:
-    llm_options: dict[str, Any] = field(default_factory=lambda: LLAMA3)
-    tools: list[Callable] = None
-    available_tools: dict[str, Callable] = field(default_factory=lambda: {})
+#streaming methods:
+OPENAI = "openai"
+QWEN2 = "qwen2"
+CHAIN_OF_THOUGHT = "chain_of_thought"
 
-    on_response: list[OnCompletion] = field(default_factory=list)
-    memory: Memory = field(default_factory=lambda: Memory())
-    streaming: AbstractStreaming = None
 
-    def __post_init__(self):
+class LLMSession(IAgent):
+
+    def __init__(self, llm_options: dict[str, Any] = None,
+                 system_prompt:str = None,
+                 agent_schema: str | Path | dict | None = None,
+                 tools: Optional[list[Callable]] = None):
+        self.on_response = []
+        self.available_tools: Optional[dict[str, Callable]] = {}
+        self.memory: Memory = Memory()
+        self.streaming: AbstractStreaming = None
+        self.key_getter: RotateKeys = None
+        self.on_response: list[OnCompletion] = []
+
+        self.agent_schema = _resolve_agent_schema(agent_schema, "llm_session_schema.yaml")
+        self.llm_options: dict[str, Any] = resolve_llm_options(self.agent_schema, llm_options)
+        if self.agent_schema.get(KEY_LIST_PATH, None) is not None:
+            self.key_getter = RotateKeys(self.agent_schema[KEY_LIST_PATH])
+        self.tools: list[Callable] = tools
+        if self.tools is None:
+            self.tools = resolve_tools(self.agent_schema)
+
         if self.llm_options is not None:
             self.llm_options = copy.deepcopy(self.llm_options) #just a satefy requirement to avoid shared dictionaries
-            if (self.llm_options.get("key_getter") is not None) and (self.llm_options.get("api_key") is not None):
+            if (self.key_getter is not None) and (self.llm_options.get("api_key", None) is not None):
                 print("Warning api_key will be rewriten by key_getter. Both are present in llm_options.")
 
-        streaming_method = self.llm_options.pop("just_streaming_method", None)
-        if streaming_method is None:
-            self.streaming = AsyncSession()
-        elif streaming_method.lower() == "qwen2":
+        if system_prompt is None:
+            system_prompt = resolve_system_prompt(self.agent_schema)
+        if system_prompt is not None:
+            self.instruct(system_prompt)
+
+        streaming_method = self.agent_schema.get(STREAMING_METHOD, None)
+        if streaming_method is None or streaming_method == OPENAI:
+            self.streaming = AsyncSession(self)
+        elif streaming_method.lower() == QWEN2:
             from just_agents.streaming.qwen2_streaming import Qwen2AsyncSession
-            self.streaming = Qwen2AsyncSession()
-        elif streaming_method.lower() == "chain_of_thought":
+            self.streaming = Qwen2AsyncSession(self)
+        elif streaming_method.lower() == CHAIN_OF_THOUGHT:
             from just_agents.streaming.chain_of_thought import ChainOfThought
-            self.streaming = ChainOfThought()
+            self.streaming = ChainOfThought(self)
         else:
             raise ValueError("just_streaming_method is incorrect. "
                              "It should be one of this ['qwen2', 'chain_of_thought']")
 
         if self.tools is not None:
             self._prepare_tools(self.tools)
+
+
+    def add_on_response_listener(self, listener:OnCompletion):
+        self.on_response.append(listener)
+
+
+    def remove_on_response_listener(self, listener:OnCompletion):
+        if listener in self.on_response:
+            self.on_response.remove(listener)
+
+
+    def _rotate_completion(self, stream: bool) -> ModelResponse:
+        opt = self.llm_options.copy()
+        max_tries = self.agent_schema.get(COMPLETION_MAX_TRIES, 2)
+        if self.key_getter is not None:
+            if max_tries < 1:
+                max_tries = self.key_getter.len()
+            else:
+                if self.agent_schema.get(COMPLETION_REMOVE_KEY_ON_ERROR, True):
+                    max_tries = min(max_tries, self.key_getter.len())
+            last_exception = None
+            for _ in range(max_tries):
+                opt["api_key"] = self.key_getter()
+                try:
+                    response = completion(messages=self.memory.messages, stream=stream, **opt)
+                    return response
+                except Exception as e:
+                    last_exception = e
+                    if self.agent_schema.get(COMPLETION_REMOVE_KEY_ON_ERROR, True):
+                        self.key_getter.remove(opt["api_key"])
+
+            backup_opt: dict = self.agent_schema.get(BACKUP_OPTIONS, None)
+            if backup_opt:
+                return completion(messages=self.memory.messages, stream=stream, **backup_opt)
+            if last_exception:
+                raise last_exception
+            else:
+                raise Exception(
+                    f"Run out of tries to execute completion. Check your keys! Keys {self.key_getter.len()} left.")
+        else:
+            return completion(messages=self.memory.messages, stream=stream, **opt)
+
 
     def _process_response(self, response: ModelResponse):
         """
@@ -58,6 +130,7 @@ class LLMSession:
         """
         for handler in self.on_response:
             handler(response)
+
 
     @staticmethod
     def message_from_response(response: ModelResponse) -> dict:
@@ -75,93 +148,54 @@ class LLMSession:
         :return:
         """
         system_instruction =  {"content":prompt, "role":"system"}
-        self.memory.add_message(system_instruction, True)
+        self.memory.add_message(system_instruction)
         return system_instruction
 
 
     def update_options(self, key:str, value:Any):
         self.llm_options[key] = value
 
-    def query(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
+
+    def _add_to_memory(self, input: str | dict | list[dict]):
+        if isinstance(input, list):
+            self.memory.add_messages(input)
+        else:
+            if isinstance(input, str):
+                input = {"role": "user", "content": input}
+            self.memory.add_message(input)
+
+
+    def query(self, input: str | dict | list[dict]) -> str:
         """
         Query large language model
-        :param prompt:
-        :param run_callbacks:
-        :param output:
+        :param input:
         :return:
         """
-
-        question = {"role": "user", "content": prompt}
-        self.memory.add_message(question, run_callbacks)
-        return self.proceed(run_callbacks, output)
+        self._add_to_memory(input)
+        return self.proceed()
 
 
-    def query_add_all(self, messages: list[dict], run_callbacks: bool = True, output: Optional[Path] = None) -> str:
-        self.memory.add_messages(messages, run_callbacks)
-        return self.proceed(run_callbacks, output)
-
-
-    def stream_all(self, messages: list, run_callbacks: bool = True): # -> ContentStream:
-        self.memory.add_messages(messages, run_callbacks)
-        return self.proceed_stream()
-
-    async def stream_async(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> list[Any]:
-        """temporary function that allows testing the stream function which Alex wrote but I do not fully understand"""
-        collected_data = []
-        async for item in self.stream(prompt, run_callbacks, output):
-            collected_data.append(item)
-            # You can also process each item here if needed
-        return collected_data
-
-
-    def stream(self, prompt: str, run_callbacks: bool = True, output: Optional[Path] = None) -> AsyncGenerator[Any, None]: # -> ContentStream:
+    def stream(self, input: str | dict | list[dict]) -> AsyncGenerator[Any, None]: # -> ContentStream:
         """
         streaming method
-        :param prompt:
-        :param run_callbacks:
-        :param output:
+        :input prompt, message, list of messages:
         :return:
         """
-        question = {"role":"user", "content":prompt}
-        self.memory.add_message(question, run_callbacks)
-
-        # Start the streaming process
-        content_stream = self.proceed_stream()
-
-        # If output file is provided, write the stream to the file
-        if output is not None:
-            try:
-                with output.open('w') as file:
-                    if True: #if isinstance(content_stream, ContentStream):
-                        #looks like ContentStream is only used for typehinting
-                        # while it brings pretty heavy starlette dependency
-                        # let's temporally comment it out
-                        for content in content_stream:
-                            file.write(content)
-                    else:
-                        raise TypeError("ContentStream expected from self._stream()")
-            except Exception as e:
-                print(f"Error writing to file: {e}")
-
-        return content_stream
-
+        self._add_to_memory(input)
+        return self.proceed_stream()
 
 
     def proceed_stream(self) -> AsyncGenerator[Any, None]: # -> ContentStream:
-        return self.streaming.resp_async_generator(self.memory, self.llm_options, self.available_tools)
+        return self.streaming.resp_async_generator()
 
 
-    def proceed(self, run_callbacks: bool = True, output: Optional[Path] = None) -> str:
-        response: ModelResponse = rotate_completion(messages=self.memory.messages, stream=False, options=self.llm_options)
+    def proceed(self) -> str:
+        response: ModelResponse = self._rotate_completion(stream=False)
         self._process_response(response)
         response = self._process_function_calls(response)
         answer = self.message_from_response(response)
-        self.memory.add_message(answer, run_callbacks)
+        self.memory.add_message(answer)
         result: str = self.memory.last_message["content"] if "content" in self.memory.last_message else str(self.memory.last_message)
-        if output is not None:
-            if not output.parent.exists():
-                output.parent.mkdir(parents=True, exist_ok=True)
-            output.write_text(result)
         return result
 
 
@@ -191,7 +225,7 @@ class LLMSession:
                         function_response = str(e)
                     result = {"role":"tool", "content":function_response, "name":function_name, "tool_call_id":tool_call.id}
                     self.memory.add_message(result)
-                response = rotate_completion(messages=self.memory.messages, stream=False, options=self.llm_options)
+                response = self._rotate_completion(stream=False)
                 self._process_response(response)
         return response
 

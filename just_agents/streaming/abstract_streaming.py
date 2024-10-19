@@ -7,6 +7,7 @@ from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingP
 
 from just_agents.memory import Memory
 
+
 @dataclass
 class FunctionParser:
     id: str = ""
@@ -29,13 +30,11 @@ class AbstractStreaming(ABC):
     """
     output_streaming: AbstractStreamingProtocol
 
+    def __init__(self, llm_session):
+        self.session = llm_session
+
     @abstractmethod
-    async def resp_async_generator(
-            self,
-            memory: Memory,
-            options: Dict,
-            available_tools: Dict[str, Callable]
-    ) -> AsyncGenerator:
+    async def resp_async_generator(self) -> AsyncGenerator:
         """
         Async generator that fills memory with streaming data
         :param memory:

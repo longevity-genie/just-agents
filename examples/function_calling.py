@@ -9,7 +9,7 @@ import just_agents.llm_options
 from just_agents.llm_session import LLMSession
 from just_agents.utils import rotate_env_keys
 
-load_dotenv()
+load_dotenv(override=True)
 
 def get_current_weather(location: str):
     """Gets the current weather in a given location"""
@@ -22,32 +22,35 @@ def get_current_weather(location: str):
     else:
         return json.dumps({"location": location, "temperature": "unknown"})
 
-llm_options = just_agents.llm_options.LLAMA3_1
+async def process_stream(async_generator):
+    collected_data = []
+    async for item in async_generator:
+        collected_data.append(item)
+        # You can also process each item here if needed
+    return collected_data
+
+#llm_options = just_agents.llm_options.OPENAI_GPT4oMINI
+llm_options = just_agents.llm_options.LLAMA3_2
+
 key_getter = rotate_env_keys
 prompt = "What's the weather like in San Francisco, Tokyo, and Paris?"
 
-#llm_options = just_agents.llm_options.OPENAI_GPT4o
-#key_getter=lambda: os.getenv("OPENAI_API_KEY")
-
-#QWEN 2 does not work!
-#llm_options = just_agents.llm_options.OPEN_ROUTER_Qwen_2_72B_Instruct
-#key_getter=lambda: os.getenv("OPEN_ROUTER_KEY")
-
-#llm_options = just_agents.llm_options.DEEPINFRA_Qwen_2_72B_Instruct
-#key_getter=lambda:  os.getenv("TOGETHERAI_API_KEY")
-
-#llm_options = just_agents.llm_options.MISTRAL_8x22B
-#key_getter=lambda: os.getenv("MISTRAL_API_KEY")
-
+load_dotenv(override=True)
 session: LLMSession = LLMSession(
-    llm_options=llm_options,
+    llm_options=just_agents.llm_options.OPENAI_GPT4oMINI,
     tools=[get_current_weather]
 )
+result = session.query("What's the weather like in San Francisco, Tokyo, and Paris?")
+
+
 session.memory.add_on_message(lambda m: pprint.pprint(m) if "content" in m is not None else None)
-#session.memory.add_on_message(lambda m: pprint.pprint(m.content) if m.content is not None else None)
-session.query(prompt)
-#for QWEN we get: Message(content='{\n  "function": "get_current_weather",\n  "parameters": {\n    "location": ["San Francisco", "Tokyo", "Paris"]\n  }\n}', role='assistant')
+result = session.query(prompt)
 
-
-result = asyncio.run(session.stream_async(prompt))
+"""
+print("And now same query but async mode for streaming. Note: we use asyncio.run here to run the stream")
+stream = session.stream(prompt)
+result = asyncio.run(process_stream(stream))
 print("stream finished")
+"""
+print("RESULT+++++++++++++++++++++++++++++++++++++++++++++++")
+print(result)

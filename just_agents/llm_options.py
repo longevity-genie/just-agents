@@ -30,25 +30,40 @@ LLAMA3_1: Dict = {
     "tools": []
 }
 
+LLAMA3_2_VISION: Dict = {
+    "model": "groq/llama-3.2-11b-vision-preview",
+    "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0,
+    "tools": []
+}
+
+LLAMA3_2: Dict = {
+    "model": "groq/llama-3.2-90b-text-preview",
+    "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0,
+    "tools": []
+}
+
 OPEN_ROUTER_Qwen_2_72B_Instruct = {
     "model": "openrouter/qwen/qwen-2-72b-instruct",
     "temperature": 0.0,
     "tools": []
 }
 
-TOGETHER_Qwen_2_72B_Instruct = {
-    "model": "together_ai/Qwen/Qwen2-72B-Instruct",
+OPEN_ROUTER_Qwen_2_72B_Instruct_Vision = {
+    "model": "openrouter/qwen/qwen-2-vl-72b-instruct",
     "temperature": 0.0,
     "tools": []
 }
-DEEPINFRA_Qwen_2_72B_Instruct = {
-    "model" : "deepinfra/Qwen/Qwen2-72B-Instruct",
+
+OPEN_ROUTER_LLAMA_3_8B_FREE = {
+    "model": "openrouter/meta-llama/llama-3-8b-instruct:free",
+    "temperature": 0.0,
     "tools": []
 }
 
-FIREWORKS_Qwen_2_72B_Instruct = {
-    "model": "fireworks_ai/wen/Qwen2-72B-Instruct",
-    "api_base": "https://api.groq.com/openai/v1",
+OPEN_ROUTER_GEMINI_1_5_FLASH_EXP_FREE = {
+    "model": "openrouter/google/gemini-flash-1.5-exp",
     "temperature": 0.0,
     "tools": []
 }

@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = '0.1.0'
+VERSION = '0.2.0'
 DESCRIPTION = 'Just Agents'
 LONG_DESCRIPTION = 'LLM Agents that are implemented without unnecessary complexity'
 
@@ -21,10 +21,10 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    install_requires=["litellm>=1.42.5", "numpydoc", "loguru", "requests", "Mako>=1.3.5", "typer>=0.12.3"],
+    install_requires=["litellm>=1.49.5", "numpydoc", "requests", "typer>=0.12.5"],
     extras_require={
         'tools': [
-            # some default tools
+            # subproject with useful tools for agents
             'semanticscholar>=0.8.4'
         ]
     },
@@ -39,7 +39,9 @@ setup(
         "Operating System :: Microsoft :: Windows",
     ],
     package_data={
-        'just_agents': ['config/agent_prompts.yaml'],
+        'just_agents': ['config/*.yaml'],
+        'just_agents_sandbox': ['config/*.yaml'],
+        
     },
     include_package_data=True,
 )
