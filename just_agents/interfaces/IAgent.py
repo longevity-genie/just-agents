@@ -1,8 +1,11 @@
+from pathlib import Path
 from typing import AsyncGenerator, Any
+from just_agents.utils import resolve_agent_schema
 
-def build_agent(agent_schema: dict):
+def build_agent(agent_schema: str | Path | dict):
     from just_agents.cot_agent import ChainOfThoughtAgent
     from just_agents.llm_session import LLMSession
+    agent_schema = resolve_agent_schema(agent_schema)
     class_name = agent_schema.get("class", None)
     if class_name is None:
         raise ValueError("Error class_name field should not be empty in agent_schema param during IAgent.build() call.")

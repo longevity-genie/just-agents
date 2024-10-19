@@ -15,7 +15,7 @@ from typing import Callable, Optional
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
 # from just_agents.utils import rotate_completion
-from just_agents.utils import resolve_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
+from just_agents.utils import _resolve_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
 from just_agents.rotate_keys import RotateKeys
 
 OnCompletion = Callable[[ModelResponse], None]
@@ -46,7 +46,7 @@ class LLMSession(IAgent):
         self.key_getter: RotateKeys = None
         self.on_response: list[OnCompletion] = []
 
-        self.agent_schema = resolve_agent_schema(agent_schema, "LLMSession", "llm_session_schema.yaml")
+        self.agent_schema = _resolve_agent_schema(agent_schema, "llm_session_schema.yaml")
         self.llm_options: dict[str, Any] = resolve_llm_options(self.agent_schema, llm_options)
         if self.agent_schema.get(KEY_LIST_PATH, None) is not None:
             self.key_getter = RotateKeys(self.agent_schema[KEY_LIST_PATH])
