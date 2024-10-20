@@ -1,11 +1,11 @@
-class: "LLMSession"
-just_streaming_method: "openai"
-system_prompt_path:
-system_prompt:
-completion_remove_key_on_error: True
-completion_max_tries: 2
-backup_options:
-key_list_path:
-tools:
+class: "LLMSession" # class name to create could be LLMSession, ChainOfThoughtAgent. Default is LLMSession
+just_streaming_method: "openai" # protocol to handle llm format for function calling
+system_prompt_path: # path to system prompt exclude use of system_prompt
+system_prompt: # system prompt exclude use of system_prompt_path
+completion_remove_key_on_error: True # in case of using list of keys removing key from the list after error call with this key
+completion_max_tries: 2 # maximum number of completion retries before giving up
+backup_options: # options that will be used after we give up with main options, one more completion call will be done with backup options
+key_list_path: # path to text file with list of api keys, one key per line
+tools: # list of functions that will be used as tools, each record should contain package and function name
 #  - package:
 #    function:
