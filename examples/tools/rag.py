@@ -9,7 +9,7 @@ from dotenv import load_dotenv
 from just_agents.chat_agent import ChatAgent
 from just_agents.llm_options import LLAMA3
 import copy
-from just_agents.tools.search import literature_search
+from just_agents_tools.search import literature_search
 
 import typer
 from typer import echo

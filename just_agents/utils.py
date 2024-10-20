@@ -30,6 +30,9 @@ import copy
 #         return len(self.keys)
 
 def resolve_agent_schema(agent_schema: str | Path | dict):
+    """
+    Resolve the agent schema from a string, path (to yaml file) or dict.
+    """
     if isinstance(agent_schema, str):
         agent_schema = Path(agent_schema)
     if isinstance(agent_schema, Path):
@@ -37,7 +40,7 @@ def resolve_agent_schema(agent_schema: str | Path | dict):
             raise ValueError(
                 f"In constructor agent_schema path is not exists: ({str(agent_schema)})!")
         with open(agent_schema) as f:
-            agent_schema = yaml.full_load(f)
+            agent_schema = yaml.safe_load(f)
     if not isinstance(agent_schema, dict):
         raise ValueError(
             f"In constructor agent_schema parameter should be string, Path or dict!")
