@@ -1,5 +1,6 @@
 from pathlib import Path
-from typing import AsyncGenerator, Any
+from typing import AsyncGenerator, Any, Union, Sequence, Dict
+from abc import ABC, abstractmethod
 from just_agents.utils import resolve_agent_schema
 
 def build_agent(agent_schema: str | Path | dict):
@@ -14,7 +15,7 @@ def build_agent(agent_schema: str | Path | dict):
     elif class_name == "ChainOfThoughtAgent":
         return ChainOfThoughtAgent(agent_schema=agent_schema)
 
-class IAgent:
+class IAgent(ABC):
 
     # @staticmethod
     # def build(agent_schema: dict):
@@ -39,9 +40,15 @@ class IAgent:
     #         print(f"Error creating instance of {class_name} from {package_name}: {e}")
     #         return None
 
+    @abstractmethod
+    def stream(self, query_input: Union[str, Dict, Sequence[Dict]]) -> AsyncGenerator[Any, None]:
+        raise NotImplementedError("You need to implement stream() first!")
 
-    def stream(self, input: str | dict | list[dict]) -> AsyncGenerator[Any, None]:
-        raise NotImplementedError("You need to impelement stream_add_all() first!")
+    @abstractmethod
+    def query(self, query_input: Union[str, Dict, Sequence[Dict]]) -> str:
+        raise NotImplementedError("You need to implement query() first!")
 
-    def query(self, input: str | dict | list[dict]) -> str:
-        raise NotImplementedError("You need to impelement query_add_all() first!")
+class IAgentProfile(ABC):
+    @abstractmethod
+    def to_dict(self) -> dict:
+        raise NotImplementedError("You need to implement to_dict() first!")
