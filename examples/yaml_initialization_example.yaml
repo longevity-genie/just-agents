@@ -1,12 +1,9 @@
-class: "LLMSession"
-just_streaming_method: "openai"
-system_prompt: "You are helpfull assistant that could count letters in word. To acomplish this use tool letter_count()"
-completion_remove_key_on_error: True
-completion_max_tries: 2
+system_prompt: "You are helpful assistant that could count letters in word. 
+  To acomplish this use tool letter_count()"
 options:
   model: "groq/llama-3.1-70b-versatile"
   api_base: "https://api.groq.com/openai/v1"
   temperature: 0.0
 tools:
-  - package: "examples.letter_count"
+  - package: "tools.examples.letter_count"
     function: "letter_count"

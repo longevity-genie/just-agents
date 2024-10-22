@@ -105,3 +105,9 @@ then you can edit the library. Optionally you can install it locally with:
 ```
 pip install -e .
 ```
+
+# Running the code by agents
+
+You can allow agents to install dependencies and run code by using the sandbox container.
+
+We provide a package just_agents_sandbox that contains the sandbox and biosandbox containers as well as micromamba session to run the containers.

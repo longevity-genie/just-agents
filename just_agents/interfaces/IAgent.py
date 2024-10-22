@@ -8,9 +8,7 @@ def build_agent(agent_schema: str | Path | dict):
     from just_agents.llm_session import LLMSession
     agent_schema = resolve_agent_schema(agent_schema)
     class_name = agent_schema.get("class", None)
-    if class_name is None:
-        raise ValueError("Error class_name field should not be empty in agent_schema param during IAgent.build() call.")
-    elif class_name == "LLMSession":
+    if class_name is None or class_name == "LLMSession":
         return LLMSession(agent_schema=agent_schema)
     elif class_name == "ChainOfThoughtAgent":
         return ChainOfThoughtAgent(agent_schema=agent_schema)
@@ -47,8 +45,3 @@ class IAgent(ABC):
     @abstractmethod
     def query(self, query_input: Union[str, Dict, Sequence[Dict]]) -> str:
         raise NotImplementedError("You need to implement query() first!")
-
-class IAgentProfile(ABC):
-    @abstractmethod
-    def to_dict(self) -> dict:
-        raise NotImplementedError("You need to implement to_dict() first!")

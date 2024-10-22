@@ -1,2 +1,2 @@
 #!/bin/bash
-docker build -t quay.io/longevity-genie/sandbox:latest .
+docker build -t ghcr.io/longevity-genie/just-agents/sandbox:main .
