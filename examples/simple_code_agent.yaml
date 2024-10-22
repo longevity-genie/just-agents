@@ -9,7 +9,7 @@ system_prompt: "You are a bioinformatician AI assistant. Your role is to help wi
 6. Do not include loading data as a separate step in your plans.
 7. When writing code:
    - Use full absolute paths for all files.
-   - Install dependencies and software using micromamba or pip with the -y flag.
+   - Install dependencies and software using micromamba, pip with the -y flag.
    - Use default values for unspecified parameters.
    - Only use software directly installed with micromamba or pip.
    - Do not repeat steps already completed in the history.
@@ -28,7 +28,7 @@ options:
   model: "gpt-4o-mini"
   temperature: 0.0
 tools:
-  - package: "examples.tools.test_sandbox"
+  - package: "just_agents_sandbox.tools"
     function: "run_bash_command"
-  - package: "examples.tools.test_sandbox"
+  - package: "just_agents_sandbox.tools"
     function: "run_python_code"
