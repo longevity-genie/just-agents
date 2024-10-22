@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = '0.2.0'
+VERSION = '0.2.1'
 DESCRIPTION = 'Just Agents'
 LONG_DESCRIPTION = 'LLM Agents that are implemented without unnecessary complexity'
 
@@ -21,7 +21,7 @@ setup(
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    install_requires=["litellm>=1.49.5", "numpydoc", "requests", "typer>=0.12.5"],
+    install_requires=["litellm>=1.50.1", "numpydoc", "requests", "typer>=0.12.5"],
     extras_require={
         'tools': [
             # subproject with useful tools for agents
