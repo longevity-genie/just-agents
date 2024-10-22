@@ -3,20 +3,28 @@ import docker
 from llm_sandbox.session import SandboxDockerSession
 from llm_sandbox.docker import ConsoleOutput
 from llm_sandbox.const import SupportedLanguage
+from docker.types import Mount
 
 class MicromambaSession(SandboxDockerSession):
+    """
+    Docker session for running micromamba in docker container
+    """
     def __init__(self, client: Optional[docker.DockerClient] = None,
         image: Optional[str] = None,
         dockerfile: Optional[str] = None,
         lang: str = SupportedLanguage.PYTHON,
         keep_template: bool = False,
-        verbose: bool = False, environment: str = "base"):
+        verbose: bool = False, 
+        environment: str = "base",
+        mounts: Optional[list[Mount]] = None,
+        ):
         super().__init__(client=client,
                          image=image,
                          dockerfile=dockerfile,
                          lang=lang,
                          keep_template=keep_template,
-                         verbose=verbose)
+                         verbose=verbose, 
+                         mounts=mounts)
         self.environment = environment
 
 

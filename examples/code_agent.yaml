@@ -27,9 +27,9 @@ content: "content"
 next_action: "next_action"
 action_continue: "continue"
 action_final: "final_answer"
-thought_max_tokes: 300
+thought_max_tokes: 500
 max_steps: 25
-final_max_tokens: 1200
+final_max_tokens: 1500
 tools:
   - package: "micromamba"
 #  - package:

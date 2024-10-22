@@ -1,4 +1,4 @@
-from just_agents_sandbox.micromamba_session import MicromambaSession
+from just_agents_coding.micromamba_session import MicromambaSession
 from llm_sandbox.docker import ConsoleOutput
 
 def run_bash_command(command: str):

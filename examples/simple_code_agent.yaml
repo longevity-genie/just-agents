@@ -30,7 +30,7 @@ options:
   model: "gpt-4o-mini"
   temperature: 0.0
 tools:
-  - package: "just_agents_sandbox.tools"
+  - package: "just_agents_coding.tools"
     function: "run_bash_command"
-  - package: "just_agents_sandbox.tools"
+  - package: "just_agents_coding.tools"
     function: "run_python_code"

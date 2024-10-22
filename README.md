@@ -57,8 +57,6 @@ This example demonstrates how two agents (a customer and a storekeeper) can inte
 
 All prompts that we use are stored in yaml files that you can easily overload.
 
-The only complex (but not mandatory) dependency that we use is Mako for prompt templates.
-
 ## Chain of Thought Agent with Function Calls
 
 The `ChainOfThoughtAgent` class extends the capabilities of our agents by allowing them to use reasoning steps and call functions. Here's an example:
