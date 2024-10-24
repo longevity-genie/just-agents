@@ -5,19 +5,16 @@ import json
 
 from just_agents_router.secretary_agent import SecretaryAgent
 
-@pytest.fixture(scope='module', autouse=True)
-def load_env():
-    dotenv.load_dotenv(override=True)
-    assert os.getenv("OPENAI_API_KEY", None), "OPENAI_API_KEY is not set in the environment."
-
 @pytest.fixture(scope='module')
 def temp_config_path(tmpdir_factory):
     # Create a temporary directory for YAML files
+    dotenv.load_dotenv(override=True)
     tmpdir_factory.mktemp('config')
     return SecretaryAgent.DEFAULT_CONFIG_PATH
 
 @pytest.fixture
 def secretary_autoload_false(temp_config_path):
+    dotenv.load_dotenv(override=True)
     params = {
         'autoload_from_yaml': False,
         'config_path': temp_config_path,
@@ -32,6 +29,7 @@ def secretary_autoload_false(temp_config_path):
 @pytest.fixture
 def secretary_autoload_true(temp_config_path, secretary_autoload_false):
     # Ensure the YAML file exists from the previous fixture
+    dotenv.load_dotenv(override=True)
     params = {
         'model_name': None,
         'extra_dict': {
@@ -48,12 +46,14 @@ def secretary_autoload_true(temp_config_path, secretary_autoload_false):
     return secretary, result
 
 def test_secretary_autoload_false(secretary_autoload_false):
+    dotenv.load_dotenv(override=True)
     secretary, result = secretary_autoload_false
     assert result is True, "Failed to update profile when autoload_from_yaml is False."
     assert secretary.description != secretary.DEFAULT_DESCRIPTION, "Description was not updated."
     assert secretary.llm_model_name is not None, "LLM model name is None."
 
 def test_secretary_autoload_true(secretary_autoload_true):
+    dotenv.load_dotenv(override=True)
     secretary, result = secretary_autoload_true
     assert result is True, "Failed to update profile when autoload_from_yaml is True."
     assert secretary.description != secretary.DEFAULT_DESCRIPTION, "Description was not updated."
@@ -62,6 +62,7 @@ def test_secretary_autoload_true(secretary_autoload_true):
 
 def test_new_secretary(temp_config_path):
     # Load the secretary from the YAML file created in previous tests
+    dotenv.load_dotenv(override=True)
     new_secretary = SecretaryAgent.from_yaml(
         'SecretaryAgent'
     )
