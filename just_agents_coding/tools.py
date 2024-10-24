@@ -1,4 +1,4 @@
-from just_agents_sandbox.micromamba_session import MicromambaSession
+from llm_sandbox.micromamba import MicromambaSession
 from llm_sandbox.docker import ConsoleOutput
 
 def run_bash_command(command: str):
@@ -18,7 +18,7 @@ def run_python_code(code: str):
         result: ConsoleOutput = session.run(code)
         return result
     
-def copy_files_from_runtime(src: str, dest: str):
+def copy_from_container(src: str, dest: str):
     """
     src: str # path to file in runtime
     dest: str # path to file in host
