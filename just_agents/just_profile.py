@@ -1,7 +1,11 @@
 from pathlib import Path
-from pydantic import Field
-from typing import Optional, List, ClassVar, Tuple
+from pydantic import Field, field_validator, model_validator
+from typing import Optional, List, ClassVar, Tuple, Sequence, Union, Callable, Self
+
+from regex import template
+
 from just_agents.just_serialization import JustSerializable
+from just_agents.just_tool import JustTool
 
 class JustAgentProfile(JustSerializable):
     """
@@ -9,8 +13,9 @@ class JustAgentProfile(JustSerializable):
     """
     DEFAULT_GENERIC_PROMPT: ClassVar[str] = "You are a helpful AI assistant"
     DEFAULT_DESCRIPTION: ClassVar[str] = "Generic all-purpose AI agent"
-    CONFIG_PARENT_SECTION: ClassVar[str] = 'agent_profiles'
-    CONFIG_PATH: ClassVar[Path] = Path('config/agent_profiles.yaml')
+    DEFAULT_PARENT_SECTION: ClassVar[str] = 'agent_profiles'
+    DEFAULT_CONFIG_PATH: ClassVar[Path] = Path('config/agent_profiles.yaml')
+    config_parent_section: Optional[Path] = Field(DEFAULT_PARENT_SECTION, exclude=True)
 
     system_prompt: str = Field(
         DEFAULT_GENERIC_PROMPT,
@@ -62,15 +67,41 @@ class JustAgentProfile(JustSerializable):
     )
     """The name of the preferred model to use for inference"""
 
-    tool_names: Optional[List[str]] = Field(
+    tools: Optional[Sequence[Union[Callable|JustTool]]] = Field(
         None,
-        description="A List[str] of the tools names available to the agent")
-    """List of the tools available to the agent"""
+        description="A List[Callable] of tools s available to the agent and their descriptions")
+    """A List[Callable] of tools s available to the agent and their descriptions"""
 
     knowledge_sources: Optional[List[str]] = Field(
         None,
         description="A List[str] of of external knowledge sources the agent is capable of accessing, e.g., databases, APIs, etc.")
     """List of external knowledge sources the agent is capable of accessing, e.g., databases, APIs, etc."""
+
+    @model_validator(mode='after')
+    def validate_model(self) -> Self:
+        """Converts callables to JustTool instances and refreshes them before validation."""
+        if not self.tools:
+            return self
+        if not isinstance(self.tools, Sequence):
+            raise TypeError("The 'tools' field must be a sequence of callables or JustTool instances.")
+        elif not {x for x in self.tools if not isinstance(x, JustTool)}: #all converted
+            return self
+        new_tools = []
+        for item in self.tools:
+            if isinstance(item, JustTool):
+                new_tools.append(item.refresh())
+            elif callable(item):
+                new_tools.append(JustTool.from_callable(item))
+            else:
+                raise TypeError("Items in 'tools' must be callables or JustTool instances.")
+        setattr(self, 'tools', new_tools)
+        return self
+
+    def get_tools_callables(self) -> Optional[Sequence[Callable]]:
+        """Retrieves the list of callables from the tools."""
+        if self.tools is None:
+            return None
+        return [tool.refresh().get_callable() for tool in self.tools]
 
     def __str__(self) -> str:
         """

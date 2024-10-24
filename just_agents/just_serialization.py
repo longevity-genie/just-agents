@@ -1,10 +1,9 @@
-import json
 
 import yaml
 import os
 import importlib
 
-from typing import Optional, Dict, Any, ClassVar, Self, Sequence, Union, Set
+from typing import Optional, Dict, Any, ClassVar, Self, Sequence, Union, Set, Callable
 from pathlib import Path
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from collections.abc import MutableMapping, MutableSequence
@@ -13,10 +12,7 @@ class JustYaml(BaseModel):
     """
     A utility static class for reading and saving data to YAML files.
 
-    Constants:
-        DEFAULT_CONFIG_PATH (Path): Default path to the configuration YAML file.
-        DEFAULT_SECTION_NAME (str): Default section name to use when none is provided.
-        DEFAULT_AGENT_PROFILES_SECTION (str): Default parent section name.
+
 
     Methods:
         read_yaml_data(file_path: Path, section_name: str, parent_section: str = DEFAULT_AGENT_PROFILES_SECTION) -> Dict:
@@ -25,8 +21,6 @@ class JustYaml(BaseModel):
         save_to_yaml(file_path: Path, section_data: Dict, section_name: str, parent_section: str = DEFAULT_AGENT_PROFILES_SECTION) -> None:
             Updates a section within a YAML file with new data.
     """
-    MODULE_DIR : ClassVar[Path] = Path(os.path.abspath(os.path.dirname(__file__)))
-    DEFAULT_CONFIG_PATH : ClassVar[Path] = Path('config/just_agents.yaml')
 
     @staticmethod
     def read_yaml_data(
@@ -147,9 +141,22 @@ class JustYaml(BaseModel):
 
 
 class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_assignment=True):
+    """
+    Pydantic2 wrapper class that implements semi-automated YAML and JSON serialization and deserialization
 
-    DEFAULT_PARENT_SECTION : ClassVar[str] = 'JustSerializableObjects'
-    DEFAULT_SECTION_NAME : ClassVar[str] = 'RenameMe'
+    Constants:
+        DEFAULT_CONFIG_PATH (Path): Default path to the configuration YAML file.
+        DEFAULT_PARENT_SECTION (str): Default parent section name.
+        DEFAULT_SECTION_NAME (str): Default section name to use when none is provided.
+
+    """
+    DEFAULT_CONFIG_PATH : ClassVar[Path] = Path('config/just_agents.yaml')
+    DEFAULT_PARENT_SECTION : ClassVar[Optional[str]] = None
+    DEFAULT_SECTION_NAME : ClassVar[Optional[str]] = 'RenameMe'
+#    MODULE_DIR : ClassVar[Path] = Path(os.path.abspath(os.path.dirname(__file__)))
+
+    config_path : Optional[Path] = Field(None,exclude=True)
+    config_parent_section: Optional[Path] = Field(None,exclude=True)
 
     shortname: str = Field(
         DEFAULT_SECTION_NAME,
@@ -183,6 +190,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             self.class_qualname = self.get_full_class_path()
         if self.class_hierarchy is None:
             self.class_hierarchy = self.get_class_hierarchy()
+        if self.shortname == self.DEFAULT_SECTION_NAME:
+            self.shortname = self.__class__.__name__
         # Collect extra fields into 'extras' attribute
         extra = getattr(self, '__pydantic_extra__', {}) or {}
         if self.extras is None:
@@ -227,7 +236,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
     def validate_shortname(cls, value: str) -> str:
         """
         Validates the 'shortname' field to ensure it contains only allowed characters.
-        Regex pattern equivalent: /^[a-zA-Z0-9_\-]+$/
+        Regex pattern equivalent: '/^[a-zA-Z0-9_-]+$/'
         """
         allowed_characters = set("abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-")
         if not set(value).issubset(allowed_characters):
@@ -259,8 +268,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
 
     @classmethod
     def from_yaml(cls, section_name: str,
-                  parent_section: str = DEFAULT_PARENT_SECTION,
-                  file_path: Path = JustYaml.DEFAULT_CONFIG_PATH,
+                  parent_section: str = None,
+                  file_path: Path = None,
     ) -> Self:
         """
         Creates an instance from a YAML file path, section name, and parent section name.
@@ -276,13 +285,22 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
         Raises:
             ValueError: If the specified section is not found in the YAML file.
         """
-        section_data = JustYaml.read_yaml_data(file_path, section_name, parent_section)
+        section_data = JustYaml.read_yaml_data(
+            file_path or cls.DEFAULT_CONFIG_PATH,
+            section_name,
+            parent_section or cls.DEFAULT_PARENT_SECTION,
+        )
+        if not section_data.get("config_path"):
+            section_data.update({"config_path": file_path})
+        if not section_data.get("config_parent_section"):
+            section_data.update({"config_parent_section": parent_section})
+        section_data.update({"shortname": section_name})
         return cls.model_validate(section_data)
 
     @staticmethod
     def from_yaml_auto(section_name: str,
-                       parent_section: Optional[str] = None,
-                       file_path: Path = JustYaml.DEFAULT_CONFIG_PATH,
+                       parent_section: Optional[str],
+                       file_path: Path,
                        ) -> Any:
         """
         Creates an instance from a YAML file.
@@ -300,10 +318,19 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             Any: An instance of the dynamically imported class if `class_qualname` is found in the
                  configuration data; otherwise, returns None.
         """
-        config_data = JustYaml.read_yaml_data_safe(file_path, section_name, parent_section)
+        config_data = JustYaml.read_yaml_data_safe(
+            file_path,
+            section_name,
+            parent_section,
+        )
         if config_data is None:
             return None
         instance = None
+        if not config_data.get("config_path"):
+            config_data.update({"config_path": file_path})
+        if not config_data.get("config_parent_section"):
+            config_data.update({"config_parent_section": parent_section})
+        config_data.update({"shortname": section_name})
         class_qualname = config_data.get("class_qualname")
         if class_qualname:
             try:
@@ -414,8 +441,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
     def save_to_yaml(
             self,
             section_name: str = None,
-            parent_section: str = DEFAULT_PARENT_SECTION,
-            file_path: Path = JustYaml.DEFAULT_CONFIG_PATH,
+            parent_section: str = None,
+            file_path: Path = None,
             include_extras: bool = True,
             include: Optional[Set[str]] = None,
             exclude: Optional[Set[str]] = None,
@@ -439,6 +466,14 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             exclude_none (bool): Whether to exclude fields with None values from the output.
             serialize_as_any (bool): Whether to serialize values by their types.
         """
+
+        if not file_path:
+            file_path = self.config_path or self.DEFAULT_CONFIG_PATH #set configured or default
+        if not parent_section:
+            parent_section = self.config_parent_section #None is also valid, only set configured
+        if not section_name:
+            section_name = self.shortname #Set configured
+
         section_data = self.to_json(
             include_extras=include_extras,
             include=include,
@@ -497,6 +532,20 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             else:
                 self.extras.update(new_data)
 
+    def update_from_yaml(self, overwrite: bool = False):
+        profile  = self.from_yaml_auto(
+            self.shortname,
+            parent_section=self.config_parent_section,
+            file_path=self.config_path,
+        )
+        # Loaded some data, parameters set in init take precedence
+        if profile and isinstance(profile, self.__class__):
+            self.update(
+                profile.to_json(
+                    by_alias=False
+                ),
+                overwrite=overwrite
+            )
 
     def validate_keys_match(self, instance: Union[BaseModel, Dict, Sequence]):
         """

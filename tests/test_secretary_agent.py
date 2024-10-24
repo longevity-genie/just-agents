@@ -14,7 +14,7 @@ def load_env():
 def temp_config_path(tmpdir_factory):
     # Create a temporary directory for YAML files
     tmpdir_factory.mktemp('config')
-    return SecretaryAgent.CONFIG_PATH
+    return SecretaryAgent.DEFAULT_CONFIG_PATH
 
 @pytest.fixture
 def secretary_autoload_false(temp_config_path):
@@ -33,7 +33,6 @@ def secretary_autoload_false(temp_config_path):
 def secretary_autoload_true(temp_config_path, secretary_autoload_false):
     # Ensure the YAML file exists from the previous fixture
     params = {
-        'autoload_from_yaml': True,
         'model_name': None,
         'extra_dict': {
             "personality_traits": "Agent's personality traits go here",
@@ -41,6 +40,7 @@ def secretary_autoload_true(temp_config_path, secretary_autoload_false):
         'config_path': temp_config_path,
     }
     secretary = SecretaryAgent(**params)
+    secretary.update_from_yaml(True)
     info = secretary.get_info(secretary)
     to_populate = secretary.get_to_populate(secretary)
     result = secretary.update_profile(secretary, info, to_populate, verbose=True)
@@ -63,14 +63,12 @@ def test_secretary_autoload_true(secretary_autoload_true):
 def test_new_secretary(temp_config_path):
     # Load the secretary from the YAML file created in previous tests
     new_secretary = SecretaryAgent.from_yaml(
-        'SecretaryAgent',
-        SecretaryAgent.CONFIG_PARENT_SECTION,
-        SecretaryAgent.CONFIG_PATH
+        'SecretaryAgent'
     )
     assert new_secretary.role is not None, "Role is None in the loaded secretary."
     assert new_secretary.description is not None, "Description is None in the loaded secretary."
     assert new_secretary.extras.get("personality_traits") is not None, "Personality traits missing in loaded secretary."
     assert new_secretary.llm_model_name is not None, "LLM model name is None in the loaded secretary."
-    assert not new_secretary.tool_names, "Tool names should be empty."
+    assert not new_secretary.tools, "Tool names should be empty."
     assert not new_secretary.get_to_populate(new_secretary), "There are still fields to populate."
     print("Results:", json.dumps(new_secretary.to_json(), indent=2))
