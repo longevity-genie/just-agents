@@ -8,11 +8,13 @@ LLM agents done right, no over-engineering and redundant complexity!
 # Motivation
 
 Most of the existing agentic libraries are extremely over-engineered either directly or by using over-engineered libraries under the hood, like langchain and llamaindex.
-In reality, interactions with LLMs are mostly about strings, and you can write your own template by just using f-strings and python native string templates. 
+In reality, interactions with LLMs are mostly about strings, and you can write your own template by just using f-strings and python native string templates.
 There is no need in complicated chain-like classes and other abstractions, in fact popular libraries create complexity just to sell you their paid services for LLM calls monitoring because it is extremely hard to understand what exactly is sent to LLMs.
 
+It is way easier to reason about the code if you separate your prompting from python code to a separate easily readable files (like yaml files).
+
 We wrote this libraries while being pissed of by high complexity and wanted something controlled and simple.
-Of course, you might comment that we do not have the ecosystem like, for example, tools and loaders. In reality, most of langchain tools are just very simple functions wrapped in their classes, you can always quickly look at them and re-implement them easier.
+Of course, you might comment that we do not have the ecosystem like, for example, tools and loaders. In reality, most of langchain tools are just very simple functions wrapped in their classes, you can always quickly look at them and write a simple function to do the same thing that just-agents will pick up easily.
 
 ## Key Features
 
@@ -22,11 +24,26 @@ Of course, you might comment that we do not have the ecosystem like, for example
 - Support for various LLM models through litellm
 - Chain of Thought reasoning with function calls
 
+## Examples
+
+We provide examples of using Just Agents for various tasks in the [examples](examples) directory, including:
+
+* basic - basic examples of using Just Agents
+* coding - generating and executing code and commands (note: require docker to be installed)
+* tools - tools used by examples
+* multiagent - multiagent examples
+
 # How it works
 
-We use litellm library to interact with LLMs. 
+We use litellm library to interact with LLMs.
+LLMSession class is a thin wrapper around litellm that allows you to interact with varios LLMs and add function as tools that it can call.
+Agent classes either inherit or use LLMSession inside of them and also inherit from just_serialization class which allows you to save and load agents to yaml files.
 
-The `ChatAgent` class is the core of our library. It represents an agent with a specific role, goal, and task. Here's a simple example of two agents talking to each other.
+
+## ChatAgent
+
+The `ChatAgent` class is the core of our library. 
+It represents an agent with a specific role, goal, and task. Here's a simple example of two agents talking to each other.
 
 ```python
 from dotenv import load_dotenv
@@ -82,10 +99,10 @@ This example shows how a Chain of Thought agent can use a custom function to cou
 
 # Package structure
 
-- just_agents - core library
-- just_agents_sandbox - contains sandbox containers for safe code executions and code running agents
-- just_agents_examples - contains examples
-- just_agents_tools - contains useful tools that you can use in your agents
+* just_agents - core library
+* just_agents_coding - contains sandbox containers for safe code executions and code running agents
+* just_agents_examples - contains examples of just-agents usage
+* just_agents_tools - contains useful tools that you can use in your agents
 
 # Installation
 

@@ -5,5 +5,5 @@ options:
   api_base: "https://api.groq.com/openai/v1"
   temperature: 0.0
 tools:
-  - package: "tools.examples.letter_count"
+  - package: "examples.tools.letter_count"
     function: "letter_count"
