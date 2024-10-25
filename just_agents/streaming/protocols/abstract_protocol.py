@@ -1,9 +1,11 @@
-class AbstractStreamingProtocol:
+from typing import Any
+from abc import ABC, abstractmethod
 
-    def get_chunk(self, index:int, delta:str, options:dict):
-        raise NotImplementedError()
-        return ""
+class AbstractStreamingProtocol(ABC):
+    @abstractmethod
+    def get_chunk(self, index:int, delta:str, options:dict) -> Any:
+        raise NotImplementedError("You need to implement get_chunk() first!")
 
-    def done(self):
-        raise NotImplementedError()
-        return ""
+    @abstractmethod
+    def done(self) -> str:
+        raise NotImplementedError("You need to implement done() first!")

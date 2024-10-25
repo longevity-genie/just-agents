@@ -1,0 +1,22 @@
+description: "This sample file wad auto-generated using 'agent_from_yaml.py'"
+agent_profiles:
+  SimpleWeatherAgent:
+    class_qualname: just_agents.just_agent.JustAgent
+    description: Generic all-purpose AI agent
+    llm_options:
+      model: gpt-4o-mini
+      temperature: 0.0
+    system_prompt: You are a helpful AI assistant
+    tools:
+    - auto_refresh: true
+      description: "Gets the current weather in a given location.\n    Args:\n   \
+        \     location (str): The name of the location to get the weather for.\n \
+        \   Returns:\n        str: A JSON string containing the location, temperature,\
+        \ and unit of measurement.\n    "
+      function: get_current_weather
+      package: examples.tools.weather
+      parameters:
+      - location:
+          default: null
+          kind: POSITIONAL_OR_KEYWORD
+          type_annotation: <class 'str'>
