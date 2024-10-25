@@ -16,7 +16,7 @@ if __name__ == "__main__":
     assert coding_examples_dir.exists(), f"Examples directory {str(coding_examples_dir)} does not exist, check the current working directory"
 
     assistant: LLMSession= build_agent(coding_examples_dir / "code_agent.yaml")
-    result, thoughts = assistant.query("Use pyvcf3 library to analyze vcf file with human genome. "
+    result, thoughts = assistant.query("Analyze vcf file with human genome using vcflib python binding."
                                        "Extract an overall number of SNPs, deletions, and insertions. Show SNPs distribution over chromosomes."
                                        "On this URL you will find vcf file for this task 'https://drive.usercontent.google.com/download?id=13tPNQsVXMtQKFcTeTOZ-bi7QWa9OdPD4'."
                                        " Save results as genomic_result.txt")
