@@ -1,7 +1,8 @@
 # just-agents
 [![Python CI](https://github.com/longevity-genie/just-agents/actions/workflows/python-ci.yaml/badge.svg)](https://github.com/longevity-genie/just-agents/actions/workflows/python-ci.yaml)
 [![PyPI version](https://badge.fury.io/py/just-agents.svg)](https://badge.fury.io/py/just-agents)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
+[![Documentation Status](https://readthedocs.org/projects/just-agents/badge/?version=latest)](https://just-agents.readthedocs.io/en/latest/?badge=latest)
+
 
 LLM agents done right, no over-engineering and redundant complexity! 
 

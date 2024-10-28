@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = '0.2.3'
+VERSION = '0.2.4'
 DESCRIPTION = 'Just Agents'
 LONG_DESCRIPTION = 'LLM Agents that are implemented without unnecessary complexity'
 
@@ -15,19 +15,21 @@ LONG_DESCRIPTION = 'LLM Agents that are implemented without unnecessary complexi
 setup(
     name="just-agents",
     version=VERSION,
-    author="Alex Karmazin, Anton Kulaga",
-    author_email="antonkulaga@gmail.com",
+    author="Alex Karmazin",
+    author_email="karmazinalex@gmail.com",
+    maintainer="Anton Kulaga",
+    maintainer_email="antonkulaga@gmail.com",
     description=DESCRIPTION,
     long_description_content_type="text/markdown",
     long_description=long_description,
     packages=find_packages(),
-    install_requires=["litellm>=1.50.1", "numpydoc", "requests", "typer>=0.12.5"],
+    install_requires=["litellm>=1.51.0", "numpydoc", "requests", "typer>=0.12.5"],
     extras_require={
         'tools': [
             'semanticscholar>=0.8.4'
         ],
         'coding': [
-            'llm-sandbox @ git+https://github.com/antonkulaga/llm-sandbox.git'
+            'llm-sandbox>=0.1.2'
         ]
     },
     keywords=['python', 'llm', 'science', 'review', 'agents', 'AI'],

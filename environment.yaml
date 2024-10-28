@@ -5,12 +5,12 @@ channels:
 dependencies:
   - python=3.11
   - pip
-  - requests
+  - requests>=2.32.3
   - pytest>=8.3.3 #for tests
   - typer>=0.12.5 #for CLI
   - twine #for publishing
   - pip:
-      - litellm>=1.50.1
+      - litellm>=1.51.0
       - numpydoc
       - semanticscholar>=0.8.4
-      - git+https://github.com/antonkulaga/llm-sandbox.git # until llm-sandbox will fix it bugs we use our fork
+      - llm-sandbox>=0.1.2
