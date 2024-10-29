@@ -5,6 +5,7 @@ from just_agents.interfaces.IAgent import build_agent, IAgent
 from just_agents.llm_session import LLMSession
 from llm_sandbox.micromamba import MicromambaSession
 from llm_sandbox.docker import SandboxDockerSession
+from pathlib import Path
 from mounts import make_mounts, input_dir, output_dir
 
 """
