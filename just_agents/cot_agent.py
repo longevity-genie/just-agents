@@ -3,8 +3,7 @@ from just_agents.llm_session import LLMSession
 import json
 from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
-from pathlib import Path, PurePath
-import yaml
+from pathlib import Path
 from just_agents.utils import _resolve_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
 
 # schema parameters:
@@ -32,53 +31,58 @@ class ChainOfThoughtAgent(IAgent):
         self.output_streaming: AbstractStreamingProtocol = output_streaming
 
 
-    def stream(self, input: str | dict | list):
-        thought_max_tokes = self.agent_schema.get(THOUGHT_MAX_TOKES, 500)
-        self.session.update_options("max_tokens", thought_max_tokes)
-        if not "claude" in self.session.llm_options["model"]:
-            self.session.update_options("response_format", {"type": "json_object"})
+    def _process_initial_query(self, input: str | dict | list) -> tuple[dict, str]:
+        thought_max_tokens = self.agent_schema.get(THOUGHT_MAX_TOKES, 300)
+        self.session.update_options("max_tokens", thought_max_tokens)
+        self.session.update_options("response_format", {"type": "json_object"})
         step_data = json.loads(self.session.query(input))
-        CONTENT = self.agent_schema.get(CONTENT_NAME, "content")
-        content = step_data[CONTENT] + "\n"
-        yield self.output_streaming.get_chunk(0, content, self.session.llm_options)
+        content_key = self.agent_schema.get(CONTENT_NAME, "content")
+        content = f"{step_data[content_key]}\n"
         max_steps = self.agent_schema.get(MAX_STEPS, 25)
+
+        return content, content_key, max_steps
+
+
+    def _get_final_answer(self, content_key:str) -> str:
+        final_max_tokens = self.agent_schema.get(FINAL_MAX_TOKENS, 1200)
+        self.session.update_options("max_tokens", final_max_tokens)
+
+        final_prompt = self.agent_schema.get(
+            FINAL_PROMPT,
+            "Please provide the final answer based solely on your reasoning above."
+        )
+        final_data = json.loads(self.session.query(final_prompt))
+        return final_data[content_key]
+
+
+    def stream(self, input: str | dict | list):
+        content, content_key, max_steps = self._process_initial_query(input)
+        yield self.output_streaming.get_chunk(0, content, self.session.llm_options)
         for step_count in range(1, max_steps):
             step_data = json.loads(self.session.proceed())
-            content = step_data[CONTENT] + "\n"
+            content = step_data[content_key] + "\n"
             yield self.output_streaming.get_chunk(step_count, content, self.session.llm_options)
             if step_data[self.agent_schema.get(NEXT_ACTION, "next_action")] == self.agent_schema.get(ACTION_FINAL, "final_answer"):
                 break
 
-        final_max_tokens = self.agent_schema.get(FINAL_MAX_TOKENS, 1200)
-        self.session.update_options("max_tokens", final_max_tokens)
-        final_prompt = self.agent_schema.get(FINAL_PROMPT, "Please provide the final answer based solely on your reasoning above.")
-        final_data = json.loads(self.session.query(final_prompt))
-        yield self.output_streaming.get_chunk(step_count + 1, final_data[CONTENT], self.session.llm_options)
+        content = self._get_final_answer(content_key)
+        yield self.output_streaming.get_chunk(step_count + 1, content, self.session.llm_options)
         yield self.output_streaming.done()
 
 
     def query(self, input:  str | dict | list):
-        thought_max_tokes = self.agent_schema.get(THOUGHT_MAX_TOKES, 500)
-        self.session.update_options("max_tokens", thought_max_tokes)
-        if not "claude" in self.session.llm_options["model"]:
-            self.session.update_options("response_format", {"type": "json_object"})
-        step_data = json.loads(self.session.query(input))
-        CONTENT = self.agent_schema.get(CONTENT_NAME, "content")
-        content = step_data[CONTENT] + "\n"
+        content, content_key, max_steps = self._process_initial_query(input)
         thoughts:str = content
-        max_steps = self.agent_schema.get(MAX_STEPS, 25)
         for step_count in range(1, max_steps):
             step_data = json.loads(self.session.proceed())
-            content = step_data[CONTENT] + "\n"
+            content = step_data[content_key] + "\n"
             thoughts += content
             if step_data[self.agent_schema.get(NEXT_ACTION, "next_action")] == self.agent_schema.get(ACTION_FINAL, "final_answer"):
                 break
 
-        final_max_tokens = self.agent_schema.get(FINAL_MAX_TOKENS, 1200)
-        self.session.update_options("max_tokens", final_max_tokens)
-        final_prompt = self.agent_schema.get(FINAL_PROMPT, "Please provide the final answer based solely on your reasoning above.")
-        final_data = json.loads(self.session.query(final_prompt))
-        return final_data[CONTENT], thoughts
+        content = self._get_final_answer(content_key)
+        return content, thoughts
+
 
     def last_message(self):
         return self.session.memory.last_message
