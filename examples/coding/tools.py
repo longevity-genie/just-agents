@@ -1,4 +1,4 @@
-
+import re
 from dotenv import load_dotenv
 import requests
 from just_agents.interfaces.IAgent import build_agent, IAgent
@@ -87,3 +87,20 @@ def write_thoughts_and_results(name: str, thoughts: str, result: str):
         f.write(result)
     
     print(f"Thoughts and results have been written to {where}")
+
+
+def amino_match_endswith(text, ending):
+    # Define the regex pattern for an amino acid sequence, with > optional
+    fasta_pattern = r">?(?>[^\n]*?\n)?([ACDEFGHIKLMNPQRSTVWY\n]{4,})"
+
+    # Find all matches
+    matches = re.findall(fasta_pattern, text,  re.MULTILINE)
+
+    # Check that there is exactly one match
+    if len(matches) != 1:
+        return False
+
+    # Remove newlines from the sequence and check the ending
+    sequence = "".join(matches[0].splitlines())
+
+    return sequence.endswith(ending.upper())
