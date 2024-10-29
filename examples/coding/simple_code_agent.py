@@ -1,14 +1,13 @@
 from pathlib import Path
 from dotenv import load_dotenv
 
+from examples.coding.mounts import make_mounts, input_dir, output_dir, coding_examples_dir
 from just_agents.interfaces.IAgent import build_agent, IAgent
 load_dotenv(override=True)
 
 """
 This example shows how to use a simple code agent to run python code and bash commands, it does not use volumes and is based on basic LLMSession class.
 """
-
-coding_examples_dir = Path(__file__).parent.absolute()
 
 if __name__ == "__main__":
 

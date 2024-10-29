@@ -7,10 +7,9 @@ from llm_sandbox.docker import SandboxDockerSession
 from docker.types import Mount
 
 from examples.coding.tools import write_thoughts_and_results
+from examples.coding.mounts import make_mounts, input_dir, output_dir, coding_examples_dir
 
 load_dotenv(override=True)
-coding_examples_dir = Path(__file__).parent.absolute()
-output_dir = coding_examples_dir / "output"
 
 if __name__ == "__main__":
     assert coding_examples_dir.exists(), f"Examples directory {str(coding_examples_dir)} does not exist, check the current working directory"

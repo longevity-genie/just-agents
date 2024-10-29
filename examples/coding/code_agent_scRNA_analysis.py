@@ -8,6 +8,7 @@ from llm_sandbox.docker import SandboxDockerSession
 from docker.types import Mount
 import os
 from examples.coding.tools import write_thoughts_and_results
+from examples.coding.mounts import make_mounts, input_dir, output_dir, coding_examples_dir
 
 load_dotenv(override=True)
 
@@ -15,10 +16,6 @@ load_dotenv(override=True)
 This example shows how to use a Chain Of Thought code agent to run python code and bash commands, it uses volumes and is based on Chain Of Thought Agent class.
 The task was taken from then https://github.com/JoshuaChou2018/AutoBA library
 """
-
-coding_examples_dir = Path(__file__).parent.absolute()
-output_dir = coding_examples_dir / "output"
-
 
 if __name__ == "__main__":
     
