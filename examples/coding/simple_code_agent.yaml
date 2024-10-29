@@ -12,6 +12,7 @@ However, no other software is installed by default.
 6. Do not include loading data as a separate step in your plans.
 7. When writing code:
    - Use full absolute paths for all files.
+   - Always give all relevant imports at the beginning of the code.
    - Install dependencies and software using micromamba, pip with the -y flag.
    - Use default values for unspecified parameters.
    - Only use software directly installed with micromamba or pip.

@@ -33,6 +33,38 @@ def download_file(source_url: str, file_name: str) -> bool:
 
 
 
+def ugly_log(text: str, folder: Path, name: str = "code", ext: str = "py"):
+    """
+    Logs code to a numbered file in the specified folder.
+    Creates code_1.py if no files exist, otherwise increments the number.
+    
+    Args:
+        text: str - The code text to log
+        folder: Path - The folder where to save the file
+
+
+    It is a temporal functin that will be removed soon.
+    For logging purposesonly
+    """
+    # Create folder if it doesn't exist
+    folder.mkdir(parents=True, exist_ok=True)
+    
+    # Find all existing code files
+    existing_files = list(folder.glob(f"{name}_*.{ext}"))
+    
+    if not existing_files:
+        # No files exist, create code_1.py
+        new_file = folder / f"{name}_1.{ext}"
+    else:
+        # Find the highest number
+        numbers = [int(f.stem.split('_')[1]) for f in existing_files]
+        next_num = max(numbers) + 1
+        new_file = folder / f"{name}_{next_num}.{ext}"
+    
+    # Write the code to the new file
+    with new_file.open('w', encoding='utf-8') as f:
+        f.write(text)
+
 def run_bash_command(command: str) -> str:
     """
     command: str # command to run in bash, for example install software inside micromamba environment
@@ -45,11 +77,11 @@ def run_bash_command(command: str) -> str:
                                verbose=True,
                                mounts=mounts) as session:
             result = session.execute_command(command=command)
+            ugly_log(command, output_dir, "bash", "sh")
             return result
     except Exception as e:
         print(f"Error executing bash command: {e}")
         return str(e)
-
 
 def run_python_code(code: str) -> str:
     """
@@ -63,6 +95,7 @@ def run_python_code(code: str) -> str:
                                verbose=True,
                                mounts=mounts) as session:
             result = session.run(code)
+            ugly_log(code, output_dir, "code", "py")
             return result
     except Exception as e:
         print(f"Error executing Python code: {e}")

@@ -12,6 +12,7 @@ load_dotenv(override=True)
 
 """
 This example shows how to use a Chain Of Thought code agent to run python code and bash commands, it uses volumes and is based on Chain Of Thought Agent class.
+The task was taken from then https://github.com/JoshuaChou2018/AutoBA library
 """
 
 if __name__ == "__main__":

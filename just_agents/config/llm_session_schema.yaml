@@ -7,5 +7,6 @@ completion_max_tries: 2 # maximum number of completion retries before giving up
 backup_options: # options that will be used after we give up with main options, one more completion call will be done with backup options
 key_list_path: # path to text file with list of api keys, one key per line
 tools: # list of functions that will be used as tools, each record should contain package and function name
+drop_params: True # drop params from the request, useful for some models that do not support them
 #  - package:
 #    function:

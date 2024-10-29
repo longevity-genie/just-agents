@@ -11,15 +11,15 @@ from examples.coding.mounts import input_dir, output_dir, coding_examples_dir
 
 load_dotenv(override=True)
 
-from examples.coding.mounts import input_dir, output_dir, coding_examples_dir
-
 """
 This example shows how to use a Chain Of Thought code agent to run python code and bash commands. 
 It uses volumes (see tools.py) and is based on Chain Of Thought Agent class.
 """
 
 if __name__ == "__main__":
-    assistant: LLMSession= build_agent(coding_examples_dir / "code_agent.yaml")
+    assert coding_examples_dir.exists(), f"Examples directory {str(coding_examples_dir)} does not exist, check the current working directory"
+
+    assistant: LLMSession= build_agent(coding_examples_dir / "bioinformatic_agent.yaml")
     query = "Take two nutritional datasets (GSE176043 and GSE41781) and three partial reprogramming datasets (GSE148911, GSE190986 and GSE144600), download them from GEO and generate PCA plot with them in /output folder"
     result, thoughts = assistant.query(query)
    
