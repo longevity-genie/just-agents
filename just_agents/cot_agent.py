@@ -33,9 +33,10 @@ class ChainOfThoughtAgent(IAgent):
 
 
     def stream(self, input: str | dict | list):
-        thought_max_tokes = self.agent_schema.get(THOUGHT_MAX_TOKES, 300)
+        thought_max_tokes = self.agent_schema.get(THOUGHT_MAX_TOKES, 500)
         self.session.update_options("max_tokens", thought_max_tokes)
-        self.session.update_options("response_format", {"type": "json_object"})
+        if not "claude" in self.session.llm_options["model"]:
+            self.session.update_options("response_format", {"type": "json_object"})
         step_data = json.loads(self.session.query(input))
         CONTENT = self.agent_schema.get(CONTENT_NAME, "content")
         content = step_data[CONTENT] + "\n"
@@ -57,9 +58,10 @@ class ChainOfThoughtAgent(IAgent):
 
 
     def query(self, input:  str | dict | list):
-        thought_max_tokes = self.agent_schema.get(THOUGHT_MAX_TOKES, 300)
+        thought_max_tokes = self.agent_schema.get(THOUGHT_MAX_TOKES, 500)
         self.session.update_options("max_tokens", thought_max_tokes)
-        self.session.update_options("response_format", {"type": "json_object"})
+        if not "claude" in self.session.llm_options["model"]:
+            self.session.update_options("response_format", {"type": "json_object"})
         step_data = json.loads(self.session.query(input))
         CONTENT = self.agent_schema.get(CONTENT_NAME, "content")
         content = step_data[CONTENT] + "\n"

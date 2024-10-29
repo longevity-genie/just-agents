@@ -9,5 +9,5 @@ dependencies:
   - pytest>=8.3.3 #for tests
   - typer>=0.12.5 #for CLI
   - pip:
-      - litellm>=1.49.5
+      - litellm>=1.51.0
       - numpydoc

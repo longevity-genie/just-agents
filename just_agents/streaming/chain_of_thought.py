@@ -8,6 +8,7 @@ from just_agents.streaming.abstract_streaming import AbstractStreaming, Function
 from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
 import time
+import litellm
 import json
 
 class ChainOfThought(AbstractStreaming):
@@ -24,8 +25,9 @@ class ChainOfThought(AbstractStreaming):
         max_steps = 25
 
         opt = llm_session.llm_options.copy()
-        opt["max_tokens"] = 300
-        opt["response_format"] = {"type": "json_object"}
+        opt["max_tokens"] = 500
+        #if not "claude" in opt["model"]:
+        #    opt["response_format"] = {"type": "json_object"}
         for step_count in range(1, max_steps):
             response = llm_session._rotate_completion(stream=False)
             step_data = json.loads(response.choices[0].message.content)

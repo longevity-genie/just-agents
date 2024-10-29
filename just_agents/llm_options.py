@@ -16,6 +16,11 @@ OPENAI_GPT4oMINI: Dict = {
 }
 
 
+ANTHROPIC_CLAUDE_3_5_SONNET: Dict = {
+    "model": "anthropic/claude-3-5-sonnet",
+    "temperature": 0.0
+}
+
 LLAMA3: Dict = {
     "model": "groq/llama3-groq-70b-8192-tool-use-preview",
     "api_base": "https://api.groq.com/openai/v1",
