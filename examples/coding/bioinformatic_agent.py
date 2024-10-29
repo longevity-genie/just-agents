@@ -9,8 +9,7 @@ import os
 
 load_dotenv(override=True)
 
-coding_examples_dir = Path(__file__).parent.absolute()
-output_dir = coding_examples_dir / "output"
+from examples.coding.mounts import make_mounts, input_dir, output_dir, coding_examples_dir
 
 """
 This example shows how to use a Chain Of Thought code agent to run python code and bash commands. 

@@ -1,21 +1,15 @@
-from pathlib import Path
+
 from dotenv import load_dotenv
 import requests
 from just_agents.interfaces.IAgent import build_agent, IAgent
 from just_agents.llm_session import LLMSession
 from llm_sandbox.micromamba import MicromambaSession
 from llm_sandbox.docker import SandboxDockerSession
-from docker.types import Mount
-import os
+from mounts import make_mounts, input_dir, output_dir
 
 """
 Tools for running code in sandboxed environment that also mounts input and output directories.
 """
-
-coding_examples_dir = Path(__file__).parent.absolute()
-output_dir = coding_examples_dir / "output"
-input_dir =  coding_examples_dir / "input"
-
 
 def download_file(source_url: str, file_name: str) -> bool:
     """ Download file from source_url and save it to '/input' folder with file_name that available mount for runtime. """
@@ -37,12 +31,7 @@ def download_file(source_url: str, file_name: str) -> bool:
         return False
 
 
-def make_mounts():
-    assert coding_examples_dir.exists(), f"Examples directory {str(coding_examples_dir)} does not exist, check the current working directory"
-    return [
-        Mount(target="/input", source=str(input_dir), type="bind"),
-        Mount(target="/output", source=str(output_dir), type="bind")
-    ]
+
 
 def run_bash_command(command: str) -> str:
     """
