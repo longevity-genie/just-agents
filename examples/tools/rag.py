@@ -58,7 +58,7 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
     # ADDING ECHO HANDLERS:
     scientist.memory.add_on_message(lambda m: echo(f"SCIENTIST MESSAGE: {m}"))
     scientist.memory.add_on_tool_call(lambda f: echo(f"SCIENTIST FUNCTION: {f}"))
-    scientist.memory.add_on_tool_result(lambda m: echo(f"SCIENTIST TOOL result from {m.name} with tool call id {m.tool_call_id} is {m.content}"))
+    scientist.memory.add_on_tool_message(lambda m: echo(f"SCIENTIST TOOL result from {m.name} with tool call id {m.tool_call_id} is {m.content}"))
 
     answer = scientist.query(question)
     output_path = output / prompt_name / f"{sub_prompt}_initial_answer.txt"

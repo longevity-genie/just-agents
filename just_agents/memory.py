@@ -5,17 +5,33 @@ from litellm.types.utils import Function
 OnMessageCallable = Callable[[dict], None]
 OnFunctionCallable = Callable[[Function], None]
 
-@dataclass
-class Memory:
+TOOL = "tool"
+USER = "user"
+ASSISTANT = "assistant"
+SYSTEM = "system"
 
-    on_message: list[OnMessageCallable] = field(default_factory=list)
-    messages: list[dict] = field(default_factory=list)
+class Memory:
+    def __init__(self):
+        self.on_message:dict[str, list] = {TOOL:[], USER:[], ASSISTANT:[], SYSTEM:[]}
+        self.messages: list[dict] = []
+
 
     def add_on_message(self, handler: OnMessageCallable):
-        self.on_message.append(handler)
+        for role in self.on_message:
+            self.on_message[role].append(handler)
 
-    def add_on_tool_result(self, handler: OnMessageCallable):
-        self.add_on_message(lambda m: handler(m) if m['role'] == "tool" else None)
+
+    def add_on_tool_message(self, handler: OnMessageCallable):
+        self.on_message[TOOL].append(handler)
+
+    def add_on_user_message(self, handler: OnMessageCallable):
+        self.on_message[USER].append(handler)
+
+    def add_on_assistant_message(self, handler: OnMessageCallable):
+        self.on_message[ASSISTANT].append(handler)
+
+    def add_on_system_message(self, handler: OnMessageCallable):
+        self.on_message[SYSTEM].append(handler)
 
     def add_on_tool_call(self, fun: OnFunctionCallable):
         """
@@ -28,11 +44,35 @@ class Memory:
                 for call in message.tool_calls:
                     #if call.function is Function:
                     fun(call.function)
-        self.add_on_message(tool_handler)
+        self.add_on_assistant_message(tool_handler)
+
+
+    def _remove_on_message(self, handler: OnMessageCallable, role:str):
+        if handler in self.on_message[role]:
+            self.on_message[role].remove(handler)
 
 
     def remove_on_message(self, handler: OnMessageCallable):
-        self.on_message = [m for m in self.on_message if m == handler]
+        for role in self.on_message:
+            self._remove_on_message(handler, role)
+
+
+    def clear_all_on_message(self):
+        for role in self.on_message:
+            self.on_message[role].clear()
+
+
+    def remove_on_tool_message(self, handler: OnMessageCallable):
+        self._remove_on_message(handler, TOOL)
+
+    def remove_on_user_message(self, handler: OnMessageCallable):
+        self._remove_on_message(handler, USER)
+
+    def remove_on_assistant_message(self, handler: OnMessageCallable):
+        self._remove_on_message(handler, ASSISTANT)
+
+    def remove_on_system_message(self, handler: OnMessageCallable):
+        self._remove_on_message(handler, SYSTEM)
 
     def add_system_message(self, prompt: str):
         return self.add_message({"role":"system", "content":prompt})
@@ -48,7 +88,8 @@ class Memory:
         :return:
         """
         self.messages.append(message)
-        for handler in self.on_message:
+        role = message["role"]
+        for handler in self.on_message[role]:
             handler(message)
 
     @property
@@ -58,9 +99,8 @@ class Memory:
 
     def add_messages(self, messages: list[dict]):
         for message in messages:
-            self.messages.append(message)
-            for handler in self.on_message:
-                handler(message)
+            self.add_message(message)
+
 
     def clear_messages(self):
         self.messages.clear()

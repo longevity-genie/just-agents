@@ -37,8 +37,9 @@ if __name__ == "__main__":
     )
     result = session.query("What's the weather like in San Francisco, Tokyo, and Paris?")
 
-
-    session.memory.add_on_message(lambda m: pprint.pprint(m) if "content" in m is not None else None)
+    # I think we need to show all the messages. So should we ignore assistant message?
+    # session.memory.add_on_message(lambda m: pprint.pprint(m) if "content" in m is not None else None)
+    session.memory.add_on_message(lambda m: pprint.pprint(m))
     result = session.query(prompt)
 
     """
