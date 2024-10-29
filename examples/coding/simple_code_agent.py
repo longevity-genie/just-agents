@@ -1,5 +1,4 @@
 from pathlib import Path
-from wsgiref.validate import assert_
 
 from dotenv import load_dotenv
 from llm_sandbox.micromamba import MicromambaSession
