@@ -12,6 +12,7 @@ from typing import Callable
 class SchemaValidationError(ValueError):
     pass
 
+VALIDATION_EXCEPTIONS = ["options"]
 VALIDATION_EXTRAS = ["package", "function"]
 
 def resolve_agent_schema(agent_schema: str | Path | dict):
@@ -46,7 +47,7 @@ def resolve_and_validate_agent_schema(agent_schema: str | Path | dict | None, de
 def create_fields_set(source: dict[str, Any], fields_set: set[str]):
     for key in source:
         fields_set.add(key)
-        if isinstance(source[key], dict):
+        if (key not in VALIDATION_EXCEPTIONS) and isinstance(source[key], dict):
             create_fields_set(source[key], fields_set)
 
 
@@ -57,7 +58,7 @@ def validate_schema(reference: dict[str, Any], schema: dict[str, Any]):
     create_fields_set(schema, schema_set)
     error_fields = []
     for field in schema_set:
-        if field not in reference_set:
+        if field not in reference_set and field not in VALIDATION_EXCEPTIONS:
             error_fields.append(field)
 
     if len(error_fields) > 0:
