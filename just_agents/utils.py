@@ -8,26 +8,11 @@ import importlib.resources as resources
 from dotenv import load_dotenv
 import importlib
 from typing import Callable
-from litellm import Message, ModelResponse, completion
-import copy
 
-#
-# class RotateKeys():
-#     keys:list[str]
-#
-#     def __init__(self, file_path:str):
-#         with open(file_path) as f:
-#             text = f.read().strip()
-#             self.keys = text.split("\n")
-#
-#     def __call__(self, *args, **kwargs):
-#         return random.choice(self.keys)
-#
-#     def remove(self, key:str):
-#         self.keys.remove(key)
-#
-#     def len(self):
-#         return len(self.keys)
+class SchemaValidationError(ValueError):
+    pass
+
+VALIDATION_EXTRAS = ["package", "function"]
 
 def resolve_agent_schema(agent_schema: str | Path | dict):
     """
@@ -47,11 +32,36 @@ def resolve_agent_schema(agent_schema: str | Path | dict):
 
     return agent_schema
 
-def _resolve_agent_schema(agent_schema: str | Path | dict | None, default_file_name: str):
+def resolve_and_validate_agent_schema(agent_schema: str | Path | dict | None, default_file_name: str):
+    reference_schema = resolve_agent_schema(Path(Path(__file__).parent, "config", default_file_name))
     if agent_schema is None:
-        agent_schema = Path(Path(__file__).parent, "config", default_file_name)
+        return reference_schema
 
-    return resolve_agent_schema(agent_schema)
+    agent_schema = resolve_agent_schema(agent_schema)
+    validate_schema(reference_schema, agent_schema)
+
+    return agent_schema
+
+
+def create_fields_set(source: dict[str, Any], fields_set: set[str]):
+    for key in source:
+        fields_set.add(key)
+        if isinstance(source[key], dict):
+            create_fields_set(source[key], fields_set)
+
+
+def validate_schema(reference: dict[str, Any], schema: dict[str, Any]):
+    reference_set: set[str] = set(VALIDATION_EXTRAS)
+    schema_set: set[str] = set()
+    create_fields_set(reference, reference_set)
+    create_fields_set(schema, schema_set)
+    error_fields = []
+    for field in schema_set:
+        if field not in reference_set:
+            error_fields.append(field)
+
+    if len(error_fields) > 0:
+        raise SchemaValidationError(f" Fields {error_fields} not exists in yaml schema. Choose from {reference_set}")
 
 
 def resolve_llm_options(agent_schema: dict, llm_options: dict):
