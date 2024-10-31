@@ -103,5 +103,6 @@ tools:
   - package: "examples.coding.tools"
     function: "run_python_code"
 options:
-  model: "gpt-4o-mini"
+  model: "openai/gpt-4o-mini"
   temperature: 0.0
+  api_base: "http://127.0.0.1:14000/v1"
