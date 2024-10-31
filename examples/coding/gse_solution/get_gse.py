@@ -439,7 +439,7 @@ def main():
         os.makedirs('./input')
 
     # List of GSE IDs to process
-    gse_ids = ['GSE176043', 'GSE41781', 'GSE190986'] #, 'GSE144600']  # Removed GSE148911
+    gse_ids = ['GSE176043', 'GSE41781', 'GSE190986', 'GSE144600']  # Removed GSE148911
 
     # Process each GSE
     for gse_id in gse_ids:
