@@ -4,7 +4,7 @@ import json
 from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
 from pathlib import Path
-from just_agents.utils import _resolve_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
+from just_agents.utils import resolve_and_validate_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
 
 # schema parameters:
 LLM_SESSION = "llm_session"
@@ -21,7 +21,7 @@ class ChainOfThoughtAgent(IAgent):
 
     def __init__(self, llm_options: dict = None, agent_schema: str | Path | dict | None = None,
                  tools: list = None, output_streaming:AbstractStreamingProtocol = OpenaiStreamingProtocol()):
-        self.agent_schema: dict = _resolve_agent_schema(agent_schema, "cot_agent_prompt.yaml")
+        self.agent_schema: dict = resolve_and_validate_agent_schema(agent_schema, "cot_agent_prompt.yaml")
         if tools is None:
             tools = resolve_tools(self.agent_schema)
         self.session: LLMSession = LLMSession(llm_options=resolve_llm_options(self.agent_schema, llm_options),
