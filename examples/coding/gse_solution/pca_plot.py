@@ -1,11 +1,64 @@
 import pandas as pd
 import os
 from sklearn.decomposition import PCA
-from sklearn.preprocessing import RobustScaler, StandardScaler
+from sklearn.preprocessing import StandardScaler, RobustScaler
 import matplotlib.pyplot as plt
 import seaborn as sns
 from itertools import combinations
 import numpy as np
+
+def normalize_dataset(data, gse_id):
+    # Ensure that all column names (sample names) are strings
+    data.columns = data.columns.astype(str)
+    # Ensure that all index values (gene names) are strings
+    data.index = data.index.astype(str)
+    # Ensure that all data is numeric
+    data = data.apply(pd.to_numeric, errors='coerce')
+
+    # Handle missing values
+    # Drop columns (genes) that are all NaN
+    data = data.dropna(axis=1, how='all')
+    # Drop rows (samples) that are all NaN
+    data = data.dropna(axis=0, how='all')
+
+    # Set a threshold for maximum allowed NaNs
+    # For example, drop columns (genes) with less than 50% valid data
+    data = data.dropna(axis=1, thresh=int(data.shape[0] * 0.5))
+    # Similarly, drop rows (samples) with less than 50% valid data
+    data = data.dropna(axis=0, thresh=int(data.shape[1] * 0.5))
+
+    # If data is empty after dropping, handle it
+    if data.empty:
+        print(f"{gse_id} data is empty after preprocessing. Skipping this dataset.")
+        return None  # Return None to indicate skipping
+
+    # Fill remaining NaNs with the mean of each gene
+    data = data.fillna(data.mean())
+
+    # Check if data contains negative values
+    if (data.values < 0).any():
+        print(f"{gse_id} contains negative values. Skipping log transformation.")
+        # For datasets with negative values, skip log transformation
+        pass
+    else:
+        # Add a small constant to avoid log(0)
+        data = data + 1
+        # Log2 transformation
+        data = np.log2(data)
+
+    # Z-score normalization
+    data_transposed = data.transpose()
+    # Ensure that columns (genes) are strings after transposition
+    data_transposed.columns = data_transposed.columns.astype(str)
+    # Ensure that index (samples) are strings after transposition
+    data_transposed.index = data_transposed.index.astype(str)
+    scaler = StandardScaler()
+    data_scaled = scaler.fit_transform(data_transposed)
+    # Create DataFrame with the same index and columns
+    data_scaled = pd.DataFrame(data_scaled, index=data_transposed.index, columns=data_transposed.columns)
+    # Transpose back to original shape
+    return data_scaled.transpose()
+
 
 def plot_data_distributions(datasets):
     for gse_id, data in datasets.items():
@@ -37,54 +90,22 @@ def check_zero_variance_genes(data, gse_id):
 
 def main():
     # List of GSE IDs to process
-    #gse_ids = ['GSE41781', 'GSE144600']  # Removed GSE148911
-    gse_ids = ['GSE176043', 'GSE41781', 'GSE190986', 'GSE144600']  # Removed GSE148911
-
-    # Initialize a dictionary to store processed data
+    # gse_ids = ['GSE41781', 'GSE144600']  # Removed GSE148911
+    gse_ids = ['GSE176043', 'GSE41781', 'GSE190986', 'GSE144600']
     datasets = {}
-
-    # Check if output directory exists
     output_dir = './output'
-    if not os.path.exists(output_dir):
-        print("Output directory does not exist. Please ensure that the processed data files are available.")
-        return
 
-    # Load each processed dataset
     for gse_id in gse_ids:
         processed_file = f'{output_dir}/{gse_id}_processed.csv'
         if os.path.exists(processed_file):
             print(f"Loading processed data for {gse_id} from {processed_file}")
-            data = pd.read_csv(processed_file, index_col=0, dtype=str, low_memory=False)
-            # Ensure all data is numeric except the index
-            data = data.apply(pd.to_numeric, errors='coerce')
+            data = pd.read_csv(processed_file, index_col=0, low_memory=False)
+            # Normalize the dataset
+            data = normalize_dataset(data, gse_id)
             datasets[gse_id] = data
         else:
             print(f"Processed data file for {gse_id} not found at {processed_file}.")
-            print(f"Please ensure that the file exists or run the data processing script first.")
             return
-
-    compute_dataset_statistics(datasets)
-    plot_data_distributions(datasets)
-
-    # Sanity Check: Compare indices of each loaded mapped GSE as sets, pairwise
-    print("\nSanity Check: Pairwise Intersection Sizes of Gene Indices")
-    gse_gene_sets = {}
-    for gse_id, data in datasets.items():
-        check_zero_variance_genes(data, gse_id)
-        gene_set = set(data.index)
-        gse_gene_sets[gse_id] = gene_set
-        print(f"{gse_id} has {len(gene_set)} genes after mapping.")
-
-    # Calculate pairwise intersections
-    for gse1, gse2 in combinations(gse_ids, 2):
-        genes1 = gse_gene_sets[gse1]
-        genes2 = gse_gene_sets[gse2]
-        intersection_size = len(genes1 & genes2)
-        union_size = len(genes1 | genes2)
-        print(f"Intersection of {gse1} and {gse2}: {intersection_size} genes")
-        print(f"Union of {gse1} and {gse2}: {union_size} genes")
-        overlap_percentage = (intersection_size / union_size) * 100 if union_size > 0 else 0
-        print(f"Overlap percentage between {gse1} and {gse2}: {overlap_percentage:.2f}%\n")
 
     # Combine the datasets
     all_data = []
@@ -116,21 +137,16 @@ def main():
     # Ensure that all columns are numeric
     combined_data = combined_data.apply(pd.to_numeric, errors='coerce')
 
-    # Ensure that all column names are strings
-    combined_data.columns = combined_data.columns.astype(str)
-
-    # Remove columns (genes) with NaN values
-    combined_data = combined_data.dropna(axis=1)
-
-    # Remove rows (samples) with NaN values
-    combined_data = combined_data.dropna(axis=0)
+    # Remove genes (columns) and samples (rows) with NaN values
+    combined_data = combined_data.dropna(axis=1, how='any')
+    combined_data = combined_data.dropna(axis=0, how='any')
 
     if combined_data.empty:
         print("Combined data is empty after dropping NaN values.")
         return
 
-    # Standardize the data
-    scaler = RobustScaler()
+    # Standardize the combined data
+    scaler = StandardScaler()
     data_scaled = scaler.fit_transform(combined_data)
 
     # Perform PCA
