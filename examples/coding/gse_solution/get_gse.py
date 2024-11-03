@@ -11,6 +11,7 @@ from pybiomart import Server
 mg = mygene.MyGeneInfo()
 def get_mouse_to_human_gene_mapping():
     """Retrieve mapping from mouse Ensembl gene IDs to human gene symbols."""
+    from pybiomart import Server
     print("Retrieving mouse to human gene mapping...")
     server = Server(host='http://www.ensembl.org')
     mart = server['ENSEMBL_MART_ENSEMBL']

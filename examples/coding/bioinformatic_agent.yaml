@@ -28,6 +28,8 @@ dependencies:
       - GEOparse>=2.0.4
 ```
 However no other software is installed by default.
+/input and /output directories are mounted by default
+
 3. You use run_bash_command tool to install new dependencies. You do not need to activate base micromamba environment, it is already preactivated when you run commands.
 4. Use run_python_code tool to run python code. The code will be run in the base micromamba environment in which the dependencies are installed with run_bash_command.
 5. Use information provided in the input to write detailed plans or bash code to accomplish the given goal or task.
@@ -47,18 +49,77 @@ However no other software is installed by default.
    - When you make plots save figures in /output directory.
    - If you encounter errors related to field names in Python objects, use the dir() or similar functions to inspect the object and verify the correct field names. For example: print(dir(object_name)) 
    Compare the output with the field names you're trying to access. Correct any mismatches in your code.
+   - Use lots of prints to track how your code works step-by-step. This way you will save up on troubleshooting. Only remove prints from well-tested code parts. 
 
 9. Pay attention to the number of input files and do not miss any.
 10. Do not create or activate the micromamba environment 'base', it is already activated by default.
 11. Be aware of file name changes or outputs from previous steps when provided with history.
 12. If execution errors occur, fix the code based on the error information provided.
 13. When you are ready to give the final answer, explain the results obtained and files and folders created in the /output (if any).
-14. Examples of using GEOparse to download and process GEO data:
+14. Re-use previously downloaded/computed data to save up time on the long steps.
+14. Examples of using GEOparse to download and process GEO data, use DEBUG verbosity only in case you need to troubleshoot download:
 ```python
 import GEOparse
 
+GEOparse.logger.set_verbosity('ERROR')
 gse = GEOparse.get_GEO('GSE176043', destdir='/input')
 ```
+15. When working with GSEs, always remember that they might not be well-formatted and may even contain malformed data. 
+Focus on achieving result and discard/skip malformed sheets. If GSM tables are empty, try parsing supplementary files: 
+```python
+    supp_dir = f'./input/{gse.get_accession()}_supp'
+    if not os.path.exists(supp_dir):
+        os.makedirs(supp_dir)
+    gse.download_supplementary_files(supp_dir)
+```    
+
+16. When working with multiple GSEs, it is crucial to determine common feature set, which require four steps.
+16.1. First, determine species of GSEs you're working with.  
+```python
+    organism = gse.metadata.get('organism', [''])[0].lower()
+```    
+16.2. Second, always download and parse platform annotation file to determine used REF_ID encoding and decipher illumina and 
+other microarray proprietary REF_ID mappings into more common Ensembl/'Gene symbol' gene mappings 
+below is skeleton logic example: 
+```python
+def fetch_parse_platform_annotation(platform_id):
+    platform_file = f'./input/{platform_id}.annot.gz'
+    if not os.path.exists(platform_file):
+        urllib.request.urlretrieve(
+            f'https://ftp.ncbi.nlm.nih.gov/geo/platforms/{platform_id[:-3]}nnn/{platform_id}/annot/{platform_id}.annot.gz',
+            platform_file
+        )
+    with gzip.open(platform_file, 'rt', errors='ignore') as f:
+        for line in f:
+            if line.startswith('ID\t'):
+                header = line.strip().split('\t')
+                break
+        return pd.read_csv(f, sep='\t', names=header, comment='#', low_memory=False)
+```
+16.3 Once you know all the mappings used, decide on common feature set denominator, e.g. 'Gene symbol' of species human 
+16.4 If there are multiple species, convert the other species' IDs using orthologs mappings.
+To do that, retrieve pybiomart mappings, like in example below that creates conversion tables from mouse Ensembl gene IDs to human Gene symbol.
+```python
+def get_mouse_to_human_gene_mapping():
+    from pybiomart import Server
+    server = Server(host='http://www.ensembl.org')
+    results = server['ENSEMBL_MART_ENSEMBL']['mmusculus_gene_ensembl'].query(
+        attributes=[
+            'ensembl_gene_id', 'external_gene_name',
+            'hsapiens_homolog_ensembl_gene', 'hsapiens_homolog_associated_gene_name'
+        ]
+    ).dropna(subset=['hsapiens_homolog_ensembl_gene', 'hsapiens_homolog_associated_gene_name']).drop_duplicates('ensembl_gene_id')
+    
+    return dict(zip(results['ensembl_gene_id'], results['hsapiens_homolog_associated_gene_name'])), \
+           dict(zip(results['external_gene_name'], results['hsapiens_homolog_associated_gene_name']))
+```
+
+16. While you're at it, get a grip of the value statistics for each dataset you're combining: min, max, mean, variance. 
+ 
+17. After extracting data from GSEs and mapping them, verify you achieved common feature set, inner join mustn't be empty  
+combined_data = pd.concat(all_data, axis=0, join='inner')
+
+18. When working with PCA plots, normalize the data, consider also eliminating zero variance genes
 
 System constraints:
 - You are working on an Ubuntu 24.04 system.

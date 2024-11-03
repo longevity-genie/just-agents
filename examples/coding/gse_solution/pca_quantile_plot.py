@@ -48,12 +48,13 @@ def quantile_normalize(df):
     sorted_df = pd.DataFrame(np.sort(df.values, axis=0), index=df.index, columns=df.columns)
     # Compute the mean of each row (rank across samples)
     mean_ranks = sorted_df.mean(axis=1)
-    # Create a rank matrix
+    # Get the ranks of the original data
     ranks = df.rank(method='min', axis=0)
     # Map the ranks to the mean ranks
     df_normalized = df.copy()
     for col in df.columns:
-        df_normalized[col] = ranks[col].map(mean_ranks)
+        rank_to_value = dict(zip(np.arange(1, len(mean_ranks)+1), mean_ranks))
+        df_normalized[col] = ranks[col].map(rank_to_value)
     return df_normalized
 
 def main():
@@ -81,7 +82,7 @@ def main():
             return
 
     # Compute statistics before normalization
-    print("Statistics before normalization:")
+    print("\nStatistics before normalization:")
     compute_dataset_statistics(datasets)
     plot_data_distributions(datasets)
 
@@ -94,6 +95,8 @@ def main():
     datasets_normalized = {}
     for gse_id, data in datasets.items():
         print(f"\nApplying Quantile Normalization to {gse_id}")
+        # Fill NaNs with the mean expression of each gene
+        data = data.apply(lambda x: x.fillna(x.mean()), axis=1)
         data_normalized = quantile_normalize(data)
         datasets_normalized[gse_id] = data_normalized
 
@@ -131,7 +134,7 @@ def main():
     if not common_genes:
         print("No common genes across all datasets after normalization.")
         return
-    common_genes = list(common_genes)  # Convert set to list
+    common_genes = sorted(common_genes)  # Convert set to sorted list
     print(f"Number of common genes across all datasets: {len(common_genes)}")
 
     all_data = []
