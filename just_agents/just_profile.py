@@ -1,11 +1,8 @@
 from pathlib import Path
-from pydantic import Field, field_validator, model_validator
-from typing import Optional, List, ClassVar, Tuple, Sequence, Union, Callable, Self
-
-from regex import template
-
+from pydantic import Field, model_validator
+from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Self, Any
 from just_agents.just_serialization import JustSerializable
-from just_agents.just_tool import JustTool
+from just_agents.just_tool import JustTool, JustTools
 
 class JustAgentProfile(JustSerializable):
     """
@@ -67,7 +64,7 @@ class JustAgentProfile(JustSerializable):
     )
     """The name of the preferred model to use for inference"""
 
-    tools: Optional[Sequence[Union[Callable|JustTool]]] = Field(
+    tools: JustTools = Field(
         None,
         description="A List[Callable] of tools s available to the agent and their descriptions")
     """A List[Callable] of tools s available to the agent and their descriptions"""
@@ -97,11 +94,35 @@ class JustAgentProfile(JustSerializable):
         setattr(self, 'tools', new_tools)
         return self
 
-    def get_tools_callables(self) -> Optional[Sequence[Callable]]:
+    def get_tools_callables(self) -> Optional[List[Callable]]:
         """Retrieves the list of callables from the tools."""
         if self.tools is None:
             return None
         return [tool.refresh().get_callable() for tool in self.tools]
+
+    @staticmethod
+    def auto_load(
+                section_name: str,
+                parent_section: Optional[str] = DEFAULT_PARENT_SECTION,
+                file_path: Path = DEFAULT_CONFIG_PATH,
+        ) -> Any:
+        """
+        Creates an instance from a YAML file.
+
+        This function reads configuration data from a specified YAML file, section name,
+        and parent section name. If the configuration data contains a `class_qualname` field,
+        it dynamically imports and instantiates the corresponding class. Otherwise, returns None.
+
+        Args:
+            section_name (str): The section name in the YAML file.
+            parent_section (Optional[str]): The parent section name in the YAML file.
+            file_path (Path): The path to the YAML file.
+
+        Returns:
+            Any: An instance of the dynamically imported class if `class_qualname` is found in the
+                 configuration data; otherwise, returns None.
+        """
+        return JustSerializable.from_yaml_auto(section_name, parent_section, file_path)
 
     def __str__(self) -> str:
         """

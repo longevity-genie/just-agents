@@ -1,14 +1,25 @@
-from typing import Callable, Optional, List, Dict, Any, Self
+from typing import Callable, Optional, List, Dict, Any, Self, Sequence, Union, Literal
+
+from litellm.utils import function_to_dict
 from pydantic import BaseModel, Field, PrivateAttr
 import importlib
 import inspect
+
+FunctionParamFields=Literal["kind","default","type_annotation"]
+FunctionParams = List[Dict[str, Dict[FunctionParamFields,Optional[str]]]] #TODO: proper class
+
+class LiteLLMDescription(BaseModel): #TODO: Merge classes or do inheritance
+    name: Optional[str] = Field(..., alias='name', description="The name of the function")
+    description: Optional[str] = Field(None, description="The docstring of the function.")
+    parameters: Optional[Dict[str,str]]= Field(None, description="Parameters of the function.")
 
 class JustTool(BaseModel):
     package: str = Field(..., description="The name of the module where the function is located.")
     function: str = Field(..., description="The name of the function.")
     description: Optional[str] = Field(None, description="The docstring of the function.")
+    litellm_description : Optional[Any] = Field(None, description="The LiteLLM function_to_dict output") #TODO: Direct conversion without wrap
     auto_refresh: bool = Field(True, description="Whether to automatically refresh the tool after initialization.")
-    parameters: Optional[List[Dict[str, Any]]] = Field(
+    parameters: Optional[FunctionParams] = Field(
          None, description="List of parameters with their details."
     )
     _callable: Optional[Callable] = PrivateAttr(default=None)
@@ -19,18 +30,20 @@ class JustTool(BaseModel):
             self.refresh()
 
     @classmethod
-    def from_callable(cls, func: Callable) -> 'JustTool':
+    def from_callable(cls, input_function: Callable) -> 'JustTool':
         """Create a JustTool instance from a callable."""
-        package = func.__module__
-        function = func.__name__
-        description = func.__doc__
-        parameters = cls._extract_parameters(func)
+        package = input_function.__module__
+        function = input_function.__name__
+        description = input_function.__doc__
+        litellm_description = str(function_to_dict(input_function))
+        parameters = cls._extract_parameters(input_function)
         return cls(
             package=package,
             function=function,
             description=description,
+            litellm_description=litellm_description,
             parameters=parameters,
-            _callable=func,
+            _callable=input_function,
         )
 
     @staticmethod
@@ -65,6 +78,9 @@ class JustTool(BaseModel):
             self.parameters = self._extract_parameters(func)
             # Update the cached callable
             self._callable = func
+            # Update LiteLLM description
+            self.litellm_description = function_to_dict(func)
+
             return self  # Return self to allow chaining or direct appending
         except (ImportError, AttributeError) as e:
             raise ImportError(f"Error refreshing {self.function} from {self.package}: {e}")
@@ -90,3 +106,5 @@ class JustTool(BaseModel):
         """Allows the JustTool instance to be called like a function."""
         func = self.get_callable()
         return func(*args, **kwargs)
+
+JustTools = Optional[Sequence[Union[Callable|JustTool]]]

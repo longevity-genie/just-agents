@@ -14,30 +14,6 @@ def build_agent(agent_schema: str | Path | dict):
         return ChainOfThoughtAgent(agent_schema=agent_schema)
 
 class IAgent(ABC):
-
-    # @staticmethod
-    # def build(agent_schema: dict):
-    #     import importlib
-    #     try:
-    #         package_name = agent_schema.get("package", None)
-    #         class_name = agent_schema.get("class", None)
-    #
-    #         if package_name is None:
-    #             raise ValueError("Error package_name field should not be empty in agent_schema param during IAgent.build() call.")
-    #         if class_name is None:
-    #             raise ValueError("Error class_name field should not be empty in agent_schema param during IAgent.build() call.")
-    #         # Dynamically import the package
-    #         package = importlib.import_module(package_name)
-    #         # Get the class from the package
-    #         class_ = getattr(package, class_name)
-    #         # Create an instance of the class
-    #         instance = class_(agent_schema=agent_schema)
-    #
-    #         return instance
-    #     except (ImportError, AttributeError) as e:
-    #         print(f"Error creating instance of {class_name} from {package_name}: {e}")
-    #         return None
-
     @abstractmethod
     def stream(self, query_input: Union[str, Dict, Sequence[Dict]]) -> AsyncGenerator[Any, None]:
         raise NotImplementedError("You need to implement stream() first!")

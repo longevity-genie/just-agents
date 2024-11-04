@@ -1,4 +1,13 @@
 agent_profiles:
+  BaseAgentSchemaExample:
+    class_qualname: just_agents.base_agent.BaseAgent
+    completion_max_tries: 2
+    completion_remove_key_on_error: true
+    description: Generic all-purpose AI agent
+    drop_params: true
+    on_response: []
+    streaming_method: openai
+    system_prompt: You are a helpful AI assistant
   SecretaryAgent:
     autoload_from_yaml: false
     backstory: Developed to assist in understanding and documenting AI capabilities

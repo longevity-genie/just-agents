@@ -1,79 +1,67 @@
-import copy
-import json
-from pathlib import Path
-from typing import Any, AsyncGenerator
 
+import json
 from litellm import ModelResponse, completion
-from litellm.utils import Choices, function_to_dict
+from litellm.utils import Choices
+
+from pydantic import Field, PrivateAttr
+from typing import Callable, Optional, Dict, List, Sequence, Union, Any, AsyncGenerator, Coroutine
+
 from just_agents.interfaces.IAgent import IAgent
-from just_agents.memory import Memory
-from typing import Callable, Optional
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
-from just_agents.utils import resolve_and_validate_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
+
+from just_agents.memory import Memory
+from just_agents.just_profile import JustAgentProfile
+from just_agents.just_tool import JustTool
 from just_agents.rotate_keys import RotateKeys
+from just_agents.types import StreamingMode, OnCompletion
 
-OnCompletion = Callable[[ModelResponse], None]
+class BaseAgent(IAgent, JustAgentProfile):
 
-# schema parameters:
-KEY_LIST_PATH = "key_list_path"
-STREAMING_METHOD = "streaming_method"
-BACKUP_OPTIONS = "backup_options"
-COMPLETION_REMOVE_KEY_ON_ERROR = "completion_remove_key_on_error"
-COMPLETION_MAX_TRIES = "completion_max_tries"
+    llm_options: Dict[str, Any] = Field(...,
+        description="options that will be passed to the LLM, see https://platform.openai.com/docs/api-reference/completions/create for more details")
+    available_tools: Optional[dict[str, Callable]] = Field(None, deprecated=True, exclude=True,
+        description="dictionary of tools that LLM can call. ")
+    completion_remove_key_on_error: bool = Field(True,
+        description="In case of using list of keys removing key from the list after error call with this key")
+    completion_max_tries: Optional[int]  = Field(2, ge=0,
+        description="maximum number of completion retries before giving up")
+    streaming_method: StreamingMode = Field(StreamingMode.openai,
+        description="protocol to handle llm format for function calling")
+    backup_options: Optional[Dict] = Field(None,
+        description="options that will be used after we give up with main options, one more completion call will be done with backup options")
+    key_list_path: Optional[str] = Field(None,
+        description="path to text file with list of api keys, one key per line")
+    drop_params: bool = Field(True,
+        description=" drop params from the request, useful for some models that do not support them")
 
-#streaming methods:
-OPENAI = "openai"
-QWEN2 = "qwen2"
-CHAIN_OF_THOUGHT = "chain_of_thought"
+    on_response : List[OnCompletion] = Field([])
+    memory: Memory = Field(default_factory=Memory, exclude=True, repr=False)
 
-class LLMSession(IAgent):
+    _streaming: Optional[AbstractStreaming] = PrivateAttr()
+    _key_getter: Optional[RotateKeys] = PrivateAttr(None)
 
-    def __init__(self, llm_options: dict[str, Any] = None,
-                 system_prompt:str = None,
-                 agent_schema: str | Path | dict | None = None,
-                 tools: Optional[list[Callable]] = None):
-        self.on_response = []
-        self.available_tools: Optional[dict[str, Callable]] = {}
-        self.memory: Memory = Memory()
-        self.streaming: AbstractStreaming = None
-        self.key_getter: RotateKeys = None
-        self.on_response: list[OnCompletion] = []
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        self.instruct(self.system_prompt)
+        if self.tools is not None: #TODO: eliminate
+            self._prepare_tools()
+        if self.key_list_path is not None:
+            self._key_getter = RotateKeys(self.key_list_path)
 
-        self.agent_schema = resolve_and_validate_agent_schema(agent_schema, "llm_session_schema.yaml")
-        self.llm_options: dict[str, Any] = resolve_llm_options(self.agent_schema, llm_options)
-        if self.agent_schema.get(KEY_LIST_PATH, None) is not None:
-            self.key_getter = RotateKeys(self.agent_schema[KEY_LIST_PATH])
-        self.tools: list[Callable] = tools
-        if self.tools is None:
-            self.tools = resolve_tools(self.agent_schema)
-
-        if self.llm_options is not None:
-            self.llm_options = copy.deepcopy(self.llm_options) #just a satefy requirement to avoid shared dictionaries
-            if (self.key_getter is not None) and (self.llm_options.get("api_key", None) is not None):
-                print("Warning api_key will be rewriten by key_getter. Both are present in llm_options.")
-
-        if system_prompt is None:
-            system_prompt = resolve_system_prompt(self.agent_schema)
-        if system_prompt is not None:
-            self.instruct(system_prompt)
-
-        streaming_method = self.agent_schema.get(STREAMING_METHOD, None)
-        if streaming_method is None or streaming_method == OPENAI:
-            self.streaming = AsyncSession(self)
-        elif streaming_method.lower() == QWEN2:
+        if (self._key_getter is not None) and (self.llm_options.get("api_key", None) is not None):
+            print("Warning api_key will be rewriten by key_getter. Both are present in llm_options.")
+        if self.streaming_method == StreamingMode.openai:
+            self._streaming = AsyncSession(self)
+        elif self.streaming_method == StreamingMode.qwen2:
             from just_agents.streaming.qwen2_streaming import Qwen2AsyncSession
-            self.streaming = Qwen2AsyncSession(self)
-        elif streaming_method.lower() == CHAIN_OF_THOUGHT:
+            self._streaming = Qwen2AsyncSession(self)
+        elif self.streaming_method == StreamingMode.chain_of_thought:
             from just_agents.streaming.chain_of_thought import ChainOfThought
-            self.streaming = ChainOfThought(self)
+            self._streaming = ChainOfThought(self)
         else:
             raise ValueError("just_streaming_method is incorrect. "
-                             "It should be one of this ['qwen2', 'chain_of_thought']")
-
-        if self.tools is not None:
-            self._prepare_tools(self.tools)
-
+                             "It should be one of this ['openai', 'qwen2', 'chain_of_thought']")
 
     def add_on_response_listener(self, listener:OnCompletion):
         self.on_response.append(listener)
@@ -86,32 +74,31 @@ class LLMSession(IAgent):
 
     def _rotate_completion(self, stream: bool) -> ModelResponse:
         opt = self.llm_options.copy()
-        max_tries = self.agent_schema.get(COMPLETION_MAX_TRIES, 2)
-        if self.key_getter is not None:
+        max_tries = self.completion_max_tries
+        if self._key_getter is not None:
             if max_tries < 1:
-                max_tries = self.key_getter.len()
+                max_tries = self._key_getter.len()
             else:
-                if self.agent_schema.get(COMPLETION_REMOVE_KEY_ON_ERROR, True):
-                    max_tries = min(max_tries, self.key_getter.len())
+                if self.completion_remove_key_on_error:
+                    max_tries = min(max_tries, self._key_getter.len())
             last_exception = None
             for _ in range(max_tries):
-                opt["api_key"] = self.key_getter()
+                opt["api_key"] = self._key_getter()
                 try:
                     response = completion(messages=self.memory.messages, stream=stream, **opt)
                     return response
                 except Exception as e:
                     last_exception = e
-                    if self.agent_schema.get(COMPLETION_REMOVE_KEY_ON_ERROR, True):
-                        self.key_getter.remove(opt["api_key"])
+                    if self.completion_remove_key_on_error:
+                        self._key_getter.remove(opt["api_key"])
 
-            backup_opt: dict = self.agent_schema.get(BACKUP_OPTIONS, None)
-            if backup_opt:
-                return completion(messages=self.memory.messages, stream=stream, **backup_opt)
+            if self.backup_options:
+                return completion(messages=self.memory.messages, stream=stream, **self.backup_options)
             if last_exception:
                 raise last_exception
             else:
                 raise Exception(
-                    f"Run out of tries to execute completion. Check your keys! Keys {self.key_getter.len()} left.")
+                    f"Run out of tries to execute completion. Check your keys! Keys {self._key_getter.len()} left.")
         else:
             return completion(messages=self.memory.messages, stream=stream, **opt)
 
@@ -159,28 +146,27 @@ class LLMSession(IAgent):
             self.memory.add_message(input)
 
 
-    def query(self, input: str | dict | list[dict]) -> str:
+    def query(self, query_input: Union[str, Dict, Sequence[Dict]]) -> str:
         """
         Query large language model
-        :param input:
+        :param query_input:prompt, message, list of messages:
         :return:
         """
-        self._add_to_memory(input)
+        self._add_to_memory(query_input)
         return self.proceed()
 
 
-    def stream(self, input: str | dict | list[dict]) -> AsyncGenerator[Any, None]: # -> ContentStream:
+    def stream(self, query_input: Union[str, Dict, Sequence[Dict]]) -> AsyncGenerator[Any, None]: # -> ContentStream:
         """
         streaming method
-        :input prompt, message, list of messages:
+        :param query_input: prompt, message, list of messages:
         :return:
         """
-        self._add_to_memory(input)
+        self._add_to_memory(query_input)
         return self.proceed_stream()
 
-
-    def proceed_stream(self) -> AsyncGenerator[Any, None]: # -> ContentStream:
-        return self.streaming.resp_async_generator()
+    def proceed_stream(self) -> Union[AsyncGenerator[Any, None], Coroutine[Any, Any, AsyncGenerator]]: # -> ContentStream:
+        return self._streaming.resp_async_generator()
 
 
     def proceed(self) -> str:
@@ -223,18 +209,19 @@ class LLMSession(IAgent):
                 self._process_response(response)
         return response
 
-    def _prepare_tools(self, functions: list[Any]):
+    def _prepare_tools(self): #TODO: remove this 3x redundancy in tools listings
         """
         Prepares functions as tools that LLM can call.
         Note, the functions should have comments explaining LLM how to use them
-        :param functions:
         :return:
         """
+
         tools = []
         self.available_tools = {}
-        for fun in functions:
-            function_description = function_to_dict(fun)
-            self.available_tools[function_description["name"]] = fun
-            tools.append({"type": "function", "function": function_description})
+        for tool in self.tools:
+            if not isinstance(tool, JustTool):
+                raise TypeError(f"The tool {str(tool)} is not an instance of JustTool")
+            self.available_tools[tool.function] = tool.get_callable()
+            tools.append({"type": "function", "function": tool.litellm_description})
         self.llm_options["tools"] = tools
         self.llm_options["tool_choice"] = "auto"
