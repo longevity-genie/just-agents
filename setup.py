@@ -30,6 +30,12 @@ setup(
         ],
         'coding': [
             'llm-sandbox>=0.1.3'
+        ],
+        'web': [
+            'loguru',
+            'fastapi',
+            'uvicorn',
+            'thefuzz'
         ]
     },
     keywords=['python', 'llm', 'science', 'review', 'agents', 'AI'],
