@@ -13,6 +13,12 @@ examples_dir = current_dir.parent
 output_dir = examples_dir.parent  / "output" / current_dir.name
 output_dir.mkdir(exist_ok=True, parents=True)
 
+"""
+This example shows how a multiagent system can be used to create a plan for a DAO or nonprofit.
+Here we use the simple reflection mechanism to iteratively improve the plan by having a planner and a reviewer.
+In real-world use-cases we can have more sophisticated configurations, when there are also agents that search in the internet, agents that do coding, etc.
+"""
+
 @app.command()
 def planning_example():
     load_dotenv()

@@ -13,6 +13,7 @@ basic_examples_dir = Path(__file__).parent.absolute()
 
 """
 This example shows how to save and load an agent from a yaml file.
+In complex use-cases it can be useful to keep agents in yaml files to be able to iterate on them without changing the code.
 """
 
 

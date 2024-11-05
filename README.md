@@ -105,20 +105,51 @@ This example shows how a Chain of Thought agent can use a custom function to cou
 * just_agents_examples - contains examples of just-agents usage
 * just_agents_tools - contains useful tools that you can use in your agents
 
+# Examples
+
+Examples is one of the easiest ways to get started with just-agents.
+Start with basic examples and then move on to multiagent and coding examples.
+For coding examples you might need to have docker installed to be able to run the containers.
+
+
 # Installation
 
+Note: the instructions below assume that you are running the code on Linuxor under WSL2 on Windows.
+If you use plain Windows you may use user interfaces instead of some of the commands below.
+Also, we recommend using virtual environment and give examples with micromamba (which is same as conda or anaconda in API) however you can use any other environment tool
+
+## Using pip
 If you want to install as pip package use:
 ```
 pip install just-agents
 ```
 
-If you want to contribute to the project you can use micromamba or other anaconda to install the environment
+## Local Development
+
+To contribute or develop locally:
+
+1. Clone the repository (SSH recommended for contributors):
+```bash
+# Using SSH (recommended for contributors)
+git clone git@github.com:longevity-genie/just-agents.git
+
+# Or using HTTPS
+git clone https://github.com/longevity-genie/just-agents.git
 ```
+
+2. Change to the project directory:
+```bash
+cd just-agents
+```
+
+3. Set up the development environment using micromamba or other anaconda:
+```bash
 micromamba create -f environment.yaml
 micromamba activate just-agents
 ```
-then you can edit the library. Optionally you can install it locally with:
-```
+
+4. (Optional) Install the package in editable mode:
+```bash
 pip install -e .
 ```
 
@@ -129,7 +160,7 @@ Create configuration file:
 
 Edit the configuration file:
 
-   This refers to API keys. You'll need to edit these files to customize your setup.
+   This refers to API keys for various LLMs. You'll need to edit these files to customize your setup.
 
 Edit `.env`:
       ```bash
@@ -143,8 +174,10 @@ Edit `.env`:
 
 
 
-# Running the code by agents
+# Running the code by coding agents
 
-You can allow agents to install dependencies and run code by using the sandbox container.
+You can allow agents to install dependencies and run code by using the sandbox, biosandbox or websandbox containers.
 
 We provide a package just_agents_sandbox that contains the sandbox and biosandbox containers as well as micromamba session to run the containers.
+
+In some of the examples we also provide mounting /input and /output directories to the containers to make it easier to pass data to and from the agents and see which code and bash commands are being generated.
