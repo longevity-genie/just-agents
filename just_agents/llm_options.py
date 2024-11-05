@@ -17,7 +17,7 @@ OPENAI_GPT4oMINI: Dict = {
 
 
 ANTHROPIC_CLAUDE_3_5_SONNET: Dict = {
-    "model": "anthropic/claude-3-5-sonnet",
+    "model": "anthropic/claude-3-5-sonnet-20240620",
     "temperature": 0.0
 }
 

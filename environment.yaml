@@ -13,5 +13,4 @@ dependencies:
       - litellm>=1.51.0
       - numpydoc
       - semanticscholar>=0.8.4
-      - git+https://github.com/antonkulaga/llm-sandbox.git@7b98971e1e85a1f243aa1cc97e7a62cf3ed2b585 # until author will make next pip release
-      #- llm-sandbox>=0.1.2
+      - llm-sandbox>=0.1.3
