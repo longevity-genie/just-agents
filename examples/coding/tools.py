@@ -138,3 +138,43 @@ def amino_match_endswith(text, ending):
     sequence = "".join(matches[0].splitlines())
 
     return sequence.endswith(ending.upper())
+
+
+#TEMPORAL FUNCTIONS for webscrapper, will be removed soon
+
+def execute_bash_command(command: str) -> str:
+    """
+    command: str # command to run in bash, for example install software inside micromamba environment
+    """
+    mounts = make_mounts()
+    try:
+        with MicromambaSession(image="ghcr.io/longevity-genie/just-agents/websandbox:main", 
+                               lang="python", 
+                               keep_template=True, 
+                               verbose=True,
+                               mounts=mounts) as session:
+            result = session.execute_command(command=command)
+            ugly_log(command, output_dir, "bash", "sh")
+            return result
+    except Exception as e:
+        print(f"Error executing bash command: {e}")
+        return str(e)
+    
+
+def execute_python_code(code: str) -> str:
+    """
+    code: str # python code to run in micromamba environment
+    """
+    mounts = make_mounts()
+    try:
+        with MicromambaSession(image="ghcr.io/longevity-genie/just-agents/websandbox:main", 
+                               lang="python", 
+                               keep_template=True, 
+                               verbose=True,
+                               mounts=mounts) as session:
+            result = session.run(code)
+            ugly_log(code, output_dir, "code", "py")
+            return result
+    except Exception as e:
+        print(f"Error executing Python code: {e}")
+        return str(e)
