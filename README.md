@@ -122,6 +122,27 @@ then you can edit the library. Optionally you can install it locally with:
 pip install -e .
 ```
 
+Create configuration file:
+   ```bash
+   cp .env.example .env
+   ```
+
+Edit the configuration file:
+
+   This refers to API keys. You'll need to edit these files to customize your setup.
+
+Edit `.env`:
+      ```bash
+      nano .env
+      ```
+      This file contains API keys for various services. Add your keys here:
+      - `OPENAI_API_KEY=your_openai_api_key_here`
+      - `GROQ_API_KEY=your_groq_api_key_here`
+      - Add any other API keys required for models you plan to use
+
+
+
+
 # Running the code by agents
 
 You can allow agents to install dependencies and run code by using the sandbox container.
