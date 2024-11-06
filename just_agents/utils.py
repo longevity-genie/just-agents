@@ -24,7 +24,7 @@ def resolve_agent_schema(agent_schema: str | Path | dict):
     if isinstance(agent_schema, Path):
         if not agent_schema.exists():
             raise ValueError(
-                f"In constructor agent_schema path is not exists: ({str(agent_schema)})!")
+                f"In constructor agent_schema path  does not exist: ({str(agent_schema.absolute())})!")
         with open(agent_schema) as f:
             agent_schema = yaml.safe_load(f)
     if not isinstance(agent_schema, dict):

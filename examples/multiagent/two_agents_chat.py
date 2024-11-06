@@ -6,6 +6,10 @@ import typer
 
 app = typer.Typer(no_args_is_help=True)
 
+"""
+This example shows how two agents can be used to simulate a simple chat.
+"""
+
 @app.command()
 def purchase_example():
     load_dotenv()

@@ -7,7 +7,7 @@ here = os.path.abspath(os.path.dirname(__file__))
 with codecs.open(os.path.join(here, "README.md"), encoding="utf-8") as fh:
     long_description = "\n" + fh.read()
 
-VERSION = '0.2.5'
+VERSION = '0.2.6'
 DESCRIPTION = 'Just Agents'
 LONG_DESCRIPTION = 'LLM Agents that are implemented without unnecessary complexity'
 
@@ -29,7 +29,13 @@ setup(
             'semanticscholar>=0.8.4'
         ],
         'coding': [
-            'llm-sandbox>=0.1.2'
+            'llm-sandbox>=0.1.3'
+        ],
+        'web': [
+            'loguru',
+            'fastapi',
+            'uvicorn',
+            'thefuzz'
         ]
     },
     keywords=['python', 'llm', 'science', 'review', 'agents', 'AI'],

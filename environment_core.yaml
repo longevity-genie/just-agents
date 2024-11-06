@@ -4,10 +4,10 @@ channels:
   - defaults
 dependencies:
   - python=3.11
-  - pip
   - requests
   - pytest>=8.3.3 #for tests
   - typer>=0.12.5 #for CLI
+  - pip
   - pip:
       - litellm>=1.51.0
       - numpydoc

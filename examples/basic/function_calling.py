@@ -1,4 +1,3 @@
-#from just_agents.chat_agent import ChatAgent
 import asyncio
 import json
 import pprint
@@ -10,6 +9,10 @@ from just_agents.llm_session import LLMSession
 from just_agents.utils import rotate_env_keys
 
 load_dotenv(override=True)
+
+"""
+This example shows how a function can be used to call a function which potentially can have an external API call.
+"""
 
 def get_current_weather(location: str):
     """Gets the current weather in a given location"""
@@ -27,7 +30,6 @@ if __name__ == "__main__":
 
     llm_options = just_agents.llm_options.LLAMA3_2
 
-    key_getter = rotate_env_keys
     prompt = "What's the weather like in San Francisco, Tokyo, and Paris?"
 
     load_dotenv(override=True)
@@ -35,7 +37,7 @@ if __name__ == "__main__":
         llm_options=just_agents.llm_options.LLAMA3_2,
         tools=[get_current_weather]
     )
-    result = session.query("What's the weather like in San Francisco, Tokyo, and Paris?")
+    result = session.query(prompt)
 
     # I think we need to show all the messages. So should we ignore assistant message?
     # session.memory.add_on_message(lambda m: pprint.pprint(m) if "content" in m is not None else None)
