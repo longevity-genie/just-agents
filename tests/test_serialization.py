@@ -4,7 +4,7 @@ from pathlib import Path
 import just_agents.llm_options
 from examples.tools.weather import get_current_weather
 
-from just_agents.just_agent import JustAgent
+from just_agents.base_agent import BaseAgent
 from just_agents.just_profile import JustAgentProfile
 
 from typing import Optional, Dict, Any, Sequence, Union, Set, Callable, List, Tuple
@@ -54,7 +54,7 @@ def test_just_agent(load_env, tmp_path):
     config_path = tmp_path / "yaml_initialization_example_new.yaml"
 
     # Create a JustAgent instance
-    agent = JustAgent(
+    agent = BaseAgent(
         llm_options=just_agents.llm_options.OPENAI_GPT4oMINI,
         config_path=config_path,
         tools=[get_current_weather],
@@ -64,7 +64,7 @@ def test_just_agent(load_env, tmp_path):
     agent.save_to_yaml("SimpleWeatherAgent")
 
     # Load the agent from YAML
-    loaded_agent = JustAgent.from_yaml("SimpleWeatherAgent", file_path=config_path)
+    loaded_agent = BaseAgent.from_yaml("SimpleWeatherAgent", file_path=config_path)
 
     # Assert that the loaded agent matches the original
     assert loaded_agent.to_json() == agent.to_json()

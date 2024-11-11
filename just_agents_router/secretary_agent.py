@@ -1,10 +1,10 @@
 import json
 from typing import Optional, Any, Dict, Sequence, ClassVar, Tuple
 from pydantic import Field
-from just_agents.just_agent import JustAgent
+from just_agents.base_agent import BaseAgent
 
 
-class SecretaryAgent(JustAgent):
+class SecretaryAgent(BaseAgent):
     AVAILABLE_INFO: ClassVar[str] = 'AVAILABLE_ATTRIBUTES'
     PROFILE_TEMPLATE: ClassVar[str] = 'PROFILE_UPDATE_TEMPLATE'
     DEFAULT_SECRETARY_PROMPT : ClassVar[str] = """
@@ -62,7 +62,7 @@ class SecretaryAgent(JustAgent):
 
     def get_info(
             self,
-            agent: JustAgent,
+            agent: BaseAgent,
             include_list: Optional[Sequence[str]] = None,
             exclude_list: Optional[Sequence[str]] = None
     ) -> Optional[Dict[str, Any]]:
@@ -96,7 +96,7 @@ class SecretaryAgent(JustAgent):
 
     def get_to_populate(
             self,
-            agent: JustAgent,
+            agent: BaseAgent,
             filter_list: Optional[Sequence[str]] = None,
             refresh_list: Optional[Sequence[str]] = None,
             extra_dict: Optional[Dict[str, str]] = None
@@ -134,7 +134,7 @@ class SecretaryAgent(JustAgent):
 
     def update_profile(
             self,
-            agent: JustAgent,
+            agent: BaseAgent,
             info: Dict[str, Any],
             to_populate: Dict[str, Any],
             verbose: bool = False,

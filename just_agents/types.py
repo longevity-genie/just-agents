@@ -7,19 +7,14 @@ from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUs
 from openai.types.chat.chat_completion import ChatCompletion, Choice, ChatCompletionMessage
 from pydantic import BaseModel, Field, HttpUrl
 
-from litellm.types.utils import Function
 from litellm import ModelResponse
 
 ######### Common ###########
 
 BaseT = TypeVar('BaseT', bound=BaseModel)
-
-OnMessageCallable = Callable[[dict], None]
-OnFunctionCallable = Callable[[Function], None]
-AbstractMessage = Dict[Any, Any] # TODO: typing, support Query and Response message models from litellm
-AgentSchema = TypeVar('AgentSchema', str, dict, Path, None)
-
-OnCompletion = Callable[[ModelResponse], None]
+AbstractMessage = Dict[str,Any] #TODO: proper typing
+SupportedMessage = Union[str, AbstractMessage]
+SupportedMessages = Union[SupportedMessage, List[SupportedMessage]]
 
 class Role(str, Enum):
     system = "system"
@@ -60,6 +55,17 @@ OAIMessage: TypeAlias = Union[
     ChatCompletionToolMessageParam,
     ChatCompletionFunctionMessageParam,
 ]
+
+def message_from_response(response: ModelResponse) -> AbstractMessage:
+    message = response.choices[0].message.model_dump(
+        mode="json",
+        exclude_none=True,
+        exclude_unset=True,
+        by_alias=True,
+        exclude={"function_call"} if not response.choices[0].message.function_call else {}  # failsafe
+    )
+    assert "function_call" not in message
+    return message
 
 def extract_common_fields(selected_class: Type[BaseT], instance: BaseModel) -> BaseT:
     """

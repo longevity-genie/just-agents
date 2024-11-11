@@ -1,6 +1,6 @@
 from pathlib import Path
 from pydantic import Field, model_validator
-from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Self, Any
+from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict
 from just_agents.just_serialization import JustSerializable
 from just_agents.just_tool import JustTool, JustTools
 
@@ -12,7 +12,7 @@ class JustAgentProfile(JustSerializable):
     DEFAULT_DESCRIPTION: ClassVar[str] = "Generic all-purpose AI agent"
     DEFAULT_PARENT_SECTION: ClassVar[str] = 'agent_profiles'
     DEFAULT_CONFIG_PATH: ClassVar[Path] = Path('config/agent_profiles.yaml')
-    config_parent_section: Optional[Path] = Field(DEFAULT_PARENT_SECTION, exclude=True)
+    config_parent_section: Optional[str] = Field(DEFAULT_PARENT_SECTION, exclude=True)
 
     system_prompt: str = Field(
         DEFAULT_GENERIC_PROMPT,
@@ -64,7 +64,7 @@ class JustAgentProfile(JustSerializable):
     )
     """The name of the preferred model to use for inference"""
 
-    tools: JustTools = Field(
+    tools: Optional[JustTools] = Field(
         None,
         description="A List[Callable] of tools s available to the agent and their descriptions")
     """A List[Callable] of tools s available to the agent and their descriptions"""
@@ -75,20 +75,26 @@ class JustAgentProfile(JustSerializable):
     """List of external knowledge sources the agent is capable of accessing, e.g., databases, APIs, etc."""
 
     @model_validator(mode='after')
-    def validate_model(self) -> Self:
+    def validate_model(self) -> 'JustAgentProfile':
         """Converts callables to JustTool instances and refreshes them before validation."""
         if not self.tools:
             return self
-        if not isinstance(self.tools, Sequence):
-            raise TypeError("The 'tools' field must be a sequence of callables or JustTool instances.")
-        elif not {x for x in self.tools if not isinstance(x, JustTool)}: #all converted
+        if isinstance(self.tools, Dict):
             return self
-        new_tools = []
+        elif not isinstance(self.tools, Sequence):
+            raise TypeError("The 'tools' field must be a sequence of callables or JustTool instances.")
+        # elif not {x for x in self.tools if not isinstance(x, JustTool)}: #no items that are not JustTools
+        #     return self
+
+        new_tools = {}
         for item in self.tools:
             if isinstance(item, JustTool):
-                new_tools.append(item.refresh())
+                if item.auto_refresh:
+                    item=item.refresh()
+                new_tools[item.name]= item
             elif callable(item):
-                new_tools.append(JustTool.from_callable(item))
+                new_tool = JustTool.from_callable(item)
+                new_tools[new_tool.name] = new_tool
             else:
                 raise TypeError("Items in 'tools' must be callables or JustTool instances.")
         setattr(self, 'tools', new_tools)
@@ -98,14 +104,14 @@ class JustAgentProfile(JustSerializable):
         """Retrieves the list of callables from the tools."""
         if self.tools is None:
             return None
-        return [tool.refresh().get_callable() for tool in self.tools]
+        return [tool.get_callable(refresh=tool.auto_refresh) for tool in self.tools]
 
     @staticmethod
     def auto_load(
                 section_name: str,
                 parent_section: Optional[str] = DEFAULT_PARENT_SECTION,
                 file_path: Path = DEFAULT_CONFIG_PATH,
-        ) -> Any:
+        ) -> JustSerializable:
         """
         Creates an instance from a YAML file.
 
@@ -123,6 +129,27 @@ class JustAgentProfile(JustSerializable):
                  configuration data; otherwise, returns None.
         """
         return JustSerializable.from_yaml_auto(section_name, parent_section, file_path)
+
+    @staticmethod
+    def load_legacy_schema(
+            file_path: Path = DEFAULT_CONFIG_PATH,
+            class_hint: str = "just_agents.base_agent.BaseAgent",
+        ) -> JustSerializable:
+        """
+        Creates an instance from a YAML file.
+
+        This function reads configuration data from a specified YAML file with agent schema,
+        it dynamically imports and instantiates the corresponding class. Otherwise, returns None.
+
+        Args:
+            file_path (Path): The path to the YAML file.
+            class_hint (str): A substitute class to use if not specified by legacy schema
+
+        Returns:
+            Any: An instance of the dynamically imported class if `class_qualname` is found in the
+                 configuration data; otherwise, returns None.
+        """
+        return JustSerializable.from_yaml_auto("", "", file_path, class_hint=class_hint)
 
     def __str__(self) -> str:
         """

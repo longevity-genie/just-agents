@@ -3,13 +3,18 @@ import json
 from pathlib import Path
 from typing import Any, AsyncGenerator
 
+import litellm
 from litellm import ModelResponse, completion
-from litellm.utils import Choices, function_to_dict
+from litellm.utils import Choices
+
 from just_agents.interfaces.IAgent import IAgent
+from just_agents.llm_options import LLAMA3
 from just_agents.memory import Memory
+from dataclasses import dataclass, field
 from typing import Callable, Optional
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
+# from just_agents.utils import rotate_completion
 from just_agents.utils import resolve_and_validate_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
 from just_agents.rotate_keys import RotateKeys
 
@@ -27,7 +32,14 @@ OPENAI = "openai"
 QWEN2 = "qwen2"
 CHAIN_OF_THOUGHT = "chain_of_thought"
 
-class LLMSession(IAgent):
+
+class LLMSession(
+    IAgent[
+        str | dict | list[dict],
+        str,
+        AsyncGenerator[Any, None]
+    ]
+):
 
     def __init__(self, llm_options: dict[str, Any] = None,
                  system_prompt:str = None,
@@ -196,7 +208,7 @@ class LLMSession(IAgent):
     def _process_function_calls(self, response: ModelResponse) -> Optional[ModelResponse]:
         """
         processes function calls in the response
-        :param response:
+        :param response_message:
         :return:
         """
         proceed = True
@@ -233,7 +245,7 @@ class LLMSession(IAgent):
         tools = []
         self.available_tools = {}
         for fun in functions:
-            function_description = function_to_dict(fun)
+            function_description = litellm.utils.function_to_dict(fun)
             self.available_tools[function_description["name"]] = fun
             tools.append({"type": "function", "function": function_description})
         self.llm_options["tools"] = tools

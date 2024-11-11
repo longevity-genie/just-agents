@@ -145,3 +145,14 @@ def load_config(resource: str, package: str = "just_agents.config") -> Dict[str,
         # Load from package resources
         with resources.open_text(package, 'agent_prompts.yaml') as file:
             return yaml.safe_load(file)
+
+
+def build_agent(agent_schema: str | Path | dict):
+    from just_agents.cot_agent import ChainOfThoughtAgent
+    from just_agents.llm_session import LLMSession
+    agent_schema = resolve_agent_schema(agent_schema)
+    class_name = agent_schema.get("class", None)
+    if class_name is None or class_name == "LLMSession":
+        return LLMSession(agent_schema=agent_schema)
+    elif class_name == "ChainOfThoughtAgent":
+        return ChainOfThoughtAgent(agent_schema=agent_schema)

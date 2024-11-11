@@ -1,15 +1,13 @@
 import yaml
 import importlib
-from typing import Optional, Dict, Any, ClassVar, Self, Sequence, Union, Set
+from typing import Optional, Dict, Any, ClassVar, Sequence, Union, Set
 from pathlib import Path
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from collections.abc import MutableMapping, MutableSequence
 
-class JustYaml(BaseModel):
+class JustYaml:
     """
     A utility static class for reading and saving data to YAML files.
-
-
 
     Methods:
         read_yaml_data(file_path: Path, section_name: str, parent_section: str = DEFAULT_AGENT_PROFILES_SECTION) -> Dict:
@@ -79,17 +77,18 @@ class JustYaml(BaseModel):
                 data = yaml.safe_load(f) or {}
         else:
             return None
-
         try:
             # Retrieve the data for the specified section
             if parent_section:
                 if parent_section in data:
                     if section_name and section_name in data[parent_section]:
                         return data[parent_section][section_name]
+            elif section_name and section_name in data:
+                return data[section_name]
+            elif not section_name and data:
+                return data
             else:
-                if section_name and section_name in data:
-                    return data[section_name]
-            return None
+                return None
         except KeyError:
             return None
 
@@ -112,11 +111,12 @@ class JustYaml(BaseModel):
         Returns:
             None
         """
+
         data = {}
         # Check if the YAML file exists and load existing data
         if file_path.exists():
             with file_path.open('r') as f:
-                existing_data = yaml.safe_load(f) or {}
+                existing_data = dict(yaml.safe_load(f) or {})
                 data.update(existing_data)
         else:
             file_path.parent.mkdir(parents=True, exist_ok=True)
@@ -137,7 +137,7 @@ class JustYaml(BaseModel):
             yaml.safe_dump(data, f)
 
 
-class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_assignment=True):
+class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_assignment=True, populate_by_name=True):
     """
     Pydantic2 wrapper class that implements semi-automated YAML and JSON serialization and deserialization
 
@@ -150,10 +150,10 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
     DEFAULT_CONFIG_PATH : ClassVar[Path] = Path('config/just_agents.yaml')
     DEFAULT_PARENT_SECTION : ClassVar[Optional[str]] = None
     DEFAULT_SECTION_NAME : ClassVar[Optional[str]] = 'RenameMe'
-#    MODULE_DIR : ClassVar[Path] = Path(os.path.abspath(os.path.dirname(__file__)))
+    #MODULE_DIR : ClassVar[Path] = Path(os.path.abspath(os.path.dirname(__file__)))
 
     config_path : Optional[Path] = Field(None,exclude=True)
-    config_parent_section: Optional[Path] = Field(None,exclude=True)
+    config_parent_section: Optional[str] = Field(None,exclude=True)
 
     shortname: str = Field(
         DEFAULT_SECTION_NAME,
@@ -241,7 +241,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
         return value
 
     @classmethod
-    def from_json(cls, json_data: Dict[str, Any], qualname_check: bool = True) -> Self:
+    def from_json(cls, json_data: Dict[str, Any], qualname_check: bool = True) -> 'JustSerializable':
         """
         Constructor from JSON data. Populates fields that are present in the class,
         and stores any extra fields in 'extras'.
@@ -267,7 +267,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
     def from_yaml(cls, section_name: str,
                   parent_section: str = None,
                   file_path: Path = None,
-    ) -> Self:
+    ) -> 'JustSerializable':
         """
         Creates an instance from a YAML file path, section name, and parent section name.
 
@@ -298,6 +298,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
     def from_yaml_auto(section_name: str,
                        parent_section: Optional[str],
                        file_path: Path,
+                       class_hint: Optional[str] = None,
                        ) -> Any:
         """
         Creates an instance from a YAML file.
@@ -310,6 +311,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             section_name (str): The section name in the YAML file.
             parent_section (Optional[str]): The parent section name in the YAML file.
             file_path (Path): The path to the YAML file.
+            class_hint (Optional[str]): Attempt instantiation with this class_qualname if not specified in schema
 
         Returns:
             Any: An instance of the dynamically imported class if `class_qualname` is found in the
@@ -328,7 +330,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
         if not config_data.get("config_parent_section"):
             config_data.update({"config_parent_section": parent_section})
         config_data.update({"shortname": section_name})
-        class_qualname = config_data.get("class_qualname")
+        class_qualname = config_data.get("class_qualname") or class_hint
         if class_qualname:
             try:
                 # Splits into `module.submodule` and `ClassName` for dynamic import
@@ -376,11 +378,13 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             exclude_none=exclude_none,
             include=include,
             exclude=exclude,
-            serialize_as_any=serialize_as_any,
+            serialize_as_any=serialize_as_any
         )
         # Flatten Extras
         if include_extras and self.extras:
             data.update(self.extras)
+        # Recreate dict with only public fields
+        # public_data = {k: v for k, v in data.items() if not k.startswith('_')}
         return data
 
     def to_json_inclusive(
