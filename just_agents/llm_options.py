@@ -2,7 +2,9 @@ from typing import Any, Dict, List, Optional
 from pydantic import Field, HttpUrl
 from just_agents.types import ModelOptions
 
-class LLMOptions(ModelOptions, extra="allow"):
+LLMOptions = Dict[str, Any]
+
+class LLMOptionsBase(ModelOptions, extra="allow"):
     api_key: Optional[str] = Field(None, examples=["sk-proj-...."])
     api_base : Optional[HttpUrl] = Field(default=None,
         examples=[

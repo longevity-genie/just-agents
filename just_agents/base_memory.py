@@ -9,20 +9,12 @@ from litellm.types.utils import Function
 OnMessageCallable = Callable[[AbstractMessage], None]
 OnFunctionCallable = Callable[[Function], None]
 
-class BaseMemory(BaseModel, IMemory[AbstractMessage, Role]):
+class BaseMemory(BaseModel, IMemory[Role, AbstractMessage]):
     """
     The Memory class provides storage and handling of messages for a language model session.
     It supports adding, removing, and handling different types of messages and
     function calls categorized by roles: assistant, tool, user, and system.
     """
-
-    @property
-    def conversation(self) -> List[AbstractMessage]:
-        return self.messages
-
-    @property
-    def on_message(self) -> Dict[Role, List[OnMessageCallable]]:
-        return self._on_message
 
     messages: List[AbstractMessage] = Field(default_factory=list, alias='messages')
     _on_message: Dict[Role, List[OnMessageCallable]] = PrivateAttr(default_factory=lambda: {
@@ -39,7 +31,7 @@ class BaseMemory(BaseModel, IMemory[AbstractMessage, Role]):
         role: Optional[Role] = message.get("role")
         if role is None:
             raise ValueError("Message does not have a role")
-        for handler in self.on_message.get(role, []):
+        for handler in self._on_message.get(role, []):
             handler(message)
 
 
@@ -169,5 +161,7 @@ class BaseMemory(BaseModel, IMemory[AbstractMessage, Role]):
         """
         self._remove_on_message(handler, Role.system)
 
+    def deepcopy(self) -> 'BaseMemory':
+        return self.model_copy(deep=True)
 
 

@@ -2,30 +2,25 @@ from abc import ABC, abstractmethod
 from typing import TypeVar, Generic, List, Callable, Optional, Dict
 
 Memorable = TypeVar("Memorable")
-Selector = TypeVar("Selector")
+MemoryKey = TypeVar("MemoryKey")
 HandlerType = Callable[[Memorable], None]
 
-class IMemory(ABC, Generic[Memorable,Selector]):
+class IMemory(ABC, Generic[MemoryKey, Memorable]):
     """
     An abstract base class for memory management.
     """
-
-    @property
-    @abstractmethod
-    def conversation(self) -> List[Memorable]:
-        """List of stored messages."""
-        raise NotImplementedError
-
-    @property
-    @abstractmethod
-    def on_message(self) -> Dict[Selector,List[HandlerType]]:
-        """Dictionary of handlers Lists to process messages."""
-        raise NotImplementedError
+    messages: List[Memorable]
+    _on_message: Dict[MemoryKey, List[HandlerType]]
 
     @property
     def last_message(self) -> Optional[Memorable]:
         """Returns the last message in the memory."""
-        return self.conversation[-1] if self.conversation else None
+        return self.messages[-1] if self.messages else None
+
+    @property
+    @abstractmethod
+    def last_message_str(self) -> Optional[str]:
+        raise NotImplementedError
 
     @abstractmethod
     def add_message(self, message: Memorable) -> None:
@@ -44,25 +39,30 @@ class IMemory(ABC, Generic[Memorable,Selector]):
 
     def clear_messages(self) -> None:
         """Clears all messages from the memory."""
-        self.conversation.clear()
+        self.messages.clear()
 
     # Additional methods for handling handlers and roles
     def add_on_message(self, handler: HandlerType) -> None:
-        for selector in self.on_message:
+        for selector in self._on_message:
             self.add_on_message_handler(selector, handler)
 
-    def add_on_message_handler(self, selector: Selector, handler: HandlerType) -> None:
-        self.on_message[selector].append(handler)
+    def add_on_message_handler(self, selector: MemoryKey, handler: HandlerType) -> None:
+        self._on_message[selector].append(handler)
 
     def remove_on_message(self, handler: HandlerType) -> None:
-        for selector in self.on_message:
+        for selector in self._on_message:
             self.remove_on_message_handler(selector, handler)
 
-    def remove_on_message_handler(self, selector: Selector, handler: HandlerType) -> None:
-        if handler in self.on_message[selector]:
-            self.on_message[selector].remove(handler)
+    def remove_on_message_handler(self, selector: MemoryKey, handler: HandlerType) -> None:
+        if handler in self._on_message[selector]:
+            self._on_message[selector].remove(handler)
 
     def clear_all_on_message(self) -> None:
-        for selector in self.on_message:
-            self.on_message[selector].clear()
+        for selector in self._on_message:
+            self._on_message[selector].clear()
+
+    @abstractmethod
+    def deepcopy(self) -> 'IMemory':
+        """Return a deep copy"""
+        raise NotImplementedError
 

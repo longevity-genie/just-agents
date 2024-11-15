@@ -1,18 +1,16 @@
 from enum import Enum
+
+
 from typing import Type, TypeVar, Any, List, Union, Optional, Literal, cast, TypeAlias, Sequence, Callable, Dict
-from pathlib import Path
 
 from openai.types import CompletionUsage
 from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam, ChatCompletionAssistantMessageParam, ChatCompletionToolMessageParam,ChatCompletionFunctionMessageParam
 from openai.types.chat.chat_completion import ChatCompletion, Choice, ChatCompletionMessage
 from pydantic import BaseModel, Field, HttpUrl
 
-from litellm import ModelResponse
 
 ######### Common ###########
-
-BaseT = TypeVar('BaseT', bound=BaseModel)
-AbstractMessage = Dict[str,Any] #TODO: proper typing
+AbstractMessage = Dict[str, Any]
 SupportedMessage = Union[str, AbstractMessage]
 SupportedMessages = Union[SupportedMessage, List[SupportedMessage]]
 
@@ -30,78 +28,6 @@ class Role(str, Enum):
 
     def __str__(self):
         return str(self.value)
-
-class StreamingMode(str, Enum):
-    openai = "openai"
-    qwen2 = "qwen2"
-    chain_of_thought = "chain_of_thought"
-
-    def __new__(cls, value, *args, **kwargs):
-        obj = str.__new__(cls, value)
-        obj._value_ = value
-        return obj
-
-    def __str__(self):
-        return str(self.value)
-
-
-######### Helper ###########
-
-
-OAIMessage: TypeAlias = Union[
-    ChatCompletionSystemMessageParam,
-    ChatCompletionUserMessageParam,
-    ChatCompletionAssistantMessageParam,
-    ChatCompletionToolMessageParam,
-    ChatCompletionFunctionMessageParam,
-]
-
-def message_from_response(response: ModelResponse) -> AbstractMessage:
-    message = response.choices[0].message.model_dump(
-        mode="json",
-        exclude_none=True,
-        exclude_unset=True,
-        by_alias=True,
-        exclude={"function_call"} if not response.choices[0].message.function_call else {}  # failsafe
-    )
-    assert "function_call" not in message
-    return message
-
-def extract_common_fields(selected_class: Type[BaseT], instance: BaseModel) -> BaseT:
-    """
-    Trims and typecasts an instance of a class to only include the fields of the selected class.
-
-    :param selected_class: The class type to trim to.
-    :param instance: The instance of the class to be trimmed.
-    :return: An instance of the selected class populated with the relevant fields from the provided object.
-    """
-    # Extract only the fields defined in the base class
-    base_fields = {field: getattr(instance, field) for field in selected_class.model_fields}
-
-    # Instantiate and return the base class with these fields
-    return selected_class(**base_fields)
-
-def trim_to_parent(instance: BaseT) -> BaseModel:
-    """
-    Trims an instance of a derived class to only include the fields of its direct parent class.
-    :param instance: The instance of the derived class to be trimmed.
-    :return: An instance of the parent class populated with the relevant fields from the derived class.
-    """
-    # Get the direct parent class of the instance
-    parent_class = type(instance).__class__.__bases__[0]
-
-    # Instantiate and return the parent class with these fields
-    parent_instance = extract_common_fields(parent_class, instance)
-    return cast(parent_class, parent_instance)
-
-######### Pydantic models ###########
-
-class DbConnectionArgs(BaseModel):
-    host: str = Field("localhost", examples=["local"])
-    port: Optional[str] = Field("57687", examples=["57687"])
-    db_name: Optional[str] = Field(None, examples=["neo4j"])
-    user: Optional[str]=Field(None, examples=["neo4j"])
-    password: Optional[str]=Field(None, examples=["neo4j"])
 
 # Content types
 class TextContent(BaseModel):
@@ -122,6 +48,27 @@ class Message(BaseModel):
         ...,
         description="Content can be a simple string, or a list of content items including text or image URLs."
     )
+
+
+
+######### Helper ###########
+
+__OAIMessage: TypeAlias = Union[
+    ChatCompletionSystemMessageParam,
+    ChatCompletionUserMessageParam,
+    ChatCompletionAssistantMessageParam,
+    ChatCompletionToolMessageParam,
+    ChatCompletionFunctionMessageParam,
+]
+
+AbstractMessage = Dict[str,Any]
+SupportedMessage = Union[str, AbstractMessage]
+SupportedMessages = Union[SupportedMessage, List[SupportedMessage]]
+
+
+
+
+
 
 
 class ModelOptions(BaseModel):
