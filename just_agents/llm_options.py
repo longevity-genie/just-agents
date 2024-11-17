@@ -1,9 +1,18 @@
-from dataclasses import dataclass, field, replace
-from dataclasses import asdict
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
+from pydantic import Field, HttpUrl
+from just_agents.types import ModelOptions
 
+LLMOptions = Dict[str, Any]
 
-from dataclasses import dataclass, asdict
+class LLMOptionsBase(ModelOptions, extra="allow"):
+    api_key: Optional[str] = Field(None, examples=["sk-proj-...."])
+    api_base : Optional[HttpUrl] = Field(default=None,
+        examples=[
+            "https://api.groq.com/openai/v1",
+            "https://api.openai.com/v1"
+        ])
+    tools : Optional[List[Any]] = None
+    tool_choice : Optional[str] = None
 
 OPENAI_GPT4o: Dict = {
     "model": "gpt-4o",
@@ -14,7 +23,6 @@ OPENAI_GPT4oMINI: Dict = {
     "model": "gpt-4o-mini",
     "temperature": 0.0
 }
-
 
 ANTHROPIC_CLAUDE_3_5_SONNET: Dict = {
     "model": "anthropic/claude-3-5-sonnet-20240620",

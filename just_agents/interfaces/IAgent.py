@@ -1,47 +1,78 @@
-from pathlib import Path
-from typing import AsyncGenerator, Any, Union, Sequence, Dict
 from abc import ABC, abstractmethod
-from just_agents.utils import resolve_agent_schema
+from typing import Union, Generator, AsyncGenerator, Any, TypeVar, Generic, List, Optional, Callable, Coroutine, Protocol
 
-def build_agent(agent_schema: str | Path | dict):
-    from just_agents.cot_agent import ChainOfThoughtAgent
-    from just_agents.llm_session import LLMSession
-    agent_schema = resolve_agent_schema(agent_schema)
-    class_name = agent_schema.get("class", None)
-    if class_name is None or class_name == "LLMSession":
-        return LLMSession(agent_schema=agent_schema)
-    elif class_name == "ChainOfThoughtAgent":
-        return ChainOfThoughtAgent(agent_schema=agent_schema)
+# Define generic types for inputs and outputs
+Self = TypeVar("Self") # 3.11+ only, replacement for 3.8+ compatibility
+AbstractQueryInputType = TypeVar("AbstractQueryInputType")
+AbstractQueryResponseType = TypeVar("AbstractQueryResponseType")
+AbstractStreamingChunkType = TypeVar("AbstractStreamingChunkType")
 
-class IAgent(ABC):
+# Define the type that represents streaming responses
+AbstractStreamingGeneratorResponseType = Union[
+    Coroutine[Any, Any, AbstractQueryResponseType],
+    Coroutine[Any, Any, AsyncGenerator[AbstractStreamingChunkType, None]],
+    Generator[AbstractStreamingChunkType, None ,None],
+    AsyncGenerator[AbstractStreamingChunkType, None]
+]
 
-    # @staticmethod
-    # def build(agent_schema: dict):
-    #     import importlib
-    #     try:
-    #         package_name = agent_schema.get("package", None)
-    #         class_name = agent_schema.get("class", None)
-    #
-    #         if package_name is None:
-    #             raise ValueError("Error package_name field should not be empty in agent_schema param during IAgent.build() call.")
-    #         if class_name is None:
-    #             raise ValueError("Error class_name field should not be empty in agent_schema param during IAgent.build() call.")
-    #         # Dynamically import the package
-    #         package = importlib.import_module(package_name)
-    #         # Get the class from the package
-    #         class_ = getattr(package, class_name)
-    #         # Create an instance of the class
-    #         instance = class_(agent_schema=agent_schema)
-    #
-    #         return instance
-    #     except (ImportError, AttributeError) as e:
-    #         print(f"Error creating instance of {class_name} from {package_name}: {e}")
-    #         return None
+# Signature for a query function
+QueryFunction = Callable[[Self,AbstractQueryInputType,...],Any]
+ResponseFunction = Callable[...,AbstractQueryResponseType]
+StreamingResponseFunction = Callable[...,AbstractStreamingGeneratorResponseType]
+
+# Signatures for listener templates
+class QueryListener(Protocol[AbstractQueryResponseType]):
+    def __call__(self, input_query: AbstractQueryResponseType, *args: Any, **kwargs: Any) -> None:
+        ...
+
+class ResponseListener(Protocol[AbstractQueryResponseType]):
+    def __call__(self, result: AbstractQueryResponseType, *args: Any, **kwargs: Any) -> None:
+        ...
+
+class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, AbstractStreamingChunkType]):
 
     @abstractmethod
-    def stream(self, query_input: Union[str, Dict, Sequence[Dict]]) -> AsyncGenerator[Any, None]:
-        raise NotImplementedError("You need to implement stream() first!")
+    def query(self, query_input: AbstractQueryInputType) -> Optional[AbstractQueryResponseType]:
+        raise NotImplementedError("You need to implement query() abstract method first!")
 
     @abstractmethod
-    def query(self, query_input: Union[str, Dict, Sequence[Dict]]) -> str:
-        raise NotImplementedError("You need to implement query() first!")
+    def stream(self, query_input: AbstractQueryInputType) -> Optional[AbstractStreamingGeneratorResponseType]:
+        raise NotImplementedError("You need to implement stream() abstract method first!")
+
+# Define IAgentWithInterceptors with methods to manage interceptors
+class IAgentWithInterceptors(
+        IAgent[AbstractQueryInputType, AbstractQueryResponseType, AbstractStreamingChunkType],
+        ABC,
+        Generic[AbstractQueryInputType, AbstractQueryResponseType, AbstractStreamingChunkType]
+    ):
+
+    _on_query: List[QueryListener[AbstractQueryInputType]]
+    _on_response: List[ResponseListener[AbstractQueryResponseType]]
+
+    # Methods to manage on_query listeners
+    def handle_on_query(self, input_query: AbstractQueryResponseType, *args, **kwargs) -> None:
+        for handler in self._on_query:
+            handler(input_query, *args, **kwargs)
+
+    def add_on_query_listener(self, listener: QueryListener[AbstractQueryInputType]) -> None:
+        self._on_query.append(listener)
+
+    def remove_on_query_listener(self, listener: QueryListener[AbstractQueryInputType]) -> None:
+        self._on_query.remove(listener)
+
+    # Methods to manage on_response listeners
+    def handle_on_response(self, query_result: AbstractQueryResponseType, *args, **kwargs) -> None:
+        for handler in self._on_response:
+            handler(query_result, *args, **kwargs)
+
+    def add_on_response_listener(
+            self,
+            listener: ResponseListener[AbstractQueryResponseType]
+    ) -> None:
+        self._on_response.append(listener)
+
+    def remove_on_response_listener(
+            self,
+            listener: ResponseListener[AbstractQueryResponseType]
+    ) -> None:
+        self._on_response.remove(listener)

@@ -1,6 +1,8 @@
 from pathlib import Path
 from dotenv import load_dotenv
-from just_agents.interfaces.IAgent import build_agent, IAgent
+from just_agents.interfaces.IAgent import IAgent
+from just_agents.utils import build_agent
+
 load_dotenv(override=True)
 
 basic_examples_dir = Path(__file__).parent.absolute()

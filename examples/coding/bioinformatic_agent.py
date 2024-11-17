@@ -3,7 +3,8 @@ from dotenv import load_dotenv
 from llm_sandbox.micromamba import MicromambaSession
 from llm_sandbox.docker import SandboxDockerSession
 
-from just_agents.interfaces.IAgent import build_agent, IAgent
+from just_agents.interfaces.IAgent import IAgent
+from just_agents.utils import build_agent
 from just_agents.llm_session import LLMSession
 from examples.coding.tools import write_thoughts_and_results
 from examples.coding.mounts import input_dir, output_dir, coding_examples_dir

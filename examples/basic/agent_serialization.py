@@ -4,7 +4,7 @@ from pathlib import Path
 from examples.tools.weather import get_current_weather
 
 import just_agents.llm_options
-from just_agents.just_agent import JustAgent
+from just_agents.base_agent import BaseAgent
 from just_agents.just_profile import JustAgentProfile
 
 load_dotenv(override=True)
@@ -20,9 +20,9 @@ In complex use-cases it can be useful to keep agents in yaml files to be able to
 
 if __name__ == "__main__":
 
-    config_path = basic_examples_dir / "agent_from_yaml.yaml"
+    config_path = basic_examples_dir / "yaml_initialization_example_new.yaml"
 
-    created_agent = JustAgent(
+    created_agent = BaseAgent(
         llm_options=just_agents.llm_options.OPENAI_GPT4oMINI,
         config_path=config_path,
         tools=[get_current_weather]
@@ -30,8 +30,22 @@ if __name__ == "__main__":
 
     created_agent.save_to_yaml("SimpleWeatherAgent")
 
-    loaded_agent = JustAgent.from_yaml("SimpleWeatherAgent", file_path=config_path)
-    result = loaded_agent.query(
-        "What's the weather like in San Francisco, Tokyo, and Paris?"
-    )
-    print (result)
+    #auto load example
+    agent_auto = JustAgentProfile.auto_load("SimpleWeatherAgent", file_path=config_path)
+    print(agent_auto)
+    assert isinstance(agent_auto, JustAgentProfile)
+    assert isinstance(agent_auto, BaseAgent)
+    assert agent_auto.to_json() == created_agent.to_json()
+    res = agent_auto.query("What's the weather like in San Francisco, Tokyo, and Paris?")
+    print(res)
+    print(agent_auto.to_json())
+
+    #yaml constructor example
+    agent = BaseAgent.from_yaml("SimpleWeatherAgent", file_path=config_path)
+    print(agent)
+    assert isinstance(agent, JustAgentProfile)
+    assert isinstance(agent, BaseAgent)
+    assert agent.to_json() == created_agent.to_json()
+    res = agent.query("What's the weather like in San Francisco, Tokyo, and Paris?")
+    print(res)
+    print(agent.to_json())

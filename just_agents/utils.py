@@ -1,14 +1,13 @@
 import os
 import random
-
 import yaml
 from pathlib import Path
-from typing import Optional, Dict, Any
+from typing import Optional, Dict, Any, TypeVar, Type, cast
 import importlib.resources as resources
 from dotenv import load_dotenv
 import importlib
 from typing import Callable
-
+from pydantic import BaseModel
 class SchemaValidationError(ValueError):
     pass
 
@@ -145,3 +144,45 @@ def load_config(resource: str, package: str = "just_agents.config") -> Dict[str,
         # Load from package resources
         with resources.open_text(package, 'agent_prompts.yaml') as file:
             return yaml.safe_load(file)
+
+def build_agent(agent_schema: str | Path | dict):
+    from just_agents.cot_agent import ChainOfThoughtAgent
+    from just_agents.llm_session import LLMSession
+    agent_schema = resolve_agent_schema(agent_schema)
+    class_name = agent_schema.get("class", None)
+    if class_name is None or class_name == "LLMSession":
+        return LLMSession(agent_schema=agent_schema)
+    elif class_name == "ChainOfThoughtAgent":
+        return ChainOfThoughtAgent(agent_schema=agent_schema)
+
+
+######### Pydantic models ###########
+
+BaseT = TypeVar('BaseT', bound=BaseModel)
+def extract_common_fields(selected_class: Type[BaseT], instance: BaseModel) -> BaseT:
+    """
+    Trims and typecasts an instance of a class to only include the fields of the selected class.
+
+    :param selected_class: The class type to trim to.
+    :param instance: The instance of the class to be trimmed.
+    :return: An instance of the selected class populated with the relevant fields from the provided object.
+    """
+    # Extract only the fields defined in the base class
+    base_fields = {field: getattr(instance, field) for field in selected_class.model_fields}
+
+    # Instantiate and return the base class with these fields
+    return selected_class(**base_fields)
+
+def trim_to_parent(instance: BaseT) -> BaseModel:
+    """
+    Trims an instance of a derived class to only include the fields of its direct parent class.
+    :param instance: The instance of the derived class to be trimmed.
+    :return: An instance of the parent class populated with the relevant fields from the derived class.
+    """
+    # Get the direct parent class of the instance
+    parent_class = type(instance).__class__.__bases__[0]
+
+    # Instantiate and return the parent class with these fields
+    parent_instance = extract_common_fields(parent_class, instance)
+    return cast(parent_class, parent_instance)
+

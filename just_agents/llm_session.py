@@ -33,7 +33,13 @@ QWEN2 = "qwen2"
 CHAIN_OF_THOUGHT = "chain_of_thought"
 
 
-class LLMSession(IAgent):
+class LLMSession(
+    IAgent[
+        str | dict | list[dict],
+        str,
+        AsyncGenerator[Any, None]
+    ]
+):
 
     def __init__(self, llm_options: dict[str, Any] = None,
                  system_prompt:str = None,

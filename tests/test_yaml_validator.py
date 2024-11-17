@@ -1,5 +1,5 @@
-from just_agents.interfaces.IAgent import build_agent
-from just_agents.utils import SchemaValidationError
+from just_agents.utils import SchemaValidationError, build_agent
+
 
 def test_yaml_validator():
     try:
