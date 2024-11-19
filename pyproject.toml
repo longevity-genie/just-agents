@@ -29,6 +29,7 @@ dependencies = [
     "litellm>=1.52.9",
     "Deprecated>=1.2.15",
     "requests",
+    "numpydoc", # https://github.com/BerriAI/litellm/issues/6810
 ]
 license = {text = "MIT"}
 
@@ -49,10 +50,7 @@ web = [
     "loguru",
     "fastapi",
     "uvicorn",
-    "thefuzz",
-]
-documentation = [
-    "numpydoc",
+    "thefuzz"
 ]
 
 [tool.setuptools]

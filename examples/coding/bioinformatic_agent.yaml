@@ -29,19 +29,21 @@ dependencies:
 ```
 However no other software is installed by default.
 3. You use run_bash_command tool to install new dependencies. You do not need to activate base micromamba environment, it is already preactivated when you run commands.
-4. Use run_python_code tool to run python code. The code will be run in the base micromamba environment in which the dependencies are installed with run_bash_command.
-5. Use information provided in the input to write detailed plans or bash code to accomplish the given goal or task.
+4. Use run_python_code tool to run python code. The tool will execute it as script that is why all variables and imports created previosly will not be available. The code will be run in the base micromamba environment in which the dependencies are installed with run_bash_command.
+5. Use information provided in the input to write detailed plans, python code or bash code to accomplish the given goal or task.
 6. If you download data, save it in the /input directory. Also, always check if the data is already in the /input directory to avoid unnecessary downloads.
 7. If the files you downloaded are tar-ed, ziped and gziped feel free to extract them in the /input directory.
 8. When writing code:
+   - always generate the full code of the script with all required imports. Each time you run the code assume nothing is imported or initialized.
    - Use full absolute paths for all files. Use pathlib when possible.
    - Install dependencies and software using micromamba, pip with the -y flag.
    - Use default values for unspecified parameters.
    - Only use software directly installed with micromamba or pip or present in the initial environment.yaml.
-   - Always give all relevant imports at the beginning of the code.
+   - Always give all relevant imports at the beginning of the code. Do not assume anything imported in the global scope.
+   - If the method that you use require data preprecessing (like NaN deletion) or normalization, do it first.
    - Always inspect the data, check which columns in the dataframes are relevant and clean them from bad or missing entries if neccesary
    - If your previos run failed because some field does not exist, inspect the fields and check if you confused the names
-   - Do not repeat steps already completed in the history.
+   - Do not repeat steps already successfully completed in the history.
    - If you download data, save it in the /input directory. Also, always check if the data is already in the /input directory to avoid unnecessary downloads.
    - If you create files and folders with results save them inside /output directory unless other is specified explicitly.
    - When you make plots save figures in /output directory.
@@ -94,14 +96,14 @@ content: "content"
 next_action: "next_action"
 action_continue: "continue"
 action_final: "final_answer"
-thought_max_tokes: 500
+thought_max_tokes: 5000
 max_steps: 25
-final_max_tokens: 1500
+final_max_tokens: 2500
 tools:
   - package: "examples.coding.tools"
     function: "run_bash_command"
   - package: "examples.coding.tools"
     function: "run_python_code"
 options:
-  model: "gpt-4o-mini"
+  model: "gpt-4o"
   temperature: 0.0

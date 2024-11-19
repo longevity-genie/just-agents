@@ -1,4 +1,5 @@
 from dotenv import load_dotenv
+from just_agents.cot_agent import ChainOfThoughtAgent
 from just_agents.utils import build_agent
 from just_agents.llm_session import LLMSession
 from examples.coding.mounts import coding_examples_dir
@@ -15,7 +16,11 @@ WARNING: This example is not working as expected, some of GSE-s are messed up
 """
 
 if __name__ == "__main__":
-    assistant: LLMSession= build_agent(coding_examples_dir / "bioinformatic_agent.yaml")
-    query = "Take two nutritional datasets (GSE176043 and GSE41781) and three partial reprogramming datasets (GSE148911, GSE190986 and GSE144600), download them from GEO and generate PCA plot with them in /output folder"
-    result, thoughts = assistant.query(query)
+    agent: ChainOfThoughtAgent= build_agent(coding_examples_dir / "bioinformatic_agent.yaml")
+    query_GSE137317 = "Download gene counts from GSE137317, split them by conditions, make PCA plot and differential expression analysis using only python libraries"
+    #query_GSE144600 = "Download gene counts from GSE144600"
+    #query_two = "add GSE137317 and GSE144600 to the same PCA plot"
+    
+    #query = "Take two nutritional datasets (GSE176043 and GSE41781) and three partial reprogramming datasets (GSE148911, GSE190986 and GSE144600), download them from GEO and generate PCA plot with them in /output folder"
+    result, thoughts = agent.query(query_GSE137317)
    

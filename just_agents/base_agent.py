@@ -14,6 +14,8 @@ from just_agents.base_memory import BaseMemory
 from just_agents.just_profile import JustAgentProfile
 from just_agents.rotate_keys import RotateKeys
 from just_agents.streaming.protocol_factory import StreamingMode, ProtocolAdapterFactory
+from typing import TypeVar, Type
+from pydantic import BaseModel
 
 class BaseAgent(
     JustAgentProfile,
@@ -206,6 +208,30 @@ class BaseAgent(
         self.add_to_memory(query_input)
         self.query_with_currentmemory()
         return self.memory.last_message_str()
+    
+
+    def query_structural(
+        self, 
+        query_input: SupportedMessages, 
+        parser: Type[BaseModel] = dict
+    ) -> Union[dict, BaseModel]:
+        """
+        Query the agent and parse the response according to the provided parser.
+        
+        Args:
+            query_input: Input messages for the query
+            parser: A pydantic model class or dict to parse the response (default: dict)
+            
+        Returns:
+            Parsed response as either a dictionary or pydantic model instance
+        """
+        response = self.query(query_input)
+        if parser == dict:
+            import json
+            return json.loads(response)
+        return parser.model_validate_json(response)
+
+
 
     def stream(self, query_input: SupportedMessages, reconstruct = False ) \
             -> Generator[Union[BaseModelResponse, AbstractMessage],None,None]:
