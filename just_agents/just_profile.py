@@ -150,11 +150,52 @@ class JustAgentProfile(JustSerializable):
                  configuration data; otherwise, returns None.
         """
         return JustSerializable.from_yaml_auto("", "", file_path, class_hint=class_hint)
+    
 
     def __str__(self) -> str:
         """
         Returns the 'description' field when the instance is converted to a string.
         """
         return self.description
+
+    @staticmethod
+    def convert_from_legacy(
+            legacy_file_path: Path,
+            output_file_path: Optional[Path] = None,
+            class_hint: str = "just_agents.base_agent.BaseAgent",
+            section_name: Optional[str] = None,
+            parent_section: Optional[str] = DEFAULT_PARENT_SECTION,
+            exclude_defaults: bool = True,
+            exclude_unset: bool = True
+        ) -> 'JustAgentProfile':
+        """
+        Converts a legacy agent schema file to the new format and saves it.
+
+        Args:
+            legacy_file_path (Path): Path to the legacy schema YAML file
+            output_file_path (Path): Path where the converted file should be saved
+            section_name (str): Name of the section to save the converted agent under
+            parent_section (str): Parent section name to save the converted agent under
+            class_hint (str): A substitute class to use if not specified by legacy schema
+
+        Returns:
+            JustAgentProfile: The converted agent profile instance
+        """
+        # Load the legacy schema
+        agent = JustAgentProfile.load_legacy_schema(
+            file_path=legacy_file_path,
+            class_hint=class_hint
+        )
+
+        file_path = output_file_path or legacy_file_path
+        
+        # Save in new format
+        agent.save_to_yaml(section_name=section_name, 
+                           parent_section=parent_section, 
+                           file_path=file_path, 
+                           exclude_defaults=exclude_defaults, 
+                           exclude_unset=exclude_unset)
+        
+        return agent
 
 

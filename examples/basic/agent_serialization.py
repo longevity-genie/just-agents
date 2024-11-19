@@ -16,14 +16,12 @@ This example shows how to save and load an agent from a yaml file.
 In complex use-cases it can be useful to keep agents in yaml files to be able to iterate on them without changing the code.
 """
 
-
-
 if __name__ == "__main__":
 
     config_path = basic_examples_dir / "yaml_initialization_example_new.yaml"
 
     created_agent = BaseAgent(
-        llm_options=just_agents.llm_options.OPENAI_GPT4oMINI,
+        llm_options=just_agents.llm_options.LLAMA3_2,
         config_path=config_path,
         tools=[get_current_weather]
     )
@@ -33,7 +31,7 @@ if __name__ == "__main__":
     #auto load example
     agent_auto = JustAgentProfile.auto_load("SimpleWeatherAgent", file_path=config_path)
     print(agent_auto)
-    assert isinstance(agent_auto, JustAgentProfile)
+    assert isinstance(agent_auto, JustAgentProfile) #just testing that types are correct
     assert isinstance(agent_auto, BaseAgent)
     assert agent_auto.to_json() == created_agent.to_json()
     res = agent_auto.query("What's the weather like in San Francisco, Tokyo, and Paris?")

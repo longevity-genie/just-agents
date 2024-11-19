@@ -355,7 +355,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             by_alias: bool = True,
             exclude_none: bool = True,
             serialize_as_any: bool = True,
-
+            exclude_defaults: bool = True, 
+            exclude_unset: bool = True
     ) -> Dict[str, Any]:
         """
         Serializes the instance to a JSON-compatible dictionary, flattening the 'extras' back into the main dictionary.
@@ -378,7 +379,9 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             exclude_none=exclude_none,
             include=include,
             exclude=exclude,
-            serialize_as_any=serialize_as_any
+            serialize_as_any=serialize_as_any,
+            exclude_defaults=exclude_defaults, 
+            exclude_unset=exclude_unset
         )
         # Flatten Extras
         if include_extras and self.extras:
@@ -450,6 +453,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             by_alias: bool = True,
             exclude_none: bool = True,
             serialize_as_any: bool = True,
+            exclude_defaults: bool = True, 
+            exclude_unset: bool = True
     ):
         """
         Saves the instance's data to a YAML file under the specified parent section and section name (shortname).
@@ -482,6 +487,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             by_alias=by_alias,
             exclude_none=exclude_none,
             serialize_as_any=serialize_as_any,
+            exclude_defaults=exclude_defaults, 
+            exclude_unset=exclude_unset
         )
         JustYaml.save_to_yaml(file_path, section_data, section_name or self.shortname, parent_section)
 

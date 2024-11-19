@@ -8,6 +8,9 @@ from dotenv import load_dotenv
 import importlib
 from typing import Callable
 from pydantic import BaseModel
+from deprecated import deprecated
+
+
 class SchemaValidationError(ValueError):
     pass
 
@@ -145,6 +148,8 @@ def load_config(resource: str, package: str = "just_agents.config") -> Dict[str,
         with resources.open_text(package, 'agent_prompts.yaml') as file:
             return yaml.safe_load(file)
 
+
+@deprecated(version='0.3.0', reason="You should use native serialization of BaseAgent or its descendants")
 def build_agent(agent_schema: str | Path | dict):
     from just_agents.cot_agent import ChainOfThoughtAgent
     from just_agents.llm_session import LLMSession

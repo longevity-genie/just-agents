@@ -8,13 +8,11 @@ from litellm import ModelResponse, completion
 from litellm.utils import Choices
 
 from just_agents.interfaces.IAgent import IAgent
-from just_agents.llm_options import LLAMA3
 from just_agents.memory import Memory
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
-# from just_agents.utils import rotate_completion
 from just_agents.utils import resolve_and_validate_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
 from just_agents.rotate_keys import RotateKeys
 
@@ -97,6 +95,9 @@ class LLMSession(
 
 
     def _rotate_completion(self, stream: bool) -> ModelResponse:
+        """
+        Uses key rotation to call LLMs in case of errors
+        """
         opt = self.llm_options.copy()
         max_tries = self.agent_schema.get(COMPLETION_MAX_TRIES, 2)
         if self.key_getter is not None:

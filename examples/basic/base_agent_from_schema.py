@@ -4,7 +4,8 @@ from pathlib import Path
 from just_agents.just_profile import JustAgentProfile
 
 if __name__ == "__main__":
-    load_dotenv(override=True)
+    load_dotenv(override=True) #load keys from .env file
+    
     basic_examples_dir = Path(__file__).parent.absolute()
     config_path = basic_examples_dir / "yaml_initialization_example_new.yaml"
     legacy_config_path = basic_examples_dir / "agent_from_yaml.yaml"

@@ -1,5 +1,4 @@
 import pprint
-import sys
 from pathlib import Path
 from typing import Dict, Any
 
@@ -7,7 +6,7 @@ import yaml
 from dotenv import load_dotenv
 
 from just_agents.chat_agent import ChatAgent
-from just_agents.llm_options import LLAMA3
+from just_agents.llm_options import LLAMA3_2
 import copy
 from just_agents_tools.search import literature_search
 
@@ -49,7 +48,7 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
     question = prompts[prompt_name][sub_prompt]
 
 
-    scientist: ChatAgent = ChatAgent(llm_options = LLAMA3,
+    scientist: ChatAgent = ChatAgent(llm_options = LLAMA3_2,
                                     role = "scientist",
                                     goal = "Research the topics in the most comprehensive way, using search in academic literature and providing sources",
                                     task="Address the research question in the most comprehensive way",
@@ -79,7 +78,7 @@ def rapamycin(prompt_name: str = "rapamycin_case", sub_prompt: str = "with_requi
     """
     pprint.pprint(for_review)
 
-    critic: ChatAgent = ChatAgent(llm_options = copy.deepcopy(LLAMA3),
+    critic: ChatAgent = ChatAgent(llm_options = copy.deepcopy(LLAMA3_2),
                                   role = "critic",
                                   goal = "criticise answers to questions, provide evaluations and improvements",
                                   task="evaluate the answer according to the criteria provided and make recommendations to improve")

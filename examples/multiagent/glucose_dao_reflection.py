@@ -26,8 +26,6 @@ def planning_example():
     # Initialize conversation file
     conversation_file = output_dir / "glucose_dao_conversation.txt"
     conversation_file.write_text("") # Clear/create file
-
-    
     
     planner: ChatAgent = ChatAgent(llm_options = llm_options.OPENAI_GPT4oMINI, role = "You are a helpful adviser that helps people to create their NGOs and DAOs",
                                    goal = "Your goal is to help the user to make the best possible action plan to create her NGO or DAO.",

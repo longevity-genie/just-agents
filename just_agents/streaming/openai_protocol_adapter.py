@@ -72,6 +72,8 @@ class OAIAdapter(BaseModel, IProtocolAdapter[ModelResponse,AbstractMessage]):
             by_alias=True,
             exclude={"function_call"} if not response.choices[0].message.function_call else {}  # failsafe
         )
+        if "citations" in response:
+            message["citations"] = response.citations #perplexity specific field
         assert "function_call" not in message
         return message
 

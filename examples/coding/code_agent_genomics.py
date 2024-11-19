@@ -11,6 +11,9 @@ from examples.coding.mounts import input_dir, output_dir, coding_examples_dir
 
 load_dotenv(override=True)
 
+"""
+This example shows how to use code generation for genomic tasks
+"""
 if __name__ == "__main__":
     assistant: LLMSession= build_agent(coding_examples_dir / "code_agent.yaml")
     result, thoughts = assistant.query("Analyze vcf file with human genome using vcflib python binding."

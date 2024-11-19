@@ -10,18 +10,17 @@ agent_profiles:
     system_prompt: You are a helpful AI assistant
   SecretaryAgent:
     autoload_from_yaml: false
-    backstory: Developed to assist in understanding and documenting AI capabilities
-      and characteristics.
     class_qualname: just_agents_router.secretary_agent.SecretaryAgent
-    description: A skilled AI assistant focused on creating detailed profiles for
-      AI agents.
+    completion_max_tries: 2
+    completion_remove_key_on_error: true
+    description: Generic all-purpose AI agent
+    drop_params: true
     exclude_list:
     - include_list
     - exclude_list
     - refresh_list
     - extra_dict
     - filter_list
-    expertise_domain: AI agent analysis and documentation.
     extra_dict:
       personality_traits: Agent's personality traits go here
     filter_list:
@@ -31,7 +30,6 @@ agent_profiles:
     - exclude_list
     - refresh_list
     - extra_dict
-    goal: To generate concise and detail-rich profiles for AI agents.
     include_list:
     - shortname
     - description
@@ -40,16 +38,10 @@ agent_profiles:
     - llm_options
     - class_hierarchy
     - class_qualname
-    knowledge_sources: []
-    limitations: Limited to analysis and description tasks; may not perform actions
-      outside of its defined scope.
     llm_options:
       model: gpt-4o-mini
       temperature: 0.0
-    model_name: gpt-4o-mini
-    personality_traits: A skilled, detail-oriented, and analytical AI assistant focused
-      on generating concise and informative profiles for AI agents.
-    role: AI assistant specializing in agent analysis.
+    streaming_method: openai
     system_prompt: "\n    You are a skilled AI assistant specializing in analysis\
       \ and description of AI agents. \n    You are tasked with generation of a minimalistic\
       \ and concise yet detail-rich profile for an AI agent, based on the AVAILABLE_ATTRIBUTES,\
@@ -60,4 +52,3 @@ agent_profiles:
       \ don't make up anything. \n    Double-check that the output contains only a\
       \ valid JSON with all the fields specified in PROFILE_UPDATE_TEMPLATE. \n  \
       \  Never include any additional text or explanations in your reply.\n    "
-    task: Analyzing and describing AI agents based on provided attributes.

@@ -6,14 +6,15 @@ dependencies:
   - python=3.11
   - requests>=2.32.3
   - pytest>=8.3.3 #for tests
-  - typer>=0.12.5 #for CLI
+  - typer>=0.13.0 #for CLI
   - twine #for publishing
+  - setuptools>=75.5.0
   - pip
   - pip:
-      - litellm>=1.51.0
+      - litellm>=1.52.9
       - numpydoc
       - semanticscholar>=0.8.4 #for just-agents-tools
-      - llm-sandbox>=0.1.3 #for just-agents-coding
+      - llm-sandbox>=0.1.4 #for just-agents-coding
       - loguru #for just-agents-web
       - fastapi #for just-agents-web
       - uvicorn #for just-agents-web

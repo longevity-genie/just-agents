@@ -1,9 +1,5 @@
 from pathlib import Path
 from dotenv import load_dotenv
-from llm_sandbox.micromamba import MicromambaSession
-from llm_sandbox.docker import SandboxDockerSession
-
-from just_agents.interfaces.IAgent import IAgent
 from just_agents.utils import build_agent
 from just_agents.llm_session import LLMSession
 from examples.coding.tools import write_thoughts_and_results
@@ -14,6 +10,8 @@ load_dotenv(override=True)
 """
 This example shows how to use a Chain Of Thought code agent to run python code and bash commands, it uses volumes and is based on Chain Of Thought Agent class.
 The task was taken from then https://github.com/JoshuaChou2018/AutoBA library
+
+WARNING: This example is not working stabily, we have to update the prompt to make it work stably
 """
 
 if __name__ == "__main__":

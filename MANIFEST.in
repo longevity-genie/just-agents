@@ -1,1 +1,2 @@
-include just_agents/config/agent.yaml
+recursive-include just_agents/config *.yaml
+recursive-include just_agents_coding/config *.yaml

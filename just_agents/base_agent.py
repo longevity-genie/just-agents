@@ -53,30 +53,30 @@ class BaseAgent(
     _on_query : List[QueryListener] = PrivateAttr(default_factory=list)
     _on_response : List[ResponseListener] = PrivateAttr(default_factory=list)
 
-    _conversation: IMemory[Role,SupportedMessage] = PrivateAttr(default_factory=BaseMemory)
+    memory: BaseMemory = Field(default_factory=BaseMemory,
+        exclude=True,
+        description="memory for the agent that stores previous messages") #is supposed to be IMemory[Role,SupportedMessage]
+    
     _protocol: Optional[IProtocolAdapter] = PrivateAttr(None)
     _partial_streaming_chunks: List[BaseModelResponse] = PrivateAttr(default_factory=list)
     _key_getter: Optional[RotateKeys] = PrivateAttr(None)
 
-    def set_memory(self, new_conversation: IMemory) -> None:
-        """Replace the current memory with a new one."""
-        self._conversation = new_conversation
 
     def instruct(self, prompt: str): #backward compatibility
-        self._conversation.add_message({"role": Role.system, "content": prompt})
+        self.memory.add_message({"role": Role.system, "content": prompt})
 
     def clear_memory(self) -> None:
-        self._conversation.clear_messages()
+        self.memory.clear_messages()
         self.instruct(self.system_prompt)
 
     def deepcopy_memory(self) -> IMemory:
-        return self._conversation.deepcopy()
+        return self.memory.deepcopy()
 
     def add_to_memory(self, messages: SupportedMessages) -> None:
-        self._conversation.add_message(messages)
+        self.memory.add_message(messages)
 
     def get_last_message(self) -> SupportedMessage:
-        return self._conversation.last_message
+        return self.memory.last_message
 
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
@@ -121,7 +121,7 @@ class BaseAgent(
             for _ in range(max_tries):
                 opt["api_key"] = self._key_getter()
                 try:
-                    return self._protocol.completion(messages=self._conversation.messages, stream=stream, **opt)
+                    return self._protocol.completion(messages=self.memory.messages, stream=stream, **opt)
                 except Exception as e:
                     last_exception = e
                     if self.completion_remove_key_on_error:
@@ -129,14 +129,14 @@ class BaseAgent(
 
             if self.backup_options:
                 opt = self._prepare_options(self.backup_options)
-                return self._protocol.completion(messages=self._conversation.messages, stream=stream, **opt)
+                return self._protocol.completion(messages=self.memory.messages, stream=stream, **opt)
             if last_exception:
                 raise last_exception
             else:
                 raise Exception(
                     f"Run out of tries to execute completion. Check your keys! Keys {self._key_getter.len()} left.")
         else:
-            return self._protocol.completion(messages=self._conversation.messages, stream=stream, **opt)
+            return self._protocol.completion(messages=self.memory.messages, stream=stream, **opt)
 
 
     def _process_function_calls(self, function_calls: List[IFunctionCall[AbstractMessage]]) -> SupportedMessages:
@@ -148,7 +148,7 @@ class BaseAgent(
             messages.append(msg)
         return messages
 
-    def query_with_current_conversation(self): #former proceed() aka llm_think()
+    def query_with_currentmemory(self): #former proceed() aka llm_think()
         while True:
             # individual llm call, unpacking the message, processing handlers
             response = self._execute_completion(stream=False)
@@ -165,7 +165,7 @@ class BaseAgent(
             # Process each tool call if they exist and re-execute query
             self._process_function_calls(tool_calls)
 
-    def streaming_query_with_current_conversation(self, reconstruct = False):
+    def streaming_query_with_currentmemory(self, reconstruct = False):
         try:
             self._partial_streaming_chunks.clear()
             while True:
@@ -204,14 +204,14 @@ class BaseAgent(
     def query(self, query_input: SupportedMessages) -> str: #remembers query in handler, executes query and returns str
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
-        self.query_with_current_conversation()
-        return self._conversation.last_message_str
+        self.query_with_currentmemory()
+        return self.memory.last_message_str()
 
     def stream(self, query_input: SupportedMessages, reconstruct = False ) \
             -> Generator[Union[BaseModelResponse, AbstractMessage],None,None]:
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
-        return self.streaming_query_with_current_conversation( reconstruct = reconstruct )
+        return self.streaming_query_with_currentmemory( reconstruct = reconstruct )
 
 
 

@@ -6,8 +6,8 @@ dependencies:
   - python=3.11
   - requests
   - pytest>=8.3.3 #for tests
-  - typer>=0.12.5 #for CLI
+  - typer>=0.13.0 #for CLI
   - pip
   - pip:
-      - litellm>=1.51.0
+      - litellm>=1.52.9
       - numpydoc

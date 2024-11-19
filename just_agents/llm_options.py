@@ -14,33 +14,10 @@ class LLMOptionsBase(ModelOptions, extra="allow"):
     tools : Optional[List[Any]] = None
     tool_choice : Optional[str] = None
 
-OPENAI_GPT4o: Dict = {
-    "model": "gpt-4o",
-    "temperature": 0.0
-}
-
-OPENAI_GPT4oMINI: Dict = {
-    "model": "gpt-4o-mini",
-    "temperature": 0.0
-}
 
 ANTHROPIC_CLAUDE_3_5_SONNET: Dict = {
-    "model": "anthropic/claude-3-5-sonnet-20240620",
+    "model": "claude-3-5-sonnet-20240620",
     "temperature": 0.0
-}
-
-LLAMA3: Dict = {
-    "model": "groq/llama3-groq-70b-8192-tool-use-preview",
-    "api_base": "https://api.groq.com/openai/v1",
-    "temperature": 0.0,
-    "tools": []
-}
-
-LLAMA3_1: Dict = {
-    "model": "groq/llama-3.1-70b-versatile",
-    "api_base": "https://api.groq.com/openai/v1",
-    "temperature": 0.0,
-    "tools": []
 }
 
 LLAMA3_2_VISION: Dict = {
@@ -55,6 +32,38 @@ LLAMA3_2: Dict = {
     "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0,
     "tools": []
+}
+
+MISTRAL_8x22B = {
+    "model": "mistral/open-mixtral-8x22b",
+    "temperature": 0.0
+}
+
+OPENAI_GPT4o: Dict = {
+    "model": "gpt-4o",
+    "temperature": 0.0
+}
+
+OPENAI_GPT4oMINI: Dict = {
+    "model": "gpt-4o-mini",
+    "temperature": 0.0
+}
+
+OPENAI_O1_MINI: Dict = {
+    "model": "o1-mini",
+    "temperature": 0.0
+}
+
+OPENAI_O1_PREVIEW: Dict = {
+    "model": "o1-preview",
+    "temperature": 0.0
+}
+
+PERPLEXITY_LLAMA_3_1_SONAR_LARGE_128K_ONLINE: Dict = {
+    "model": "perplexity/llama-3.1-sonar-large-128k-online",
+    "temperature": 0.0,
+    "return_citations": True,
+    "return_related_questions": True
 }
 
 OPEN_ROUTER_Qwen_2_72B_Instruct = {
@@ -79,9 +88,4 @@ OPEN_ROUTER_GEMINI_1_5_FLASH_EXP_FREE = {
     "model": "openrouter/google/gemini-flash-1.5-exp",
     "temperature": 0.0,
     "tools": []
-}
-
-MISTRAL_8x22B = {
-    "model": "mistral/open-mixtral-8x22b",
-    "temperature": 0.0
 }
