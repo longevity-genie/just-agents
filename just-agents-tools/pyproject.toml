@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "just-agents-tools"
+version = "0.3.1"
+description = "Just Agents - Tools Components"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Alex Karmazin", email = "karmazinalex@gmail.com" },
+]
+maintainers = [
+    { name = "Anton Kulaga", email = "antonkulaga@gmail.com" },
+]
+dependencies = [
+    "just-agents>=0.3.1",
+    "semanticscholar>=0.8.4",
+    "typer>=0.13.0",
+]
+license = {text = "MIT"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["just_agents_tools*", "config*"]
+exclude = [
+    "*.egg-info",
+    "build",
+    "dist"
+]
+namespaces = true 
+
+[tool.setuptools.package-data]
+"config" = ["*.yaml", "*.yml"]
+"just_agents_tools" = ["*.yaml", "*.yml"]

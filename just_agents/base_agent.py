@@ -8,7 +8,7 @@ from just_agents.types import Role, AbstractMessage, SupportedMessages, Supporte
 from just_agents.llm_options import LLMOptions
 from just_agents.interfaces.IFunctionCall import IFunctionCall
 from just_agents.interfaces.IProtocolAdapter import IProtocolAdapter, BaseModelResponse
-from just_agents.interfaces.IAgent import IAgentWithInterceptors, QueryListener, ResponseListener
+from just_agents.interfaces.IAgent import IAgentWithInterceptors, IThinkingAgent, IThought, ITypedAgent, QueryListener, ResponseListener
 
 from just_agents.base_memory import BaseMemory
 from just_agents.just_profile import JustAgentProfile
@@ -25,6 +25,12 @@ class BaseAgent(
         SupportedMessages #StreamingOutput
     ]
 ):
+    """
+    A base agent that can query and stream typed inputs and outputs.
+
+    Note: it is based on pydantic and the only required field is llm_options.
+    However, it is also recommended to set system_prompt.
+    """
 
     llm_options: LLMOptions = Field(
         ...,
@@ -77,7 +83,7 @@ class BaseAgent(
     def add_to_memory(self, messages: SupportedMessages) -> None:
         self.memory.add_message(messages)
 
-    def get_last_message(self) -> SupportedMessage:
+    def get_last_message(self) -> SupportedMessage: # type: ignore
         return self.memory.last_message
 
     def model_post_init(self, __context: Any) -> None:
@@ -110,7 +116,7 @@ class BaseAgent(
     def _execute_completion(
             self,
             stream: bool
-    ) -> Union[AbstractMessage, BaseModelResponse]:
+    ) -> Union[AbstractMessage, BaseModelResponse]: # type: ignore
         opt = self._prepare_options(self.llm_options)
         max_tries = self.completion_max_tries
         if self._key_getter is not None:
@@ -141,8 +147,8 @@ class BaseAgent(
             return self._protocol.completion(messages=self.memory.messages, stream=stream, **opt)
 
 
-    def _process_function_calls(self, function_calls: List[IFunctionCall[AbstractMessage]]) -> SupportedMessages:
-        messages: SupportedMessages = []
+    def _process_function_calls(self, function_calls: List[IFunctionCall[AbstractMessage]]) -> SupportedMessages: # type: ignore
+        messages: SupportedMessages = [] # type: ignore
         for call in function_calls:
             msg = call.execute_function(lambda function_name: self.tools[function_name].get_callable())
             self.handle_on_response(msg)
@@ -154,7 +160,7 @@ class BaseAgent(
         while True:
             # individual llm call, unpacking the message, processing handlers
             response = self._execute_completion(stream=False)
-            msg: AbstractMessage = self._protocol.message_from_response(response)
+            msg: AbstractMessage = self._protocol.message_from_response(response) # type: ignore
             self.handle_on_response(msg)
             self.add_to_memory(msg)
 
@@ -175,7 +181,7 @@ class BaseAgent(
                 tool_messages: list[AbstractMessage] = []
                 for i, part in enumerate(response):
                     self._partial_streaming_chunks.append(part)
-                    msg: AbstractMessage = self._protocol.message_from_delta(response)
+                    msg: AbstractMessage = self._protocol.message_from_delta(response) # type: ignore
                     delta = self._protocol.content_from_delta(msg)
                     if delta:
                         if reconstruct:
@@ -197,50 +203,21 @@ class BaseAgent(
             yield self._protocol.done()
             if len(self._partial_streaming_chunks) > 0:
                 response = self._protocol.response_from_deltas(self._partial_streaming_chunks)
-                msg: AbstractMessage = self._protocol.message_from_response(response)
+                msg: AbstractMessage = self._protocol.message_from_response(response) # type: ignore
                 self.handle_on_response(msg)
                 self.add_to_memory(msg)
             self._partial_streaming_chunks.clear()
 
 
-    def query(self, query_input: SupportedMessages) -> str: #remembers query in handler, executes query and returns str
+    def query(self, query_input: SupportedMessages) -> str: # type: ignore #remembers query in handler, executes query and returns str
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
         self.query_with_currentmemory()
         return self.memory.last_message_str()
     
 
-    def query_structural(
-        self, 
-        query_input: SupportedMessages, 
-        parser: Type[BaseModel] = dict
-    ) -> Union[dict, BaseModel]:
-        """
-        Query the agent and parse the response according to the provided parser.
-        
-        Args:
-            query_input: Input messages for the query
-            parser: A pydantic model class or dict to parse the response (default: dict)
-            
-        Returns:
-            Parsed response as either a dictionary or pydantic model instance
-        """
-        response = self.query(query_input)
-        if parser == dict:
-            import json
-            return json.loads(response)
-        return parser.model_validate_json(response)
 
-
-
-    def stream(self, query_input: SupportedMessages, reconstruct = False ) \
-            -> Generator[Union[BaseModelResponse, AbstractMessage],None,None]:
+    def stream(self, query_input: SupportedMessages, reconstruct = False ) -> Generator[Union[BaseModelResponse, AbstractMessage],None,None]: # type: ignore
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
         return self.streaming_query_with_currentmemory( reconstruct = reconstruct )
-
-
-
-
-
-

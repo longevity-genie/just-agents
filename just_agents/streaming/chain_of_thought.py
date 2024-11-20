@@ -20,7 +20,7 @@ class ChainOfThought(AbstractStreaming):
 
     async def resp_async_generator(self) -> AsyncGenerator[str, None]:
         print("This method depricated use cot_agent instead.")
-        from just_agents.llm_session import LLMSession
+        from just_agents.simple.llm_session import LLMSession
         llm_session: LLMSession = self.session
         max_steps = 25
 

@@ -40,6 +40,7 @@ class BaseMemory(BaseModel, IMemory[Role, AbstractMessage]):
     def add_message(self, message: SupportedMessages) -> None:
         """
         Overrides the abstract method and provides dispatching to specific handlers.
+        see @add_message.register for the specific implementations
         """
         raise TypeError(f"Unsupported message format: {type(message)}")
 

@@ -3,7 +3,6 @@ from pathlib import Path
 from fastapi import FastAPI, Request
 from just_agents.interfaces.IAgent import IAgent
 from just_agents.utils import build_agent
-from just_agents.llm_session import LLMSession
 from starlette.responses import StreamingResponse
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware

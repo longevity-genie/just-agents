@@ -2,9 +2,9 @@ import json
 from typing import Optional, Any, Dict, Sequence, ClassVar, Tuple
 from pydantic import Field
 from just_agents.base_agent import BaseAgent
+from just_agents.just_profile import JustAgentFullProfile
 
-
-class SecretaryAgent(BaseAgent):
+class SecretaryAgent(BaseAgent, JustAgentFullProfile):
     AVAILABLE_INFO: ClassVar[str] = 'AVAILABLE_ATTRIBUTES'
     PROFILE_TEMPLATE: ClassVar[str] = 'PROFILE_UPDATE_TEMPLATE'
     DEFAULT_SECRETARY_PROMPT : ClassVar[str] = """

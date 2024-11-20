@@ -17,7 +17,7 @@ class AsyncSession(AbstractStreaming):
 
 
     async def resp_async_generator(self) -> AsyncGenerator[str, None]:
-        from just_agents.llm_session import LLMSession
+        from just_agents.simple.llm_session import LLMSession
         llm_session: LLMSession = self.session
         proceed = True
         while proceed:

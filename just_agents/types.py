@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field, HttpUrl
 AbstractMessage = Dict[str, Any]
 SupportedMessage = Union[str, AbstractMessage]
 SupportedMessages = Union[SupportedMessage, List[SupportedMessage]]
+Output = TypeVar('Output')
 
 class Role(str, Enum):
     system = "system"

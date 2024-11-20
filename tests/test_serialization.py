@@ -1,8 +1,7 @@
 import pytest
 from dotenv import load_dotenv
-from pathlib import Path
 import just_agents.llm_options
-from examples.tools.weather import get_current_weather
+from just_agents_examples.tools import get_current_weather
 
 from just_agents.base_agent import BaseAgent
 from just_agents.just_profile import JustAgentProfile

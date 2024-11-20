@@ -1,7 +1,6 @@
 import asyncio
 from dotenv import load_dotenv
-from just_agents.cot_agent import ChainOfThoughtAgent
-import pytest
+from just_agents.simple.cot_agent import ChainOfThoughtAgent
 
 import just_agents.llm_options
 

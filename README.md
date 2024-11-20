@@ -10,6 +10,8 @@ A lightweight, straightforward library for LLM agents - no over-engineering, jus
 pip install just-agents
 ```
 
+WARNING: we are reorganizing the package structure right now so the published package is a bit different than the code in this repository.
+
 ## 🎯 Motivation
 
 Most of the existing agentic libraries are extremely over-engineered either directly or by using over-engineered libraries under the hood, like langchain and llamaindex.
@@ -94,13 +96,13 @@ It represents an agent with a specific role, goal, and task. Here's a simple exa
 from dotenv import load_dotenv
 
 from just_agents.chat_agent import ChatAgent
-from just_agents.llm_options import LLAMA3_2
+from just_agents.simple.llm_options import LLAMA3_2_VISION
 load_dotenv(override=True)
 
-customer: ChatAgent = ChatAgent(llm_options = LLAMA3_2, role = "customer at a shop",
+customer: ChatAgent = ChatAgent(llm_options = LLAMA3_2_VISION, role = "customer at a shop",
                                 goal = "Your goal is to order what you want, while speaking concisely and clearly",
                                 task="Find the best headphones!")
-storekeeper: ChatAgent = ChatAgent(llm_options = LLAMA3_2,
+storekeeper: ChatAgent = ChatAgent(llm_options = LLAMA3_2_VISION,
                                     role = "helpful storekeeper",
                                     goal="earn profit by selling what customers need",
                                     task="sell to the customer")

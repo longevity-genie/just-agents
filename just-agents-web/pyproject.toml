@@ -1,0 +1,12 @@
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["just_agents_web*", "config*"]
+exclude = [
+    "*.egg-info",
+    "build",
+    "dist"
+]
+
+[tool.setuptools.package-data]
+"config" = ["*.yaml", "*.yml"]
+"just_agents_web" = ["*.yaml", "*.yml"] 

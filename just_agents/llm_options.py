@@ -21,18 +21,13 @@ ANTHROPIC_CLAUDE_3_5_SONNET: Dict = {
 }
 
 LLAMA3_2_VISION: Dict = {
-    "model": "groq/llama-3.2-11b-vision-preview",
+    #supports both text and vision
+    "model": "groq/llama-3.2-90b-vision-preview",
     "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0,
     "tools": []
 }
 
-LLAMA3_2: Dict = {
-    "model": "groq/llama-3.2-90b-text-preview",
-    "api_base": "https://api.groq.com/openai/v1",
-    "temperature": 0.0,
-    "tools": []
-}
 
 MISTRAL_8x22B = {
     "model": "mistral/open-mixtral-8x22b",
