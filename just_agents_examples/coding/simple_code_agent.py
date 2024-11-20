@@ -22,18 +22,9 @@ This example shows how to use a simple code agent to run python code and bash co
 if __name__ == "__main__":
     ref="FLPMSAKS"
     #here we use claude sonnet 3.5 as default mode, if you want to switch to another please edit yaml
-    config_path = coding_examples_dir / "simple_code_agent.yaml"
+    config_path = coding_examples_dir / "coding_agents.yaml"
     agent: BaseAgent = BaseAgent.from_yaml("SimpleCodeAgent", file_path=config_path)
     result = agent.query("Get FGF2 human protein sequence from uniprot using biopython. As a result, return only the sequence")
     print("RESULT+++++++++++++++++++++++++++++++++++++++++++++++")
     pprint.pprint(result)
     #assert amino_match_endswith(result, ref), f"Sequence ending doesn't match reference {ref}: {result}"
-    
-
-    #old code used to convert from legacy schema
-    # JustAgentProfile.convert_from_legacy(
-    #     legacy_file_path=coding_examples_dir / "simple_code_agent_legacy.yaml", 
-    #     output_file_path=coding_examples_dir / "simple_code_agent.yaml",
-    #     section_name="SimpleCodeAgent", 
-    #     parent_section="agent_profiles", # hate it, but to fix it I have to change defaults in serialization class    
-    #     )

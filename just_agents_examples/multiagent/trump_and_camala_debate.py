@@ -1,7 +1,5 @@
-from just_agents.simple.llm_options import LLAMA3_2_VISION, OPENAI_GPT4oMINI
+from just_agents.llm_options import LLAMA3_2_VISION, OPENAI_GPT4oMINI
 from just_agents.simple.chat_agent import ChatAgent
-from just_agents.simple.llm_options import LLAMA3_2_VISION, OPENAI_GPT4oMINI
-
 
 """
 This example shows how to use agents with different LLM models to simulate a debate between Kamala Harris and Donald Trump

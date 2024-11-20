@@ -91,12 +91,11 @@ YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND US
 DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES.
 
   Example of a valid JSON response:
-  ```json
-  {
-      'title': 'Identifying Key Information',
-      'content': 'To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...',
-      'next_action': 'continue'
-  }```
+  \"{
+      \"title\": \"Identifying Key Information\",
+      \"content\": \"To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...\",
+      \"next_action\": \"continue\"
+  }\"
   "
 system_prompt_path:
 final_prompt: "Please provide the final answer based solely on your reasoning above."

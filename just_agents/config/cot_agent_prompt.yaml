@@ -13,13 +13,12 @@ system_prompt: "You are an expert AI assistant that explains your reasoning step
   YOU CAN BE WRONG. WHEN YOU SAY YOU ARE RE-EXAMINING, ACTUALLY RE-EXAMINE, AND USE ANOTHER APPROACH TO DO SO. 
   DO NOT JUST SAY YOU ARE RE-EXAMINING. USE AT LEAST 3 METHODS TO DERIVE THE ANSWER. USE BEST PRACTICES.
   
-              Example of a valid JSON response:
-              ```json
-              {
-                  'title': 'Identifying Key Information',
-                  'content': 'To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...',
-                  'next_action': 'continue'
-              }```
+  Example of a valid JSON response:
+  \"{
+      \"title\": \"Identifying Key Information\",
+      \"content\": \"To begin solving this problem, we need to carefully examine the given information and identify the crucial elements that will guide our solution process. This involves...\",
+      \"next_action\": \"continue\"
+  }\"
   " # system prompt exclude use of system_prompt_path
 final_prompt: "Please provide the final answer based solely on your reasoning above." # prompt that will be passed before final answer
 title: "title" # title parameter in system prompt

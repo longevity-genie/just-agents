@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 
-from just_agents.chat_agent import ChatAgent
+from just_agents.simple.chat_agent import ChatAgent
 from just_agents.llm_options import LLAMA3_2_VISION
 import typer
 

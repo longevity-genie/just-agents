@@ -38,13 +38,6 @@ Homepage = "https://github.com/longevity-genie/just-agents"
 "Bug Tracker" = "https://github.com/longevity-genie/just-agents/issues"
 Documentation = "https://just-agents.readthedocs.io/"
 
-[tool.setuptools.packages]
-find = {}
-packages = ["just_agents"]
-
-[project.scripts]
-just-agents = "just_agents.cli:main"
-
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["just_agents*", "config*"]
