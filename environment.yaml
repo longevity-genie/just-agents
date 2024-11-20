@@ -12,7 +12,8 @@ dependencies:
   - pip
   - pip:
       - litellm>=1.52.9
-      - numpydoc
+      - numpydoc #for tool calling
+      - build #for building
       - semanticscholar>=0.8.4 #for just-agents-tools
       - llm-sandbox>=0.1.4 #for just-agents-coding
       - loguru #for just-agents-web
