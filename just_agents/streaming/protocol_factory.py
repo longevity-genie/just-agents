@@ -1,5 +1,5 @@
 from enum import Enum
-from just_agents.interfaces.IProtocolAdapter import IProtocolAdapter, ExecuteToolCallback
+from just_agents.streaming.protocols.interfaces.IProtocolAdapter import IProtocolAdapter, ExecuteToolCallback
 
 class StreamingMode(str, Enum):
     openai = "openai"

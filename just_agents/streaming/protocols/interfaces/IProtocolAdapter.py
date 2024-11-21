@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 from pydantic import BaseModel
 from typing import Callable, Coroutine, Union, AsyncGenerator, List, Sequence, ClassVar, Type, TypeVar, Generic, Any
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
-from just_agents.interfaces.IFunctionCall import IFunctionCall
+from just_agents.streaming.protocols.interfaces.IFunctionCall import IFunctionCall
 
 BaseModelResponse = TypeVar('BaseModelResponse', bound=BaseModel)
 AbstractMessage = TypeVar("AbstractMessage")

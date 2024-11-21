@@ -1,7 +1,7 @@
 from typing import Any, Dict, Optional
 
 from just_agents.simple.llm_session import LLMSession
-from just_agents.utils import load_config
+from just_agents.simple.utils import load_config
 
 
 class ChatAgent(LLMSession):

@@ -1,6 +1,6 @@
 from pathlib import Path
 from dotenv import load_dotenv
-from just_agents.utils import build_agent
+from just_agents.simple.utils import build_agent
 from just_agents.simple.llm_session import LLMSession
 from just_agents_examples.coding.tools import write_thoughts_and_results
 from just_agents_examples.coding.mounts import input_dir, output_dir, coding_examples_dir

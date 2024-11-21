@@ -1,8 +1,7 @@
-from abc import ABC, abstractmethod, abstractproperty
+from abc import ABC, abstractmethod
 import ast
 import json
 from typing import Type, Union, Generator, AsyncGenerator, Any, TypeVar, Generic, List, Optional, Callable, Coroutine, Protocol, Tuple
-from litellm import Field
 from pydantic import BaseModel, ConfigDict
 
 # Add this near the top of the file, before any class definitions
@@ -20,9 +19,6 @@ AbstractStreamingChunkType = TypeVar("AbstractStreamingChunkType")
 
 AbstractAgentInputType = TypeVar('AbstractAgentInputType', bound=BaseModel)
 AbstractAgentOutputType = TypeVar('AbstractAgentOutputType', bound=BaseModel)
-
-# New TypeVar for Thought
-THOUGHT_TYPE = TypeVar('THOUGHT_TYPE', bound='IThought')
 
 # Define the type that represents streaming responses
 AbstractStreamingGeneratorResponseType = Union[
@@ -86,87 +82,6 @@ class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, Abs
     @abstractmethod
     def stream(self, query_input: AbstractQueryInputType) -> Optional[AbstractStreamingGeneratorResponseType]:
         raise NotImplementedError("You need to implement stream() abstract method first!")
-
-class IThought(BaseModel):
-    @abstractmethod
-    def is_final(self) -> bool:
-        raise NotImplementedError("You need to implement is_final() abstract method first!")
-  
-    
-  
-class ITypedAgent(
-    IAgent[AbstractQueryInputType, AbstractQueryResponseType, AbstractStreamingChunkType],
-    Generic[
-        AbstractQueryInputType,
-        AbstractQueryResponseType,
-        AbstractStreamingChunkType,
-        AbstractAgentInputType,
-        AbstractAgentOutputType
-    ]
-):
-    """
-    A typed agent is an agent that can query and stream typed inputs and outputs.
-    It can recieve typed inputs from which it will extract query for the LLM and then return typed outputs.
-    """
-    
-
-    @abstractmethod
-    def query_from_input(self, input: AbstractAgentInputType) -> AbstractQueryInputType:
-        """
-        This method is used to convert the input to the query input type for self.query(message) call
-        """
-        raise NotImplementedError("You need to implement query_from_input() abstract method first!")
-    
-    @abstractmethod
-    def output_from_response(self, response: AbstractQueryResponseType) -> AbstractAgentOutputType:
-        """
-        This method is used to convert the query response to the output type.
-        
-        Args:
-            response: The raw response from the query
-            
-        Returns:
-            The response converted to the agent's output type
-        """
-        # Get the concrete output type from the class's type parameters
-        output_type = self.__class__.__orig_bases__[0].__args__[4]  # Gets AbstractAgentOutputType
-        return self.query_structural(response, parser=output_type)
-        
-    
-    def query_typed(self, input: AbstractAgentInputType) -> AbstractAgentOutputType:
-        """
-        This method is used to query the agent with a typed input and get a typed output.
-        """
-        query = self.query_from_input(input)
-        response = self.query(query)
-        output = self.output_from_response(response)
-        return output
-
-
-class IThinkingAgent(
-    IAgent[AbstractQueryInputType, AbstractQueryResponseType, AbstractStreamingChunkType],
-    Generic[AbstractQueryInputType, AbstractQueryResponseType, AbstractStreamingChunkType, THOUGHT_TYPE]
-):
-    
-    @abstractmethod
-    def thought_query(self, response: AbstractQueryResponseType) -> THOUGHT_TYPE:
-        raise NotImplementedError("You need to implement thought_from_response() abstract method first!")
-
-    def think(self, query: AbstractQueryInputType, max_iter: int = 3, chain: Optional[list[THOUGHT_TYPE]] = None) -> tuple[Optional[THOUGHT_TYPE], Optional[list[THOUGHT_TYPE]]]:
-        """
-        This method will continue to query the agent until the final thought is not None or the max_iter is reached.
-        Returns a tuple of (final_thought, thought_chain)
-        """
-        current_chain = chain or []
-        thought = self.thought_query(query) #queries itself with thought as expected output
-        new_chain = [*current_chain, thought] #updates chain with the new thought
-        if thought.is_final() or max_iter <= 0:
-            return (self.thought_query(query), new_chain) #returns the final thought and the chain that preceded it
-        else:
-            return self.think(query, max_iter - 1, new_chain) #continues the thought process
-            
-
-
 
 # Define IAgentWithInterceptors with methods to manage interceptors
 class IAgentWithInterceptors(

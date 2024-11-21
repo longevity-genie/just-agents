@@ -3,7 +3,7 @@ from typing import AsyncGenerator
 from litellm import ModelResponse, completion
 from typing import Callable, Optional
 
-from just_agents.memory import Memory
+from just_agents.simple.memory import Memory
 from just_agents.streaming.abstract_streaming import AbstractStreaming, FunctionParser
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
 from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol

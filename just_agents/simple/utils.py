@@ -151,7 +151,7 @@ def load_config(resource: str, package: str = "just_agents.config") -> Dict[str,
 
 @deprecated(version='0.3.0', reason="You should use native serialization of BaseAgent or its descendants")
 def build_agent(agent_schema: str | Path | dict):
-    from just_agents.thinking import ChainOfThoughtAgent
+    from just_agents.simple.cot_agent import ChainOfThoughtAgent
     from just_agents.simple.llm_session import LLMSession
     agent_schema = resolve_agent_schema(agent_schema)
     class_name = agent_schema.get("class", None)

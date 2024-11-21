@@ -1,4 +1,4 @@
-from just_agents.utils import SchemaValidationError, build_agent
+from just_agents.simple.utils import SchemaValidationError, build_agent
 
 
 def test_yaml_validator():

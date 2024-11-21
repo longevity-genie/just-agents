@@ -2,8 +2,8 @@
 from pydantic import BaseModel, Field, PrivateAttr
 from typing import Optional, Callable, List, Dict, Union
 from functools import singledispatchmethod
-from just_agents.interfaces.IMemory import IMemory
-from just_agents.types import Role, AbstractMessage, SupportedMessages, SupportedMessage
+from just_agents.core.interfaces.IMemory import IMemory
+from just_agents.core.types import Role, AbstractMessage, SupportedMessages, SupportedMessage
 from litellm.types.utils import Function
 
 OnMessageCallable = Callable[[AbstractMessage], None]
@@ -17,6 +17,8 @@ class BaseMemory(BaseModel, IMemory[Role, AbstractMessage]):
     """
 
     messages: List[AbstractMessage] = Field(default_factory=list, alias='messages')
+
+    # Private dict of message handlers for each role
     _on_message: Dict[Role, List[OnMessageCallable]] = PrivateAttr(default_factory=lambda: {
         Role.assistant: [],
         Role.tool: [],

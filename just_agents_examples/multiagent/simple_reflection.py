@@ -1,5 +1,5 @@
 from typing import Any
-from just_agents.reflection_agent import ReflectionAgent
+from just_agents.patterns.reflection_agent import ReflectionAgent
 from just_agents.simple.llm_session import LLMSession
 from just_agents.llm_options import OPENAI_GPT4oMINI
 from dotenv import load_dotenv

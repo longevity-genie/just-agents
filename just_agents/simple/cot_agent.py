@@ -1,10 +1,10 @@
-from just_agents.interfaces.IAgent import IAgent
+from just_agents.core.interfaces.IAgent import IAgent
 from just_agents.simple.llm_session import LLMSession
 import json
 from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
 from pathlib import Path
-from just_agents.utils import resolve_and_validate_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
+from just_agents.simple.utils import resolve_and_validate_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
 
 # schema parameters:
 LLM_SESSION = "llm_session"

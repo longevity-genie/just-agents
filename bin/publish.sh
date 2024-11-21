@@ -1,4 +1,6 @@
 #!/bin/bash
+# we assume that the script is running from the root of the project
+# like this: ./bin/publish.sh
 
 # Function to extract version from pyproject.toml
 get_version() {

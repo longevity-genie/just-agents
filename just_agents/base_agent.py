@@ -1,18 +1,17 @@
-
 from pydantic import Field, PrivateAttr
 from typing import Optional, List, Union, Any, Generator
 
-from just_agents.interfaces.IMemory import IMemory
-from just_agents.types import Role, AbstractMessage, SupportedMessages, SupportedMessage
+from just_agents.core.interfaces.IMemory import IMemory
+from just_agents.core.types import Role, AbstractMessage, SupportedMessages, SupportedMessage
 
 from just_agents.llm_options import LLMOptions
-from just_agents.interfaces.IFunctionCall import IFunctionCall
-from just_agents.interfaces.IProtocolAdapter import IProtocolAdapter, BaseModelResponse
-from just_agents.interfaces.IAgent import IAgentWithInterceptors, IThinkingAgent, IThought, ITypedAgent, QueryListener, ResponseListener
+from just_agents.streaming.protocols.interfaces.IFunctionCall import IFunctionCall
+from just_agents.streaming.protocols.interfaces.IProtocolAdapter import IProtocolAdapter, BaseModelResponse
+from just_agents.core.interfaces.IAgent import IAgentWithInterceptors, QueryListener, ResponseListener
 
 from just_agents.base_memory import BaseMemory
 from just_agents.just_profile import JustAgentProfile
-from just_agents.rotate_keys import RotateKeys
+from just_agents.core.rotate_keys import RotateKeys
 from just_agents.streaming.protocol_factory import StreamingMode, ProtocolAdapterFactory
 from typing import TypeVar, Type
 from pydantic import BaseModel
@@ -26,26 +25,43 @@ class BaseAgent(
     ]
 ):
     """
-    A base agent that can query and stream typed inputs and outputs.
+    A base agent that can query and stream LLM inputs and outputs.
 
     Note: it is based on pydantic and the only required field is llm_options.
     However, it is also recommended to set system_prompt.
     """
 
+    # Core configuration for the LLM
     llm_options: LLMOptions = Field(
-        ...,
+        ...,  # ... means this field is required
         validation_alias="options",
         description="options that will be passed to the LLM, see https://platform.openai.com/docs/api-reference/completions/create for more details")
+    
+    # Fallback options if primary LLM call fails
     backup_options: Optional[LLMOptions] = Field(
         None,
         exclude=True,
         description="options that will be used after we give up with main options, one more completion call will be done with backup options")
+
+    # API key management settings
     completion_remove_key_on_error: bool = Field(
         True,
         description="In case of using list of keys removing key from the list after error call with this key")
     completion_max_tries: Optional[int]  = Field(
         2, ge=0,
-        description="maximum number of completion retries before giving up")
+        description="Maximum retry attempts before failing or falling back to backup_options")
+    
+    # Memory system to store conversation history
+    memory: BaseMemory = Field(
+        default_factory=BaseMemory,
+        exclude=True,
+        description="Stores conversation history and maintains context between messages")
+
+    # Private attributes for internal state management
+    _protocol: Optional[IProtocolAdapter] = PrivateAttr(None)  # Handles LLM-specific message formatting
+    _partial_streaming_chunks: List[BaseModelResponse] = PrivateAttr(default_factory=list)  # Buffers streaming responses
+    _key_getter: Optional[RotateKeys] = PrivateAttr(None)  # Manages API key rotation
+
     streaming_method: StreamingMode = Field(
         StreamingMode.openai,
         description="protocol to handle llm format for function calling")
@@ -87,23 +103,31 @@ class BaseAgent(
         return self.memory.last_message
 
     def model_post_init(self, __context: Any) -> None:
+        # Call parent class's post_init first (from JustAgentProfile)
         super().model_post_init(__context)
 
+        # Initialize protocol adapter if not already set
+        # Protocol adapter handles formatting messages for specific LLM providers
         if not self._protocol:
             self._protocol = ProtocolAdapterFactory.get_protocol_adapter(
-                self.streaming_method,
-                execute_functions= lambda calls: self._process_function_calls(calls),
+                self.streaming_method,  # e.g., OpenAI, Azure, etc.
+                execute_functions=lambda calls: self._process_function_calls(calls),
             )
 
+        # If tools (functions) are defined, configure LLM to use them
         if self.tools is not None:
+            # Enable automatic tool selection if not explicitly set
             if not self.llm_options.get("tool_choice", None):
                 self.llm_options["tool_choice"] = "auto"
 
+        # Set up API key rotation if a key list file is provided
         if self.key_list_path is not None:
             self._key_getter = RotateKeys(self.key_list_path)
+        # Warn if both direct API key and key rotation are configured
         if (self._key_getter is not None) and (self.llm_options.get("api_key", None) is not None):
             print("Warning api_key will be rewritten by key_getter. Both are present in llm_options.")
 
+        # Initialize the agent with its system prompt
         self.instruct(self.system_prompt)
 
     def _prepare_options(self, options: LLMOptions):
@@ -209,7 +233,7 @@ class BaseAgent(
             self._partial_streaming_chunks.clear()
 
 
-    def query(self, query_input: SupportedMessages) -> str: # type: ignore #remembers query in handler, executes query and returns str
+    def query(self, query_input: SupportedMessages) -> str: #remembers query in handler, executes query and returns str
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
         self.query_with_currentmemory()
@@ -217,7 +241,7 @@ class BaseAgent(
     
 
 
-    def stream(self, query_input: SupportedMessages, reconstruct = False ) -> Generator[Union[BaseModelResponse, AbstractMessage],None,None]: # type: ignore
+    def stream(self, query_input: SupportedMessages, reconstruct = False ) -> Generator[Union[BaseModelResponse, AbstractMessage],None,None]:
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
         return self.streaming_query_with_currentmemory( reconstruct = reconstruct )

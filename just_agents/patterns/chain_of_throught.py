@@ -1,26 +1,33 @@
-
 from typing import ClassVar, Literal
 from just_agents.base_agent import BaseAgent
 from pydantic import BaseModel, Field
-
-from just_agents.interfaces.IAgent import IThinkingAgent, IThought
-from just_agents.types import Output, SupportedMessages
-
+from just_agents.core.types import Output, SupportedMessages
+from just_agents.core.interfaces.IAgent import IAgent
+from just_agents.patterns.interfaces.IThinkingAgent import IThinkingAgent, IThought, THOUGHT_TYPE
 
 class Thought(IThought):
     """
     This is a thought object that is used to represent a thought in the chain of thought agent.
     """
+    # Represents the title/summary of the current thinking step
     title: str
+    # The detailed explanation/reasoning for this thought step
     content: str
+    # Indicates whether to continue thinking or provide final answer
     next_action: Literal["continue", "final_answer"]
     
     def is_final(self) -> bool:
+        # Helper method to check if this is the final thought in the chain
         return self.next_action == "final_answer"
 
 
 class ChainOfThoughtAgent(BaseAgent, IThinkingAgent[SupportedMessages, SupportedMessages, SupportedMessages, Thought]):
-
+    # Default prompt that instructs the agent to:
+    # 1. Explain reasoning step by step
+    # 2. Use at least 3 steps
+    # 3. Consider limitations and alternative answers
+    # 4. Use multiple methods to verify answers
+    # 5. Format response as JSON with specific fields
     DEFAULT_SYSTEM_PROMPT: ClassVar[str] = """
 You are an expert AI assistant that explains your reasoning step by step. 
   For each step, provide a title that describes what you're doing in that step, along with the content. 
@@ -44,10 +51,20 @@ You are an expert AI assistant that explains your reasoning step by step.
               }```
 """
 
+    # Allow customization of the system prompt while maintaining the default as fallback
     system_prompt: str = Field(
         DEFAULT_SYSTEM_PROMPT,
         description="System prompt of the agent")
     
-    def thought_query(self, response: SupportedMessages) -> Thought: # type: ignore
+    def thought_query(self, response: SupportedMessages) -> Thought:
+        # Parses the LLM response into a structured Thought object
+        # Uses query_structural from BaseAgent to handle the parsing
         return self.query_structural(response, parser=Thought)
+
+    @classmethod
+    def with_prompt_prefix(cls, llm_options: dict, custom_prompt: str) -> "ChainOfThoughtAgent":
+        # Factory method (alternative constructor) to create an agent with a custom prompt prefix
+        # Preserves the default system prompt by appending it to the custom prompt
+        system_prompt=custom_prompt + "\n\n" + cls.DEFAULT_SYSTEM_PROMPT
+        return cls(llm_options=llm_options, system_prompt=system_prompt)
 

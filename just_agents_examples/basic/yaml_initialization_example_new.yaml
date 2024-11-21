@@ -1,0 +1,34 @@
+agent_profiles:
+  SimpleWeatherAgent:
+    class_qualname: just_agents.base_agent.BaseAgent
+    llm_options:
+      api_base: https://api.groq.com/openai/v1
+      model: groq/llama-3.2-90b-vision-preview
+      temperature: 0.0
+      tool_choice: auto
+      tools: []
+    tools:
+      get_current_weather:
+        arguments:
+        - location:
+            default: null
+            kind: POSITIONAL_OR_KEYWORD
+            type_annotation: <class 'str'>
+        description: 'Gets the current weather in a given location.
+
+          Args:
+
+          location (str): The name of the location to get the weather for.
+
+          Returns:
+
+          str: A JSON string containing the location, temperature, and unit of measurement.'
+        function: get_current_weather
+        package: just_agents_examples.tools
+        parameters:
+          properties:
+            location:
+              type: string
+          required:
+          - location
+          type: object

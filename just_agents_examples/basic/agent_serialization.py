@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from pathlib import Path
 
-from just_agents_examples.tools_old.weather import get_current_weather
+from just_agents_examples.tools import get_current_weather
 
 import just_agents.llm_options
 from just_agents.base_agent import BaseAgent

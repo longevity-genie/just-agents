@@ -1,6 +1,7 @@
 from typing import Any, Dict, List, Optional
 from pydantic import Field, HttpUrl
-from just_agents.types import ModelOptions
+
+from just_agents.core.types import ModelOptions
 
 LLMOptions = Dict[str, Any]
 

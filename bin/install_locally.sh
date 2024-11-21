@@ -1,4 +1,7 @@
 #!/bin/bash
+# we assume that the script is running from the root of the project
+# like this: ./bin/install_locally.sh
+
 # Ensure we're in the right micromamba environment
 eval "$(micromamba shell hook --shell bash)"
 micromamba activate just-agents
@@ -33,6 +36,3 @@ echo "Installing just_agents_examples package..."
 cd just_agents_examples
 pip install -e .
 cd ..
-
-echo "Installing root package..."
-pip install -e .

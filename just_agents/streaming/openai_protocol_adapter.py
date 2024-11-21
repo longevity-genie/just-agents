@@ -6,10 +6,10 @@ from typing import Optional, Callable, Union, Coroutine, ClassVar, Type, Sequenc
 
 from pydantic import Field, AliasPath, PrivateAttr, BaseModel, Json, field_validator
 
-from just_agents.types import AbstractMessage
+from just_agents.core.types import AbstractMessage
 
-from just_agents.interfaces.IFunctionCall import IFunctionCall, ToolByNameCallback
-from just_agents.interfaces.IProtocolAdapter import IProtocolAdapter, ExecuteToolCallback
+from just_agents.streaming.protocols.interfaces.IFunctionCall import IFunctionCall, ToolByNameCallback
+from just_agents.streaming.protocols.interfaces.IProtocolAdapter import IProtocolAdapter, ExecuteToolCallback
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
 from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
 

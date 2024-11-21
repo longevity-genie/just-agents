@@ -5,7 +5,7 @@ from dataclasses import dataclass
 from typing import Dict, Callable, AsyncGenerator, Optional
 from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
 
-from just_agents.memory import Memory
+from just_agents.simple.memory import Memory
 
 
 @dataclass

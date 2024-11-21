@@ -1,11 +1,11 @@
 [project]
 name = "just_agents_web"
-version = "0.3.1"
+version = "0.3.2"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 readme = "README.md"
 requires-python = ">=3.10"
 dependencies = [
-    "just-agents==0.3.1"
+    "just-agents>=0.3.2"
 ]
 
 [tool.setuptools.packages.find]

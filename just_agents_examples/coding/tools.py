@@ -1,8 +1,8 @@
 import re
 from dotenv import load_dotenv
 import requests
-from just_agents.interfaces.IAgent import IAgent
-from just_agents.utils import build_agent
+from just_agents.core.interfaces.IAgent import IAgent
+from just_agents.simple.utils import build_agent
 from just_agents.simple.llm_session import LLMSession
 from llm_sandbox.micromamba import MicromambaSession
 from llm_sandbox.docker import SandboxDockerSession

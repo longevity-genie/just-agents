@@ -1,11 +1,15 @@
 from typing import Union, Dict, Sequence, AsyncGenerator, Any
-from just_agents.interfaces.IAgent import IAgent
+from just_agents.core.interfaces.IAgent import IAgent
 
 ITERATIONS = "iterations"
 CRITIC_PROMPT = "critic_prompt"
 STOP_WORD = "stop_word"
 
 class ReflectionAgent(IAgent):
+    """
+    This agent is used to reflect on the output of another agent.
+    This implementation is deprecated, we will rewrite it
+    """
 
     def __init__(self, agent_schema: dict = None, author: IAgent = None, critic: IAgent = None):
         self.author: IAgent = author

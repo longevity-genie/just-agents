@@ -1,8 +1,8 @@
 from pathlib import Path
 from pydantic import Field, model_validator
 from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict
-from just_agents.just_serialization import JustSerializable
-from just_agents.just_tool import JustTool, JustTools
+from just_agents.core.just_serialization import JustSerializable
+from just_agents.core.just_tool import JustTool, JustTools
 
 
 class JustAgentProfile(JustSerializable):

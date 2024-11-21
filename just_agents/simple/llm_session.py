@@ -7,14 +7,14 @@ import litellm
 from litellm import ModelResponse, completion
 from litellm.utils import Choices
 
-from just_agents.interfaces.IAgent import IAgent
-from just_agents.memory import Memory
+from just_agents.core.interfaces.IAgent import IAgent
+from just_agents.simple.memory import Memory
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
-from just_agents.utils import resolve_and_validate_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
-from just_agents.rotate_keys import RotateKeys
+from just_agents.simple.utils import resolve_and_validate_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
+from just_agents.core.rotate_keys import RotateKeys
 
 OnCompletion = Callable[[ModelResponse], None]
 
