@@ -33,12 +33,12 @@ Of course, you might comment that we do not have the ecosystem like, for example
 ## 📚 Documentation & Tutorials
 
 ### Interactive Tutorials (Google Colab)
-- [Basic Agents Tutorial](https://colab.research.google.com/drive/1l_pdfT0FhlzFzNV792xdiMD3xt0I660z)
-- [Database Agent Tutorial](https://colab.research.google.com/drive/1FQGOfIytET5HlExxu4jdXHeOMJJDL0yg)
-- [Coding Agent Tutorial](https://colab.research.google.com/drive/1CbqwSwUHir6VpWA0uKVIiqlZo6m2s6qm#scrollTo=xMh-QD4m8F7V)
+- [Basic Agents Tutorial](https://github.com/longevity-genie/just-agents/blob/main/just_agents_examples/notebooks/01_just_agents_colab.ipynb)
+- [Database Agent Tutorial](https://github.com/longevity-genie/just-agents/blob/main/just_agents_examples/notebooks/02_sqlite_example.ipynb)
+- [Coding Agent Tutorial](https://github.com/longevity-genie/just-agents/blob/main/just_agents_examples/notebooks/03_coding_agent.ipynb)
 
 ### Example Code
-Browse our [examples](examples) directory for:
+Browse our [examples](https://github.com/longevity-genie/just-agents/tree/main/just_agents_examples) directory for:
 - 🔰 Basic usage examples
 - 💻 Code generation and execution
 - 🛠️ Tool integration examples
