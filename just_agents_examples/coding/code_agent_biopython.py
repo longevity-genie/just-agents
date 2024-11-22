@@ -1,13 +1,9 @@
-from pathlib import Path
 from dotenv import load_dotenv
-from llm_sandbox.micromamba import MicromambaSession
-from llm_sandbox.docker import SandboxDockerSession
 
-from just_agents.core.interfaces.IAgent import IAgent
 from just_agents.simple.utils import build_agent
-from just_agents.simple.llm_session import LLMSession
 from just_agents_examples.coding.tools import write_thoughts_and_results
-from just_agents_examples.coding.mounts import input_dir, output_dir, coding_examples_dir
+from just_agents_examples.coding.mounts import coding_examples_dir
+from just_agents.simple.cot_agent import ChainOfThoughtAgent
 
 load_dotenv(override=True)
 
@@ -22,7 +18,7 @@ and a results file with the results.
 
 """
 if __name__ == "__main__":
-    assistant: LLMSession = build_agent(coding_examples_dir / "code_agent.yaml")
+    assistant: ChainOfThoughtAgent = build_agent(coding_examples_dir / "code_agent.yaml")
     result, thoughts = assistant.query("Get a random FGF2_HUMAN protein sequence with biopython from uniprot and save it as FGF2.fasta")
     write_thoughts_and_results("uniprot", thoughts, result)
     

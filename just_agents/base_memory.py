@@ -78,9 +78,8 @@ class BaseMemory(BaseModel, IMemory[Role, AbstractMessage]):
     def last_message_str(self) -> Optional[str]:
         message_str = None
         last_message = self.last_message
-        if last_message:
-            message_str = last_message["content"] if "content" in last_message else str(last_message)
-        return message_str
+        result = last_message["content"] if "content" in last_message else last_message
+        return str(result)
 
     def add_on_tool_call(self, fun: OnFunctionCallable) -> None:
         """

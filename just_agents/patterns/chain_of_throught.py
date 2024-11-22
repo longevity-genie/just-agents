@@ -1,4 +1,4 @@
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Any
 from just_agents.base_agent import BaseAgent
 from pydantic import BaseModel, Field
 from just_agents.core.types import Output, SupportedMessages
@@ -33,7 +33,7 @@ You are an expert AI assistant that explains your reasoning step by step.
   For each step, provide a title that describes what you're doing in that step, along with the content. 
   Decide if you need another step or if you're ready to give the final answer. 
   Respond in JSON format with 'title', 'content', and 'next_action' (either 'continue' or 'final_answer') keys. 
-  Make sure you send only one JSON step object. 
+  Make sure you send only one JSON step object. You response should be a valid JSON object. In the JSON use Use Triple Quotes for Multi-line Strings.
   USE AS MANY REASONING STEPS AS POSSIBLE. AT LEAST 3. 
   BE AWARE OF YOUR LIMITATIONS AS AN LLM AND WHAT YOU CAN AND CANNOT DO. 
   IN YOUR REASONING, INCLUDE EXPLORATION OF ALTERNATIVE ANSWERS. 
@@ -51,15 +51,18 @@ You are an expert AI assistant that explains your reasoning step by step.
               }```
 """
 
+   
     # Allow customization of the system prompt while maintaining the default as fallback
     system_prompt: str = Field(
         DEFAULT_SYSTEM_PROMPT,
         description="System prompt of the agent")
     
-    def thought_query(self, response: SupportedMessages) -> Thought:
+    def thought_query(self, response: SupportedMessages, **kwargs) -> Thought:
         # Parses the LLM response into a structured Thought object
-        # Uses query_structural from BaseAgent to handle the parsing
-        return self.query_structural(response, parser=Thought)
+        if self.supports_response_format and "gpt-4" in self.llm_options["model"]: # despite what they declare only openai does support reponse format right
+           return self.query_structural(response, parser=Thought, response_format={"type": "json_object"}, **kwargs)
+        else:
+            return self.query_structural(response, parser=Thought, **kwargs)
 
     @classmethod
     def with_prompt_prefix(cls, llm_options: dict, custom_prompt: str) -> "ChainOfThoughtAgent":
@@ -67,4 +70,3 @@ You are an expert AI assistant that explains your reasoning step by step.
         # Preserves the default system prompt by appending it to the custom prompt
         system_prompt=custom_prompt + "\n\n" + cls.DEFAULT_SYSTEM_PROMPT
         return cls(llm_options=llm_options, system_prompt=system_prompt)
-

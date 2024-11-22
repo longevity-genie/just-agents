@@ -15,6 +15,7 @@ from just_agents.core.rotate_keys import RotateKeys
 from just_agents.streaming.protocol_factory import StreamingMode, ProtocolAdapterFactory
 from typing import TypeVar, Type
 from pydantic import BaseModel
+from litellm import get_supported_openai_params
 
 class BaseAgent(
     JustAgentProfile,
@@ -139,9 +140,13 @@ class BaseAgent(
 
     def _execute_completion(
             self,
-            stream: bool
-    ) -> Union[AbstractMessage, BaseModelResponse]: # type: ignore
+            stream: bool,
+            **kwargs
+    ) -> Union[AbstractMessage, BaseModelResponse]:
+        
         opt = self._prepare_options(self.llm_options)
+        opt.update(kwargs)
+        
         max_tries = self.completion_max_tries
         if self._key_getter is not None:
             if max_tries < 1:
@@ -171,19 +176,19 @@ class BaseAgent(
             return self._protocol.completion(messages=self.memory.messages, stream=stream, **opt)
 
 
-    def _process_function_calls(self, function_calls: List[IFunctionCall[AbstractMessage]]) -> SupportedMessages: # type: ignore
-        messages: SupportedMessages = [] # type: ignore
+    def _process_function_calls(self, function_calls: List[IFunctionCall[AbstractMessage]]) -> SupportedMessages:
+        messages: SupportedMessages = []
         for call in function_calls:
             msg = call.execute_function(lambda function_name: self.tools[function_name].get_callable())
             self.handle_on_response(msg)
             self.add_to_memory(msg)
             messages.append(msg)
         return messages
-
-    def query_with_currentmemory(self): #former proceed() aka llm_think()
+    
+    def query_with_currentmemory(self, **kwargs): #former proceed() aka llm_think()
         while True:
             # individual llm call, unpacking the message, processing handlers
-            response = self._execute_completion(stream=False)
+            response = self._execute_completion(stream=False, **kwargs)
             msg: AbstractMessage = self._protocol.message_from_response(response) # type: ignore
             self.handle_on_response(msg)
             self.add_to_memory(msg)
@@ -195,13 +200,14 @@ class BaseAgent(
             if not tool_calls:
                 break
             # Process each tool call if they exist and re-execute query
-            self._process_function_calls(tool_calls)
+            self._process_function_calls(tool_calls) #NOTE: no kwargs here as tool calls might need different parameters
 
-    def streaming_query_with_currentmemory(self, reconstruct = False):
+
+    def streaming_query_with_currentmemory(self, reconstruct = False, **kwargs):
         try:
             self._partial_streaming_chunks.clear()
-            while True:
-                response = self._execute_completion(stream=True)
+            while True: #TODO rewrite this super-ugly while-True-break stuff into proper recursion
+                response = self._execute_completion(stream=True, **kwargs)
                 tool_messages: list[AbstractMessage] = []
                 for i, part in enumerate(response):
                     self._partial_streaming_chunks.append(part)
@@ -233,15 +239,32 @@ class BaseAgent(
             self._partial_streaming_chunks.clear()
 
 
-    def query(self, query_input: SupportedMessages) -> str: #remembers query in handler, executes query and returns str
+    def query(self, query_input: SupportedMessages, **kwargs) -> str:
+        """
+        Query the agent and return the last message
+        """
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
-        self.query_with_currentmemory()
+        # Pass kwargs to query_with_currentmemory
+        self.query_with_currentmemory(**kwargs)
         return self.memory.last_message_str()
     
 
-
-    def stream(self, query_input: SupportedMessages, reconstruct = False ) -> Generator[Union[BaseModelResponse, AbstractMessage],None,None]:
+    def stream(self, query_input: SupportedMessages, reconstruct = False, **kwargs) -> Generator[Union[BaseModelResponse, AbstractMessage],None,None]:
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
-        return self.streaming_query_with_currentmemory( reconstruct = reconstruct )
+        # Pass kwargs to streaming_query_with_currentmemory
+        return self.streaming_query_with_currentmemory(reconstruct=reconstruct, **kwargs)
+
+
+    @property
+    def model_supported_parameters(self) -> list[str]:
+        """Returns the list of parameters supported by the current model"""
+        return get_supported_openai_params(self.llm_options["model"])
+    
+    
+    @property
+    def supports_response_format(self) -> bool:
+        """Checks if the current model supports the response_format parameter"""
+        #TODO: implement provider specific check
+        return "response_format" in self.model_supported_parameters

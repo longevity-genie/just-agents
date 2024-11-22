@@ -3,6 +3,7 @@ import ast
 import json
 from typing import Type, Union, Generator, AsyncGenerator, Any, TypeVar, Generic, List, Optional, Callable, Coroutine, Protocol, Tuple
 from pydantic import BaseModel, ConfigDict
+import re
 
 # Add this near the top of the file, before any class definitions
 import pydantic
@@ -51,34 +52,55 @@ class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, Abs
     def query_structural(
         self, 
         query_input: AbstractQueryInputType, 
-        parser: Type[BaseModel] = dict
+        parser: Type[BaseModel] = dict,
+        **kwargs
     ) -> Union[dict, BaseModel]:
         """
         Query the agent and parse the response according to the provided parser.
-        
-        Args:
-            query_input: Input messages for the query
-            parser: A pydantic model class or dict to parse the response (default: dict)
-            
-        Returns:
-            Parsed response as either a dictionary or pydantic model instance
+        Attempts multiple parsing strategies in the following order:
+        1. Direct dict usage if already a dict
+        2. Standard json parsing
+        3. AST literal eval as final fallback
         """
-        response = self.query(query_input)
-        # Convert Python-style string to valid JSON dict
+        raw_response = self.query(query_input, **kwargs)
+
+        # If already a dict, no parsing needed
+        if isinstance(raw_response, dict):
+            return raw_response if parser == dict else parser.model_validate(raw_response)
+
+        if not isinstance(raw_response, str):
+            raw_response = str(raw_response)
+
+        # Check for and fix common double-escaping issues
+        if '\\\\' in raw_response:
+            raw_response = raw_response.replace('\\\\', '\\')
+
+        parsing_errors = []
+        
+        # Try standard json first
         try:
-            # First try parsing as valid JSON
-            response_dict = json.loads(response)
-        except json.JSONDecodeError:
-            # If that fails, use ast.literal_eval to handle Python dict format
-            response_dict = ast.literal_eval(response)
+            response_dict = json.loads(raw_response)
+            return response_dict if parser == dict else parser.model_validate(response_dict)
+        except json.JSONDecodeError as e:
+            parsing_errors.append(f"Standard JSON parsing failed: {str(e)}")
 
-        if parser == dict:
-            return response_dict
-        else:
-            # Use model_validate instead of model_validate_json since we already have a dict
-            return parser.model_validate(response_dict)
+        # Final fallback: AST literal eval
+        try:
+            response_dict = ast.literal_eval(raw_response)
+            if isinstance(response_dict, dict):
+                return response_dict if parser == dict else parser.model_validate(response_dict)
+            parsing_errors.append("AST parsing succeeded but result was not a dict")
+        except (ValueError, SyntaxError) as e:
+            parsing_errors.append(f"AST literal_eval parsing failed: {str(e)}")
 
+        # If all parsing attempts failed, raise detailed error
+        raise ValueError(
+            f"Failed to parse response using multiple methods:\n"
+            f"{chr(10).join(parsing_errors)}\n"
+            f"Original response:\n{raw_response}"
+        )
 
+    
     @abstractmethod
     def stream(self, query_input: AbstractQueryInputType) -> Optional[AbstractStreamingGeneratorResponseType]:
         raise NotImplementedError("You need to implement stream() abstract method first!")

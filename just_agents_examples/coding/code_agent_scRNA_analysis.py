@@ -1,7 +1,7 @@
 from pathlib import Path
 from dotenv import load_dotenv
 from just_agents.simple.utils import build_agent
-from just_agents.simple.llm_session import LLMSession
+from just_agents.simple.cot_agent import ChainOfThoughtAgent
 from just_agents_examples.coding.tools import write_thoughts_and_results
 from just_agents_examples.coding.mounts import input_dir, output_dir, coding_examples_dir
 
@@ -15,7 +15,7 @@ WARNING: This example is not working stabily, we have to update the prompt to ma
 """
 
 if __name__ == "__main__":
-    assistant: LLMSession= build_agent(coding_examples_dir / "code_agent.yaml")
+    assistant: ChainOfThoughtAgent= build_agent(coding_examples_dir / "code_agent.yaml")
     result, thoughts = assistant.query("Use squidpy for neighborhood enrichment analysis for "
                                        "'https://github.com/antonkulaga/AutoBA/blob/dev-v1.x.x/examples/case4.1/data/slice1.h5ad', "
                                        "'https://github.com/antonkulaga/AutoBA/blob/dev-v1.x.x/examples/case4.1/data/slice1.h5ad', "
