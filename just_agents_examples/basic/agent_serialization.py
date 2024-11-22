@@ -18,7 +18,7 @@ In complex use-cases it can be useful to keep agents in yaml files to be able to
 
 if __name__ == "__main__":
 
-    config_path = basic_examples_dir / "yaml_initialization_example_new.yaml"
+    config_path = basic_examples_dir / "agent_profiles.yaml"
 
     created_agent = BaseAgent(
         llm_options=just_agents.llm_options.LLAMA3_2_VISION,
