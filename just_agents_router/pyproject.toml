@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "just-agents-router"
-version = "0.3.2"
+version = "0.3.3"
 description = "Just Agents - Router Components"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -15,7 +15,7 @@ maintainers = [
     { name = "Anton Kulaga", email = "antonkulaga@gmail.com" },
 ]
 dependencies = [
-    "just-agents>=0.3.2",
+    "just-agents>=0.3.3",
 ]
 license = {text = "MIT"}
 

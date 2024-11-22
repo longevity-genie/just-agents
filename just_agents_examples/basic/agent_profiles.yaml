@@ -1,4 +1,36 @@
 agent_profiles:
+  ChainOfThoughtAgent:
+    class_qualname: just_agents.patterns.chain_of_throught.ChainOfThoughtAgent
+    llm_options:
+      api_base: https://api.groq.com/openai/v1
+      model: groq/llama-3.2-90b-vision-preview
+      temperature: 0.0
+      tool_choice: auto
+      tools: []
+    tools:
+      letter_count:
+        arguments:
+        - word:
+            default: null
+            kind: POSITIONAL_OR_KEYWORD
+            type_annotation: <class 'str'>
+        - letter:
+            default: null
+            kind: POSITIONAL_OR_KEYWORD
+            type_annotation: <class 'str'>
+        description: returns number of letters in the word
+        function: letter_count
+        package: just_agents_examples.tools
+        parameters:
+          properties:
+            letter:
+              type: string
+            word:
+              type: string
+          required:
+          - word
+          - letter
+          type: object
   SimpleWeatherAgent:
     class_qualname: just_agents.base_agent.BaseAgent
     llm_options:

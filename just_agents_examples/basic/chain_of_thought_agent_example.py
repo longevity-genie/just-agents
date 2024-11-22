@@ -23,7 +23,7 @@ if __name__ == "__main__":
     # Initialize the Chain of Thought Agent with:
     # - the tools it can use
     # - LLAMA 3.2 Vision as the language model
-    agent: ChainOfThoughtAgent = ChainOfThoughtAgent(tools=tools, llm_options=llm_options.OPENAI_GPT4oMINI)
+    agent: ChainOfThoughtAgent = ChainOfThoughtAgent(tools=tools, llm_options=llm_options.LLAMA3_2_VISION)
 
     # Add a callback to print all messages that the agent processes
     agent.memory.add_on_message(lambda message: print(message))
@@ -33,9 +33,12 @@ if __name__ == "__main__":
     # - result: The final answer
     # - chain: The step-by-step reasoning process (list of thoughts)
     (result, chain) = agent.think("Count the number of occurrences of the letter 'L' in the word - 'LOLLAPALOOZA'.")
-
+    
     # Print the final result and the chain of thoughts
-    print("Final result:")
+    print("==========Final result:==========")
     print(result)
-    print("Chain of thoughts:")
+    print("==========Chain of thoughts:==========")
     pprint.pprint(chain)
+    file_path = basic_examples_dir / "agent_profiles.yaml"
+    agent.save_to_yaml("ChainOfThoughtAgent", file_path=file_path)
+
