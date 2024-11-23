@@ -4,8 +4,16 @@
 
 # Add environment variable check
 if [ -z "$PYPI_TOKEN" ]; then
-    echo "Error: PYPI_TOKEN environment variable is not set"
-    exit 1
+    if [ -f ".env" ]; then
+        # Source the .env file if it exists
+        export $(cat .env | grep PYPI_TOKEN)
+    fi
+    
+    # Check again after potentially loading from .env
+    if [ -z "$PYPI_TOKEN" ]; then
+        echo "Error: PYPI_TOKEN not found in environment or .env file"
+        exit 1
+    fi
 fi
 
 # Parse command line arguments
@@ -57,7 +65,11 @@ if [ "$skip_publish" = false ]; then
     for pkg in core web tools coding router examples; do
         echo "Uploading just_agents/$pkg..."
         if [ -d "$pkg/dist" ]; then
-            twine upload --verbose "$pkg/dist/*" --username "__token__" --password "$PYPI_TOKEN" || { echo "Failed to upload just_agents/$pkg"; exit 1; }
+            twine upload --verbose \
+                        --skip-existing \
+                        "$pkg/dist/just_agents_${pkg}-${base_version}"* \
+                        --username "__token__" \
+                        --password "$PYPI_TOKEN" || { echo "Failed to upload just_agents/$pkg"; exit 1; }
         else
             echo "Warning: No dist directory found for just_agents/$pkg"
         fi

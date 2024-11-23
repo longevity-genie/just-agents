@@ -3,8 +3,8 @@ requires = ["setuptools>=61.0"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "just-agents"
-version = "0.3.7"
+name = "just-agents-core"
+version = "0.3.8"
 description = "Just Agents - Base Package"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -43,7 +43,7 @@ Documentation = "https://just-agents.readthedocs.io/"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["just_agents*", "config*"]
+include = ["just_agents", "just_agents.*"]
 exclude = [
     "logs*",
     "output*", 
