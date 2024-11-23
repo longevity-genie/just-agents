@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "just-agents-examples"
 version = "0.3.8"
-description = "Just Agents - Coding Components"
+description = "Just Agents - Examples code"
 readme = "README.md"
 requires-python = ">=3.10"
 authors = [
@@ -16,6 +16,10 @@ maintainers = [
 ]
 dependencies = [
     "just-agents-core>=0.3.8",
+    "just-agents-tools>=0.3.8",
+    "just-agents-coding>=0.3.8",
+    "just-agents-web>=0.3.8",
+    "just_agents_router>=0.3.8",
     "llm-sandbox>=0.1.4",
 ]
 license = {text = "MIT"}
