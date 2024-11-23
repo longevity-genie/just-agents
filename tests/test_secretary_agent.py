@@ -2,7 +2,7 @@ import os
 import pytest
 import dotenv
 import json
-import just_agents.llm_options
+import core.llm_options
 from just_agents_router.secretary_agent import SecretaryAgent
 
 @pytest.fixture(scope='module')
@@ -18,7 +18,7 @@ def secretary_autoload_false(temp_config_path):
     params = {
         'autoload_from_yaml': False,
         'config_path': temp_config_path,
-        'llm_options': just_agents.llm_options.OPENAI_GPT4oMINI,
+        'llm_options': core.llm_options.OPENAI_GPT4oMINI,
     }
     secretary = SecretaryAgent(**params)
     info = secretary.get_info(secretary)
@@ -33,7 +33,7 @@ def secretary_autoload_true(temp_config_path, secretary_autoload_false):
     dotenv.load_dotenv(override=True)
     params = {
         'model_name': None,
-        'llm_options': just_agents.llm_options.OPENAI_GPT4oMINI,
+        'llm_options': core.llm_options.OPENAI_GPT4oMINI,
         'extra_dict': {
             "personality_traits": "Agent's personality traits go here",
         },

@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "just-agents-examples"
+version = "0.3.7"
+description = "Just Agents - Coding Components"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Alex Karmazin", email = "karmazinalex@gmail.com" },
+]
+maintainers = [
+    { name = "Anton Kulaga", email = "antonkulaga@gmail.com" },
+]
+dependencies = [
+    "just-agents>=0.3.7",
+    "llm-sandbox>=0.1.4",
+]
+license = {text = "MIT"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["just_agents*"]
+exclude = [
+    "logs*",
+    "output*", 
+    "*.egg-info",
+    "build",
+    "dist"
+]
+
+[tool.setuptools.package-data]
+"config" = ["*.yaml", "*.yml"]
+"just_agents" = ["*.yaml", "*.yml"]

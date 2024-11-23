@@ -4,7 +4,7 @@ import json
 import pytest
 from dotenv import load_dotenv
 
-import just_agents.simple.llm_session
+import core.simple.llm_session
 from just_agents.simple.llm_session import LLMSession
 import asyncio
 from tests.mock import *
@@ -24,7 +24,7 @@ def get_current_weather(location: str):
 def test_sync_function_calling():
     load_dotenv(override=True)
     session: LLMSession = LLMSession(
-        llm_options=just_agents.llm_options.LLAMA3_2_VISION,
+        llm_options=core.llm_options.LLAMA3_2_VISION,
         tools=[get_current_weather]
     )
     result = session.query("What's the weather like in San Francisco, Tokyo, and Paris?")
@@ -39,7 +39,7 @@ async def process_stream(async_generator):
 def test_stream_function_calling():
     load_dotenv(override=True)
     session: LLMSession = LLMSession(
-        llm_options=just_agents.llm_options.LLAMA3_2_VISION,
+        llm_options=core.llm_options.LLAMA3_2_VISION,
         tools=[get_current_weather]
     )
     stream = session.stream("What's the weather like in San Francisco, Tokyo, and Paris?")
@@ -54,7 +54,7 @@ def test_stream_function_calling():
 def test_stream_genetics_function_calling():
     load_dotenv(override=True)
     session: LLMSession = LLMSession(
-        llm_options=just_agents.llm_options.LLAMA3_2_VISION,
+        llm_options=core.llm_options.LLAMA3_2_VISION,
         tools=[hybrid_search, rsid_lookup, gene_lookup, pathway_lookup, disease_lookup, sequencing_info, clinical_trails_full_trial]
     )
     stream = session.stream("What is the influence of different alleles in rs10937739?")
@@ -67,7 +67,7 @@ def test_stream_genetics_function_calling():
 def test_async_gwen2_function_calling():
     load_dotenv(override=True)
     session: LLMSession = LLMSession(
-        llm_options=just_agents.llm_options.OPEN_ROUTER_Qwen_2_72B_Instruct,
+        llm_options=core.llm_options.OPEN_ROUTER_Qwen_2_72B_Instruct,
         tools=[get_current_weather]
     )
     result = session.query_all_messages("What's the weather like in San Francisco, Tokyo, and Paris?")

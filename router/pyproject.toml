@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "just-agents-router"
+version = "0.3.7"
+description = "Just Agents - Router Components"
+readme = "README.md"
+requires-python = ">=3.10"
+authors = [
+    { name = "Newton Winter", email = "isoutthere@gmail.com" },
+    { name = "Alex Karmazin", email = "karmazinalex@gmail.com" },
+]
+maintainers = [
+    { name = "Newton Winter", email = "isoutthere@gmail.com" },
+    { name = "Anton Kulaga", email = "antonkulaga@gmail.com" },
+]
+dependencies = [
+    "just-agents>=0.3.7",
+]
+license = {text = "MIT"}
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["just_agents*"]
+exclude = [
+    "logs*",
+    "output*", 
+    "*.egg-info",
+    "build",
+    "dist"
+]
+
+[tool.setuptools.package-data]
+"config" = ["*.yaml", "*.yml"]
+"just_agents" = ["*.yaml", "*.yml"] 

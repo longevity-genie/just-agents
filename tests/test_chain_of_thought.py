@@ -1,6 +1,6 @@
 from dotenv import load_dotenv
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
-import just_agents.llm_options
+import core.llm_options
 
 def count_letters(character:str, word:str) -> str:
     """ Returns the number of character occurrences in the word. """
@@ -15,7 +15,7 @@ def count_letters(character:str, word:str) -> str:
 def test_function_query():
     load_dotenv(override = True)
 
-    llm_options = just_agents.llm_options.LLAMA3_2_VISION
+    llm_options = core.llm_options.LLAMA3_2_VISION
     agent: ChainOfThoughtAgent = ChainOfThoughtAgent(llm_options=llm_options, tools=[count_letters])
     result, thoughts = agent.think("Count the number of occurrences of the letter ’L’ in the word - ’LOLLAPALOOZA’.")
     print("Thoughts: ", thoughts)

@@ -7,32 +7,32 @@ eval "$(micromamba shell hook --shell bash)"
 micromamba activate just-agents
 
 # Install packages in the correct order
-echo "Installing just_agents package..."
-cd just_agents
+echo "Installing core package..."
+cd core
 pip install -e .
 cd ..
 
-echo "Installing just_agents_coding package..."
-cd just_agents_coding
+echo "Installing coding package..."
+cd coding
 pip install -e .
 cd ..
 
-echo "Installing just_agents_web package..."
-cd just_agents_web
+echo "Installing web package..."
+cd web
 pip install -e .
 cd ..
 
-echo "Installing just_agents_tools package..."
-cd just_agents_tools
+echo "Installing tools package..."
+cd tools
 pip install -e .
 cd ..
 
-echo "Installing just_agents_router package..."
-cd just_agents_router
+echo "Installing router package..."
+cd router
 pip install -e .
 cd ..
 
-echo "Installing just_agents_examples package..."
-cd just_agents_examples
+echo "Installing examples package..."
+cd examples
 pip install -e .
 cd ..
