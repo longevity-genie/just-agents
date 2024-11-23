@@ -1,6 +1,6 @@
 import pytest
 from dotenv import load_dotenv
-import core.llm_options
+import just_agents.llm_options
 from examples.tools import get_current_weather
 
 from just_agents.base_agent import BaseAgent
@@ -54,7 +54,7 @@ def test_just_agent(load_env, tmp_path):
 
     # Create a JustAgent instance
     agent = BaseAgent(
-        llm_options=core.llm_options.OPENAI_GPT4oMINI,
+        llm_options=just_agents.llm_options.OPENAI_GPT4oMINI,
         config_path=config_path,
         tools=[get_current_weather],
     )

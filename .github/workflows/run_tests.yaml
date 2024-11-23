@@ -60,7 +60,7 @@ jobs:
           cd just_agents_coding && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e . && cd ..
           cd just_agents_web && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e . && cd ..
           cd just_agents_tools && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e . && cd ..
-          cd just_agents_router && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e . && cd ..
+          cd just_agents.router && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e . && cd ..
           cd just_agents_examples && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e . && cd ..
           $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e .
         env:

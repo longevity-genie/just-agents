@@ -3,7 +3,7 @@ from pathlib import Path
 
 from examples.tools import get_current_weather
 
-import core.llm_options
+import just_agents.llm_options
 from just_agents.base_agent import BaseAgent
 from just_agents.just_profile import JustAgentProfile
 

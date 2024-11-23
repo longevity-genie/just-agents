@@ -19,7 +19,7 @@ dependencies = [
     "just-agents-tools>=0.3.8",
     "just-agents-coding>=0.3.8",
     "just-agents-web>=0.3.8",
-    "just_agents_router>=0.3.8",
+    "just_agents.router>=0.3.8",
     "llm-sandbox>=0.1.4",
 ]
 license = {text = "MIT"}

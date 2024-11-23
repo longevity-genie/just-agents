@@ -2,7 +2,7 @@ import asyncio
 from dotenv import load_dotenv
 from just_agents.simple.cot_agent import ChainOfThoughtAgent
 
-import core.llm_options
+import just_agents.llm_options
 
 def count_letters(character:str, word:str) -> str:
     """ Returns the number of character occurrences in the word. """
@@ -17,7 +17,7 @@ def count_letters(character:str, word:str) -> str:
 def test_function_query():
     load_dotenv(override = True)
 
-    opt = core.llm_options.OPENAI_GPT4oMINI.copy()
+    opt = just_agents.llm_options.OPENAI_GPT4oMINI.copy()
     agent: ChainOfThoughtAgent = ChainOfThoughtAgent(opt, tools=[count_letters])
     result, thoughts = agent.query("Count the number of occurrences of the letter ’L’ in the word - ’LOLLAPALOOZA’.")
     print("Thoughts: ", thoughts)
@@ -32,7 +32,7 @@ async def process_stream(async_generator):
 def test_stream_function_query():
     load_dotenv(override = True)
 
-    opt = core.llm_options.OPENAI_GPT4oMINI.copy()
+    opt = just_agents.llm_options.OPENAI_GPT4oMINI.copy()
     agent: ChainOfThoughtAgent = ChainOfThoughtAgent(opt, tools=[count_letters])
     stream = agent.stream("Count the number of occurrences of the letter ’L’ in the word - ’LOLLAPALOOZA’.")
     loop = asyncio.get_event_loop()
