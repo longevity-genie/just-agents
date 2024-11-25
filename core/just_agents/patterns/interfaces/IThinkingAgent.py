@@ -15,8 +15,8 @@ class IThinkingAgent(
 ):
     
     @abstractmethod
-    def thought_query(self, response: AbstractQueryResponseType, **kwargs) -> THOUGHT_TYPE:
-        raise NotImplementedError("You need to implement thought_from_response() abstract method first!")
+    def thought_query(self, response: AbstractQueryInputType, **kwargs) -> THOUGHT_TYPE:
+        raise NotImplementedError("You need to implement thought_query abstract method first!")
 
     def think(self, 
               query: AbstractQueryInputType, 
@@ -28,6 +28,7 @@ class IThinkingAgent(
         Returns a tuple of (final_thought, thought_chain)
         """
         current_chain = chain or []
+        response = self.query(query, **kwargs) 
         thought = self.thought_query(query, **kwargs) #queries itself with thought as expected output
         new_chain = [*current_chain, thought] #updates chain with the new thought
         if thought.is_final() or max_iter <= 0:

@@ -1,6 +1,6 @@
 from pathlib import Path
 from dotenv import load_dotenv
-from core import llm_options
+from just_agents import llm_options
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
 from examples.tools import letter_count
 import pprint
@@ -23,7 +23,10 @@ if __name__ == "__main__":
     # Initialize the Chain of Thought Agent with:
     # - the tools it can use
     # - LLAMA 3.2 Vision as the language model
-    agent: ChainOfThoughtAgent = ChainOfThoughtAgent(tools=tools, llm_options=llm_options.LLAMA3_2_VISION)
+    agent: ChainOfThoughtAgent = ChainOfThoughtAgent(  # type: ignore
+        tools=tools,
+        llm_options=llm_options.LLAMA3_2_VISION
+    )
 
     # Add a callback to print all messages that the agent processes
     agent.memory.add_on_message(lambda message: print(message))

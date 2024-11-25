@@ -3,7 +3,7 @@ import pprint
 
 from dotenv import load_dotenv
 
-from core import llm_options
+from just_agents import llm_options
 from just_agents.base_agent import BaseAgent
 
 load_dotenv(override=True)
@@ -33,7 +33,7 @@ if __name__ == "__main__":
     # Create an agent instance with:
     # 1. LLAMA3_2_VISION as the language model
     # 2. get_current_weather function as an available tool
-    agent = BaseAgent(
+    agent = BaseAgent(  # type: ignore
         llm_options=llm_options.LLAMA3_2_VISION,
         tools=[get_current_weather]
     )

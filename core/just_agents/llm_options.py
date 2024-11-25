@@ -16,12 +16,12 @@ class LLMOptionsBase(ModelOptions, extra="allow"):
     tool_choice : Optional[str] = None
 
 
-ANTHROPIC_CLAUDE_3_5_SONNET: Dict = {
+ANTHROPIC_CLAUDE_3_5_SONNET: dict[str, Any] = {
     "model": "claude-3-5-sonnet-20240620",
     "temperature": 0.0
 }
 
-LLAMA3_2_VISION: Dict = {
+LLAMA3_2_VISION: dict[str, Any] = {
     #supports both text and vision
     "model": "groq/llama-3.2-90b-vision-preview",
     "api_base": "https://api.groq.com/openai/v1",
@@ -35,52 +35,52 @@ MISTRAL_8x22B = {
     "temperature": 0.0
 }
 
-OPENAI_GPT4o: Dict = {
+OPENAI_GPT4o: dict[str, Any] = {
     "model": "gpt-4o",
     "temperature": 0.0
 }
 
-OPENAI_GPT4oMINI: Dict = {
+OPENAI_GPT4oMINI: dict[str, Any] = {
     "model": "gpt-4o-mini",
     "temperature": 0.0
 }
 
-OPENAI_O1_MINI: Dict = {
+OPENAI_O1_MINI: dict[str, Any] = {
     "model": "o1-mini",
     "temperature": 0.0
 }
 
-OPENAI_O1_PREVIEW: Dict = {
+OPENAI_O1_PREVIEW: dict[str, Any] = {
     "model": "o1-preview",
     "temperature": 0.0
 }
 
-PERPLEXITY_LLAMA_3_1_SONAR_LARGE_128K_ONLINE: Dict = {
+PERPLEXITY_LLAMA_3_1_SONAR_LARGE_128K_ONLINE: dict[str, Any]= {
     "model": "perplexity/llama-3.1-sonar-large-128k-online",
     "temperature": 0.0,
     "return_citations": True,
     "return_related_questions": True
 }
 
-OPEN_ROUTER_Qwen_2_72B_Instruct = {
+OPEN_ROUTER_Qwen_2_72B_Instruct: dict[str, Any] = {
     "model": "openrouter/qwen/qwen-2-72b-instruct",
     "temperature": 0.0,
     "tools": []
 }
 
-OPEN_ROUTER_Qwen_2_72B_Instruct_Vision = {
+OPEN_ROUTER_Qwen_2_72B_Instruct_Vision: dict[str, Any] = {
     "model": "openrouter/qwen/qwen-2-vl-72b-instruct",
     "temperature": 0.0,
     "tools": []
 }
 
-OPEN_ROUTER_LLAMA_3_8B_FREE = {
+OPEN_ROUTER_LLAMA_3_8B_FREE: dict[str, Any] = {
     "model": "openrouter/meta-llama/llama-3-8b-instruct:free",
     "temperature": 0.0,
     "tools": []
 }
 
-OPEN_ROUTER_GEMINI_1_5_FLASH_EXP_FREE = {
+OPEN_ROUTER_GEMINI_1_5_FLASH_EXP_FREE: dict[str, Any] = {
     "model": "openrouter/google/gemini-flash-1.5-exp",
     "temperature": 0.0,
     "tools": []

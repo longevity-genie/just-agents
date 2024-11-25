@@ -3,7 +3,7 @@ import pprint
 
 from dotenv import load_dotenv
 
-from core import llm_options
+from just_agents import llm_options
 from just_agents.base_agent import BaseAgent
 
 load_dotenv(override=True)
@@ -20,7 +20,7 @@ if __name__ == "__main__":
 
     # Initialize the agent with PerplexityAI's Llama 3.1 model
     # This model has a 128k context window and can access online information
-    agent = BaseAgent(
+    agent = BaseAgent(  # type: ignore
         llm_options=llm_options.PERPLEXITY_LLAMA_3_1_SONAR_LARGE_128K_ONLINE
     )
 

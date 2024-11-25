@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from examples.coding.mounts import coding_examples_dir
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
-from core import llm_options
+from just_agents import llm_options
 import pprint
 load_dotenv(override=True)
 

@@ -13,9 +13,8 @@ from just_agents.base_memory import BaseMemory
 from just_agents.just_profile import JustAgentProfile
 from just_agents.core.rotate_keys import RotateKeys
 from just_agents.streaming.protocol_factory import StreamingMode, ProtocolAdapterFactory
-from typing import TypeVar, Type
-from pydantic import BaseModel
-from litellm import get_supported_openai_params
+from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
+
 
 class BaseAgent(
     JustAgentProfile,
@@ -40,13 +39,13 @@ class BaseAgent(
     
     # Fallback options if primary LLM call fails
     backup_options: Optional[LLMOptions] = Field(
-        None,
+        default=None,
         exclude=True,
         description="options that will be used after we give up with main options, one more completion call will be done with backup options")
 
     # API key management settings
     completion_remove_key_on_error: bool = Field(
-        True,
+        default=True,
         description="In case of using list of keys removing key from the list after error call with this key")
     completion_max_tries: Optional[int]  = Field(
         2, ge=0,
@@ -68,11 +67,11 @@ class BaseAgent(
         description="protocol to handle llm format for function calling")
 
     key_list_path: Optional[str] = Field(
-        None,
+        default=None,
         exclude=True,
         description="path to text file with list of api keys, one key per line")
     drop_params: bool = Field(
-        True,
+        default=True,
         description=" drop params from the request, useful for some models that do not support them")
 
     _on_query : List[QueryListener] = PrivateAttr(default_factory=list)
@@ -100,8 +99,11 @@ class BaseAgent(
     def add_to_memory(self, messages: SupportedMessages) -> None:
         self.memory.add_message(messages)
 
-    def get_last_message(self) -> SupportedMessage: # type: ignore
-        return self.memory.last_message
+    def get_last_message(self) -> SupportedMessage:  # type: ignore
+        msg = self.memory.last_message
+        if msg is None:
+            raise ValueError("No messages in memory")
+        return msg
 
     def model_post_init(self, __context: Any) -> None:
         # Call parent class's post_init first (from JustAgentProfile)
@@ -147,7 +149,7 @@ class BaseAgent(
         opt = self._prepare_options(self.llm_options)
         opt.update(kwargs)
         
-        max_tries = self.completion_max_tries
+        max_tries = self.completion_max_tries or 1  # provide default if None
         if self._key_getter is not None:
             if max_tries < 1:
                 max_tries = self._key_getter.len()
@@ -245,9 +247,11 @@ class BaseAgent(
         """
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
-        # Pass kwargs to query_with_currentmemory
         self.query_with_currentmemory(**kwargs)
-        return self.memory.last_message_str()
+        result = self.memory.last_message_str()
+        if result is None:
+            raise ValueError("No response generated")
+        return result
     
 
     def stream(self, query_input: SupportedMessages, reconstruct = False, **kwargs) -> Generator[Union[BaseModelResponse, AbstractMessage],None,None]:
@@ -260,7 +264,10 @@ class BaseAgent(
     @property
     def model_supported_parameters(self) -> list[str]:
         """Returns the list of parameters supported by the current model"""
-        return get_supported_openai_params(self.llm_options["model"])
+        model = self.llm_options.get("model")
+        if not model:
+            return []
+        return get_supported_openai_params(model)  # type: ignore
     
     
     @property

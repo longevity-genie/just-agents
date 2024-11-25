@@ -83,8 +83,7 @@ cp .env.example .env
 ## 🏗️ Architecture
 
 ### Core Components
-1. **LLMSession**: A thin wrapper around litellm for LLM interactions
-2. **ChatAgent**: The foundational agent class
+1. **BaseAgent**: A thin wrapper around litellm for LLM interactions
 3. **ChainOfThoughtAgent**: Extended agent with reasoning capabilities
 
 
@@ -96,7 +95,7 @@ It represents an agent with a specific role, goal, and task. Here's a simple exa
 ```python
 from dotenv import load_dotenv
 
-from just_agents.chat_agent import ChatAgent
+from just_agents.simple.chat_agent import ChatAgent
 from just_agents.simple.llm_options import LLAMA3_2_VISION
 load_dotenv(override=True)
 
@@ -129,20 +128,29 @@ The `ChainOfThoughtAgent` class extends the capabilities of our agents by allowi
 Here's an example:
 
 ```python
-from just_agents.cot_agent import ChainOfThoughtAgent
+from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
+from just_agents import llm_options
 
-def count_letters(character:str, word:str) -> str:
+def count_letters(character: str, word: str) -> str:
     """ Returns the number of character occurrences in the word. """
-    count:int = 0
+    count = 0
     for char in word:
         if char == character:
             count += 1
-    print("Function: ", character, " occurres in ", word, " ", count, " times.")
+    print(f"Function: {character} occurs in {word} {count} times.")
     return str(count)
 
-opt = just_agents.llm_options.OPENAI_GPT4oMINI.copy()
-agent: ChainOfThoughtAgent = ChainOfThoughtAgent(opt, tools=[count_letters])
-result, thoughts = agent.query("Count the number of occurrences of the letter 'L' in the word - 'LOLLAPALOOZA'.")
+# Initialize agent with tools and LLM options
+agent = ChainOfThoughtAgent(
+    tools=[count_letters],
+    llm_options=llm_options.LLAMA3_2_VISION
+)
+
+# Optional: Add callback to see all messages
+agent.memory.add_on_message(lambda message: print(message))
+
+# Get result and reasoning chain
+result, chain = agent.think("Count the number of occurrences of the letter 'L' in the word - 'LOLLAPALOOZA'.")
 ```
 
 This example shows how a Chain of Thought agent can use a custom function to count letter occurrences in a word. The agent can 

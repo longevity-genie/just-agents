@@ -19,14 +19,13 @@ dependencies = [
     "just-agents-tools>=0.3.8",
     "just-agents-coding>=0.3.8",
     "just-agents-web>=0.3.8",
-    "just_agents.router>=0.3.8",
-    "llm-sandbox>=0.1.4",
+    "just_agents.router>=0.3.8"
 ]
 license = {text = "MIT"}
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["just_agents*"]
+include = ["just_agents", "just_agents.*"]
 exclude = [
     "logs*",
     "output*", 
@@ -36,5 +35,4 @@ exclude = [
 ]
 
 [tool.setuptools.package-data]
-"config" = ["*.yaml", "*.yml"]
-"just_agents" = ["*.yaml", "*.yml"]
+"*" = ["*.yaml", "*.yml"]

@@ -9,5 +9,5 @@ dependencies:
   - typer>=0.13.0 #for CLI
   - pip
   - pip:
-      - litellm>=1.52.9
+      - litellm>=1.52.14
       - numpydoc

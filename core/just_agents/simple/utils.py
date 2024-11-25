@@ -134,7 +134,7 @@ def rotate_env_keys() -> str:
     # Randomly choose one of the available keys
     return random.choice(keys)
 
-def load_config(resource: str, package: str = "just_agents.config") -> Dict[str, Any]:
+def load_config(resource: str, package: str = "just_agents.simple.config") -> Dict[str, Any]:
     """
     :rtype: yaml config
     """

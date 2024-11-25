@@ -1,4 +1,5 @@
-from just_agents.llm_options import LLAMA3_2_VISION, OPENAI_GPT4oMINI
+from typing import Any
+from just_agents.llm_options import LLAMA3_2_VISION
 from just_agents.simple.chat_agent import ChatAgent
 
 """
@@ -8,7 +9,7 @@ This example shows how to use agents with different LLM models to simulate a deb
 if __name__ == "__main__":
 
     kamala_options = LLAMA3_2_VISION
-    trump_options: dict = {
+    trump_options: dict[str, Any] = {
         "model": "groq/mixtral-8x7b-32768",
         "api_base": "https://api.groq.com/openai/v1",
         "temperature": 0.0,

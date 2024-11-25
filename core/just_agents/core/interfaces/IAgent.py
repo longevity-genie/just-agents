@@ -52,7 +52,7 @@ class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, Abs
     def query_structural(
         self, 
         query_input: AbstractQueryInputType, 
-        parser: Type[BaseModel] = dict,
+        parser: Type[BaseModel] = BaseModel,
         **kwargs
     ) -> Union[dict, BaseModel]:
         """

@@ -1,9 +1,8 @@
 import pprint
 from dotenv import load_dotenv
 
-from examples.coding.mounts import coding_examples_dir
 from just_agents.base_agent import BaseAgent
-from examples.coding.mounts import coding_examples_dir
+from just_agents.examples.coding.mounts import coding_examples_dir
 
 load_dotenv(override=True)
 

@@ -1,9 +1,9 @@
 from dotenv import load_dotenv
 from pathlib import Path
 
-from examples.tools import get_current_weather
+from just_agents.examples.tools import get_current_weather
 
-import just_agents.llm_options
+from just_agents import llm_options
 from just_agents.base_agent import BaseAgent
 from just_agents.just_profile import JustAgentProfile
 
@@ -21,7 +21,7 @@ if __name__ == "__main__":
     config_path = basic_examples_dir / "agent_profiles.yaml"
 
     created_agent = BaseAgent(
-        llm_options=core.llm_options.LLAMA3_2_VISION,
+        llm_options=llm_options.LLAMA3_2_VISION,
         config_path=config_path,
         tools=[get_current_weather]
     )

@@ -33,5 +33,4 @@ exclude = [
 ]
 
 [tool.setuptools.package-data]
-"config" = ["*.yaml", "*.yml"]
-"just_agents" = ["*.yaml", "*.yml"] 
+"*" = ["*.yaml", "*.yml"]

@@ -6,10 +6,8 @@ from typing import Any, AsyncGenerator
 import litellm
 from litellm import ModelResponse, completion
 from litellm.utils import Choices
-
 from just_agents.core.interfaces.IAgent import IAgent
 from just_agents.simple.memory import Memory
-from dataclasses import dataclass, field
 from typing import Callable, Optional
 from just_agents.streaming.abstract_streaming import AbstractStreaming
 from just_agents.streaming.openai_streaming import AsyncSession
@@ -39,15 +37,15 @@ class LLMSession(
     ]
 ):
 
-    def __init__(self, llm_options: dict[str, Any] = None,
-                 system_prompt:str = None,
-                 agent_schema: str | Path | dict | None = None,
+    def __init__(self, llm_options: Optional[dict[str, Any]] = None,
+                 system_prompt: Optional[str] = None,
+                 agent_schema: Optional[str | Path | dict[str, Any]] = None,
                  tools: Optional[list[Callable]] = None):
         self.on_response = []
         self.available_tools: Optional[dict[str, Callable]] = {}
         self.memory: Memory = Memory()
-        self.streaming: AbstractStreaming = None
-        self.key_getter: RotateKeys = None
+        self.streaming: Optional[AbstractStreaming] = None
+        self.key_getter: Optional[RotateKeys] = None
         self.on_response: list[OnCompletion] = []
 
         self.agent_schema = resolve_and_validate_agent_schema(agent_schema, "llm_session_schema.yaml")
@@ -142,7 +140,7 @@ class LLMSession(
     @staticmethod
     def message_from_response(response: ModelResponse) -> dict:
         choice: Choices = response.choices[0]
-        message: dict = choice.message.to_dict(exclude_none=True, exclude_unset=True) #converting to dictionary and deleting nonw
+        message: dict[str, object] = choice.message.to_dict(exclude_none=True, exclude_unset=True) #converting to dictionary and deleting nonw
         if "function_call" in message and message["function_call"] is None:
             del message["function_call"]
         return message

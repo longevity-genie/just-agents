@@ -57,16 +57,16 @@ You are an expert AI assistant that explains your reasoning step by step.
         DEFAULT_SYSTEM_PROMPT,
         description="System prompt of the agent")
     
-    def thought_query(self, response: SupportedMessages, **kwargs) -> Thought:
+    def thought_query(self, query: SupportedMessages, **kwargs) -> Thought:
         # Parses the LLM response into a structured Thought object
         if self.supports_response_format and "gpt-4" in self.llm_options["model"]: # despite what they declare only openai does support reponse format right
-           return self.query_structural(response, parser=Thought, response_format={"type": "json_object"}, **kwargs)
+           return self.query_structural(query, parser=Thought, response_format={"type": "json_object"}, **kwargs) # type: ignore
         else:
-            return self.query_structural(response, parser=Thought, **kwargs)
+            return self.query_structural(query, parser=Thought, **kwargs) # type: ignore
 
     @classmethod
     def with_prompt_prefix(cls, llm_options: dict, custom_prompt: str) -> "ChainOfThoughtAgent":
         # Factory method (alternative constructor) to create an agent with a custom prompt prefix
         # Preserves the default system prompt by appending it to the custom prompt
         system_prompt=custom_prompt + "\n\n" + cls.DEFAULT_SYSTEM_PROMPT
-        return cls(llm_options=llm_options, system_prompt=system_prompt)
+        return cls(llm_options=llm_options, system_prompt=system_prompt) # type: ignore
