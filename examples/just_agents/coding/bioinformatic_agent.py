@@ -1,7 +1,7 @@
 from dotenv import load_dotenv
 from just_agents.simple.cot_agent import ChainOfThoughtAgent
 from just_agents.simple.utils import build_agent
-from just_agents.simple.llm_session import LLMSession
+
 from just_agents.examples.coding.mounts import coding_examples_dir
 
 load_dotenv(override=True)

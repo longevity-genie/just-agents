@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "just-agents-coding"
-version = "0.3.8"
+version = "0.4.0"
 description = "Just Agents - Coding Components"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -18,7 +18,7 @@ maintainers = [
     { name = "Newton Winter", email = "isoutthere@gmail.com" },
 ]
 dependencies = [
-    "just-agents-core>=0.3.8",
+    "just-agents-core>=0.4.0",
     "llm-sandbox>=0.1.4",
 ]
 license = {text = "MIT"}
@@ -35,5 +35,4 @@ exclude = [
 ]
 
 [tool.setuptools.package-data]
-"config" = ["*.yaml", "*.yml"]
-"just_agents" = ["*.yaml", "*.yml"]
+"*" = ["*.yaml", "*.yml"]

@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "just-agents-core"
-version = "0.3.8"
+version = "0.4.0"
 description = "Just Agents - Base Package"
 readme = "README.md"
 requires-python = ">=3.10"

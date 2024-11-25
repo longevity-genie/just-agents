@@ -4,7 +4,7 @@ on:
   push:
     branches: [ main ]
     paths:
-      - 'just_agents_coding/containers/websandbox/**'
+      - 'coding/containers/websandbox/**'
 
 env:
   REGISTRY: ghcr.io
@@ -37,7 +37,7 @@ jobs:
     - name: Build and push Docker image
       uses: docker/build-push-action@v5
       with:
-        context: ./just_agents_coding/containers/websandbox
+        context: ./coding/containers/websandbox
         push: true
         tags: ${{ steps.meta.outputs.tags }}
         labels: ${{ steps.meta.outputs.labels }}

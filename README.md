@@ -70,7 +70,7 @@ micromamba activate just-agents
 (Optional) Install the package in editable mode:
 ```bash
 micromamba activate just-agents
-./install_locally.sh
+bin/install-locally.sh # pip install -e . on each subpackage
 ```
 
 3. Configure API keys:

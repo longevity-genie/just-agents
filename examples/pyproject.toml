@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "just-agents-examples"
-version = "0.3.8"
+version = "0.4.0"
 description = "Just Agents - Examples code"
 readme = "README.md"
 requires-python = ">=3.10"
@@ -15,11 +15,11 @@ maintainers = [
     { name = "Anton Kulaga", email = "antonkulaga@gmail.com" },
 ]
 dependencies = [
-    "just-agents-core>=0.3.8",
-    "just-agents-tools>=0.3.8",
-    "just-agents-coding>=0.3.8",
-    "just-agents-web>=0.3.8",
-    "just_agents.router>=0.3.8"
+    "just-agents-core>=0.4.0",
+    "just-agents-tools>=0.4.0",
+    "just-agents-coding>=0.4.0",
+    "just-agents-web>=0.4.0",
+    "just_agents-router>=0.4.0"
 ]
 license = {text = "MIT"}
 
