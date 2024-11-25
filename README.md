@@ -1,13 +1,13 @@
 # just-agents
 [![Python CI](https://github.com/longevity-genie/just-agents/actions/workflows/run_tests.yaml/badge.svg)](https://github.com/longevity-genie/just-agents/actions/workflows/run_tests.yaml)
-[![PyPI version](https://badge.fury.io/py/just-agents.svg)](https://badge.fury.io/py/just-agents)
+[![PyPI version](https://badge.fury.io/py/just-agents-core.svg)](https://badge.fury.io/py/just-agents-core)
 [![Documentation Status](https://readthedocs.org/projects/just-agents/badge/?version=latest)](https://just-agents.readthedocs.io/en/latest/?badge=latest)
 
 A lightweight, straightforward library for LLM agents - no over-engineering, just simplicity!
 
 ## Quick Start
 ```bash
-pip install just-agents
+pip install just-agents-core
 ```
 
 WARNING: we are reorganizing the package structure right now so the published package is a bit different than the code in this repository.
@@ -156,12 +156,11 @@ result, chain = agent.think("Count the number of occurrences of the letter 'L' i
 This example shows how a Chain of Thought agent can use a custom function to count letter occurrences in a word. The agent can 
 reason about the problem and use the provided tool to solve it.
 
-# Package structure
-
-* just_agents - core library
-* just_agents_coding - contains sandbox containers for safe code executions and code running agents
-* just_agents_examples - contains examples of just-agents usage
-* just_agents_tools - contains useful tools that you can use in your agents
+## 📦 Package Structure
+- `just_agents`: Core library
+- `just_agents_coding`: Sandbox containers and code execution
+- `just_agents_examples`: Usage examples
+- `just_agents_tools`: Reusable agent tools
 
 ## 🔒 Sandbox Execution
 
@@ -171,9 +170,3 @@ The `just_agents_sandbox` package provides secure containers for code execution:
 - 🌐 Websandbox container
 
 Mount `/input` and `/output` directories to easily manage data flow and monitor generated code.
-
-## 📦 Package Structure
-- `just_agents`: Core library
-- `just_agents_coding`: Sandbox containers and code execution
-- `just_agents_examples`: Usage examples
-- `just_agents_tools`: Reusable agent tools
