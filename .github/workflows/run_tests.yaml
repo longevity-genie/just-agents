@@ -61,8 +61,7 @@ jobs:
           cd web && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e . && cd ..
           cd tools && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e . && cd ..
           cd router && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e . && cd ..
-          cd examples && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e . && cd ..
-          $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e .
+          cd examples && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pip install -e .
         env:
           MAMBA_ROOT_PREFIX: $HOME/micromamba
 

@@ -85,3 +85,23 @@ OPEN_ROUTER_GEMINI_1_5_FLASH_EXP_FREE: dict[str, Any] = {
     "temperature": 0.0,
     "tools": []
 }
+
+DEEPSEEK_CODER: dict[str, Any] = {
+    "model": "deepseek/deepseek-coder",
+    "temperature": 0.0,
+    "tools": []
+}
+
+DEEPSEEK_CHAT: dict[str, Any] = {
+    "model": "deepseek/deepseek-chat",
+    "temperature": 0.0,
+    "tools": []
+}
+
+def local_vllm_model(model: str = "models/granite-7b-lab.Q4_K_M.gguf", host: str="http://localhost:8000") -> dict[str, Any]:
+    return {
+        "model": f"hosted_vllm/{model}",
+        "temperature": 0.0,
+        "api_base": host,
+        "tools": []
+    }
