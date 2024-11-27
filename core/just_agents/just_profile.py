@@ -11,7 +11,7 @@ class JustAgentProfile(JustSerializable):
     """
     DEFAULT_GENERIC_PROMPT: ClassVar[str] = "You are a helpful AI assistant"
     DEFAULT_PARENT_SECTION: ClassVar[str] = 'agent_profiles'
-    DEFAULT_CONFIG_PATH: ClassVar[Path] = Path('config/agent_profiles.yaml')
+    DEFAULT_CONFIG_PATH: ClassVar[Path] = Path('./config/agent_profiles.yaml')
     config_parent_section: Optional[str] = Field(DEFAULT_PARENT_SECTION, exclude=True)
 
     system_prompt: str = Field(
@@ -58,11 +58,12 @@ class JustAgentProfile(JustSerializable):
             return None
         return [tool.get_callable(refresh=tool.auto_refresh) for tool in self.tools]
 
-    @staticmethod
+    @classmethod
     def auto_load(
+                cls,
                 section_name: str,
-                parent_section: Optional[str] = DEFAULT_PARENT_SECTION,
-                file_path: Path = DEFAULT_CONFIG_PATH,
+                parent_section: Optional[str] = None,
+                file_path: Path = None,
         ) -> JustSerializable:
         """
         Creates an instance from a YAML file.
@@ -80,7 +81,12 @@ class JustAgentProfile(JustSerializable):
             Any: An instance of the dynamically imported class if `class_qualname` is found in the
                  configuration data; otherwise, returns None.
         """
-        return JustSerializable.from_yaml_auto(section_name, parent_section, file_path)
+        if parent_section is None:
+            parent_section = cls.DEFAULT_PARENT_SECTION
+        if file_path is None:
+            file_path = cls.DEFAULT_CONFIG_PATH
+
+        return JustSerializable.from_yaml_auto(section_name, parent_section, file_path, class_hint=JustSerializable)
 
     @staticmethod
     def load_legacy_schema(

@@ -147,7 +147,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
         DEFAULT_SECTION_NAME (str): Default section name to use when none is provided.
 
     """
-    DEFAULT_CONFIG_PATH : ClassVar[Path] = Path('config/just_agents.yaml')
+    DEFAULT_CONFIG_PATH : ClassVar[Path] = Path('./config/default_config.yaml')
     DEFAULT_PARENT_SECTION : ClassVar[Optional[str]] = None
     DEFAULT_SECTION_NAME : ClassVar[Optional[str]] = 'RenameMe'
     #MODULE_DIR : ClassVar[Path] = Path(os.path.abspath(os.path.dirname(__file__)))
@@ -263,10 +263,28 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             raise ValidationError(f"Field class_qualname mismatch:'{instance.class_qualname}', self:'{class_qualname}'")
         return instance
 
+    @staticmethod
+    def update_config_data(
+            config_data: dict,
+            section_name: str,
+            parent_section: Optional[str],
+            file_path: Path,
+            class_hint: Optional[str] = None
+    ) -> dict:
+        if not config_data.get("config_path"):
+            config_data.update({"config_path": file_path})
+        if not config_data.get("config_parent_section") and parent_section is not None: # '' is a valid value
+            config_data.update({"config_parent_section": parent_section})
+        config_data.update({"shortname": section_name})
+        if not config_data.get("class_qualname") and class_hint:
+            config_data.update({"class_qualname": class_hint})
+        return config_data
+
     @classmethod
     def from_yaml(cls, section_name: str,
                   parent_section: str = None,
                   file_path: Path = None,
+
     ) -> 'JustSerializable':
         """
         Creates an instance from a YAML file path, section name, and parent section name.
@@ -275,6 +293,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             section_name (str): The section name (shortname) in the YAML file.
             parent_section (str): The parent section name in the YAML file.
             file_path (Path): The path to the YAML file.
+            class_hint (Optional[str]): Attempt instantiation with this class_qualname if not specified in schema
 
         Returns:
             JustSerializable: A new instance of JustYamlSerializable.
@@ -282,16 +301,16 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
         Raises:
             ValueError: If the specified section is not found in the YAML file.
         """
+        if not file_path:
+            file_path = cls.DEFAULT_CONFIG_PATH
+        if parent_section is None:
+            parent_section = cls.DEFAULT_PARENT_SECTION
         section_data = JustYaml.read_yaml_data(
-            file_path or cls.DEFAULT_CONFIG_PATH,
+            file_path,
             section_name,
-            parent_section or cls.DEFAULT_PARENT_SECTION,
+            parent_section,
         )
-        if not section_data.get("config_path"):
-            section_data.update({"config_path": file_path})
-        if not section_data.get("config_parent_section"):
-            section_data.update({"config_parent_section": parent_section})
-        section_data.update({"shortname": section_name})
+        section_data = cls.update_config_data(section_data, section_name, parent_section, file_path)
         return cls.model_validate(section_data)
 
     @staticmethod
@@ -325,12 +344,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
         if config_data is None:
             return None
         instance = None
-        if not config_data.get("config_path"):
-            config_data.update({"config_path": file_path})
-        if not config_data.get("config_parent_section"):
-            config_data.update({"config_parent_section": parent_section})
-        config_data.update({"shortname": section_name})
-        class_qualname = config_data.get("class_qualname") or class_hint
+        config_data = JustSerializable.update_config_data(config_data, section_name, parent_section, file_path, class_hint=class_hint)
+        class_qualname = config_data.get("class_qualname")
         if class_qualname:
             try:
                 # Splits into `module.submodule` and `ClassName` for dynamic import
@@ -475,8 +490,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
 
         if not file_path:
             file_path = self.config_path or self.DEFAULT_CONFIG_PATH #set configured or default
-        if not parent_section:
-            parent_section = self.config_parent_section #None is also valid, only set configured
+        if parent_section is None:
+            parent_section = self.config_parent_section
         if not section_name:
             section_name = self.shortname #Set configured
 
