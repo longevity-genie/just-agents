@@ -9,7 +9,7 @@ from just_agents.streaming.protocols.interfaces.IFunctionCall import IFunctionCa
 from just_agents.streaming.protocols.interfaces.IProtocolAdapter import IProtocolAdapter, BaseModelResponse
 from just_agents.core.interfaces.IAgent import IAgentWithInterceptors, QueryListener, ResponseListener
 
-from just_agents.base_memory import BaseMemory
+from just_agents.base_memory import IBaseMemory, BaseMemory
 from just_agents.just_profile import JustAgentProfile
 from just_agents.core.rotate_keys import RotateKeys
 from just_agents.streaming.protocol_factory import StreamingMode, ProtocolAdapterFactory
@@ -52,15 +52,10 @@ class BaseAgent(
         description="Maximum retry attempts before failing or falling back to backup_options")
     
     # Memory system to store conversation history
-    memory: BaseMemory = Field(
+    memory: IBaseMemory = Field(
         default_factory=BaseMemory,
         exclude=True,
         description="Stores conversation history and maintains context between messages")
-
-    # Private attributes for internal state management
-    _protocol: Optional[IProtocolAdapter] = PrivateAttr(None)  # Handles LLM-specific message formatting
-    _partial_streaming_chunks: List[BaseModelResponse] = PrivateAttr(default_factory=list)  # Buffers streaming responses
-    _key_getter: Optional[RotateKeys] = PrivateAttr(None)  # Manages API key rotation
 
     streaming_method: StreamingMode = Field(
         StreamingMode.openai,
@@ -74,16 +69,15 @@ class BaseAgent(
         default=True,
         description=" drop params from the request, useful for some models that do not support them")
 
+    # Protected handlers implementation
     _on_query : List[QueryListener] = PrivateAttr(default_factory=list)
     _on_response : List[ResponseListener] = PrivateAttr(default_factory=list)
 
-    memory: BaseMemory = Field(default_factory=BaseMemory,
-        exclude=True,
-        description="memory for the agent that stores previous messages") #is supposed to be IMemory[Role,SupportedMessage]
-    
-    _protocol: Optional[IProtocolAdapter] = PrivateAttr(None)
-    _partial_streaming_chunks: List[BaseModelResponse] = PrivateAttr(default_factory=list)
-    _key_getter: Optional[RotateKeys] = PrivateAttr(None)
+    # Private attributes for internal state management
+    _protocol: Optional[IProtocolAdapter] = PrivateAttr(None)  # Handles LLM-specific message formatting
+    _partial_streaming_chunks: List[BaseModelResponse] = PrivateAttr(
+        default_factory=list)  # Buffers streaming responses
+    _key_getter: Optional[RotateKeys] = PrivateAttr(None)  # Manages API key rotation
 
 
     def instruct(self, prompt: str): #backward compatibility
@@ -187,7 +181,7 @@ class BaseAgent(
             messages.append(msg)
         return messages
     
-    def query_with_currentmemory(self, **kwargs): #former proceed() aka llm_think()
+    def query_with_current_memory(self, **kwargs): #former proceed() aka llm_think()
         while True:
             # individual llm call, unpacking the message, processing handlers
             response = self._execute_completion(stream=False, **kwargs)
@@ -205,7 +199,7 @@ class BaseAgent(
             self._process_function_calls(tool_calls) #NOTE: no kwargs here as tool calls might need different parameters
 
 
-    def streaming_query_with_currentmemory(self, reconstruct = False, **kwargs):
+    def streaming_query_with_current_memory(self, reconstruct_chunks = False, **kwargs):
         try:
             self._partial_streaming_chunks.clear()
             while True: #TODO rewrite this super-ugly while-True-break stuff into proper recursion
@@ -216,7 +210,7 @@ class BaseAgent(
                     msg: AbstractMessage = self._protocol.message_from_delta(response) # type: ignore
                     delta = self._protocol.content_from_delta(msg)
                     if delta:
-                        if reconstruct:
+                        if reconstruct_chunks:
                             yield self._protocol.get_chunk(i, delta, options={'model': part["model"]})
                         else:
                             yield response
@@ -247,18 +241,17 @@ class BaseAgent(
         """
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
-        self.query_with_currentmemory(**kwargs)
-        result = self.memory.last_message_str()
+        self.query_with_current_memory(**kwargs)
+        result = self.memory.last_message_str
         if result is None:
             raise ValueError("No response generated")
         return result
     
 
-    def stream(self, query_input: SupportedMessages, reconstruct = False, **kwargs) -> Generator[Union[BaseModelResponse, AbstractMessage],None,None]:
+    def stream(self, query_input: SupportedMessages, reconstruct_chunks = False, **kwargs) -> Generator[Union[BaseModelResponse, AbstractMessage],None,None]:
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
-        # Pass kwargs to streaming_query_with_currentmemory
-        return self.streaming_query_with_currentmemory(reconstruct=reconstruct, **kwargs)
+        return self.streaming_query_with_current_memory(reconstruct_chunks=reconstruct_chunks, **kwargs)
 
 
     @property

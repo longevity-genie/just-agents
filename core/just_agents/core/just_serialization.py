@@ -5,6 +5,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from collections.abc import MutableMapping, MutableSequence
 
+
 class JustYaml:
     """
     A utility static class for reading and saving data to YAML files.
@@ -147,7 +148,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
         DEFAULT_SECTION_NAME (str): Default section name to use when none is provided.
 
     """
-    DEFAULT_CONFIG_PATH : ClassVar[Path] = Path('config/just_agents.yaml')
+    DEFAULT_CONFIG_PATH : ClassVar[Path] = Path('./config/default_config.yaml')
     DEFAULT_PARENT_SECTION : ClassVar[Optional[str]] = None
     DEFAULT_SECTION_NAME : ClassVar[Optional[str]] = 'RenameMe'
     #MODULE_DIR : ClassVar[Path] = Path(os.path.abspath(os.path.dirname(__file__)))
@@ -263,10 +264,31 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             raise ValidationError(f"Field class_qualname mismatch:'{instance.class_qualname}', self:'{class_qualname}'")
         return instance
 
+    @staticmethod
+    def update_config_data(
+            config_data: dict,
+            section_name: str,
+            parent_section: Optional[str],
+            file_path: Path,
+            class_hint: Optional[str] = None
+    ) -> dict:
+        """
+        Link YAML configuration file, sections and class info to an instance
+        """
+        if not config_data.get("config_path"):
+            config_data.update({"config_path": file_path})
+        if not config_data.get("config_parent_section") and parent_section is not None: # '' is a valid value
+            config_data.update({"config_parent_section": parent_section})
+        config_data.update({"shortname": section_name})
+        if not config_data.get("class_qualname") and class_hint:
+            config_data.update({"class_qualname": class_hint})
+        return config_data
+
     @classmethod
     def from_yaml(cls, section_name: str,
                   parent_section: str = None,
                   file_path: Path = None,
+
     ) -> 'JustSerializable':
         """
         Creates an instance from a YAML file path, section name, and parent section name.
@@ -282,16 +304,16 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
         Raises:
             ValueError: If the specified section is not found in the YAML file.
         """
+        if not file_path:
+            file_path = cls.DEFAULT_CONFIG_PATH
+        if parent_section is None:
+            parent_section = cls.DEFAULT_PARENT_SECTION
         section_data = JustYaml.read_yaml_data(
-            file_path or cls.DEFAULT_CONFIG_PATH,
+            file_path,
             section_name,
-            parent_section or cls.DEFAULT_PARENT_SECTION,
+            parent_section,
         )
-        if not section_data.get("config_path"):
-            section_data.update({"config_path": file_path})
-        if not section_data.get("config_parent_section"):
-            section_data.update({"config_parent_section": parent_section})
-        section_data.update({"shortname": section_name})
+        section_data = cls.update_config_data(section_data, section_name, parent_section, file_path)
         return cls.model_validate(section_data)
 
     @staticmethod
@@ -325,12 +347,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
         if config_data is None:
             return None
         instance = None
-        if not config_data.get("config_path"):
-            config_data.update({"config_path": file_path})
-        if not config_data.get("config_parent_section"):
-            config_data.update({"config_parent_section": parent_section})
-        config_data.update({"shortname": section_name})
-        class_qualname = config_data.get("class_qualname") or class_hint
+        config_data = JustSerializable.update_config_data(config_data, section_name, parent_section, file_path, class_hint=class_hint)
+        class_qualname = config_data.get("class_qualname")
         if class_qualname:
             try:
                 # Splits into `module.submodule` and `ClassName` for dynamic import
@@ -369,6 +387,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             by_alias (bool): Whether to use the field's alias (if defined) in the output.
             exclude_none (bool): Whether to exclude fields with None values from the output.
             serialize_as_any (bool): Whether to serialize values by their types.
+            exclude_defaults (bool): Whether to exclude fields with the default values from the output.
+            exclude_unset (bool): Whether to exclude unset fields from the output.
 
         Returns:
             Dict[str, Any]: A dictionary representation of the instance, including extra fields.
@@ -471,12 +491,14 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             by_alias (bool): Whether to use the field's alias (if defined) in the output.
             exclude_none (bool): Whether to exclude fields with None values from the output.
             serialize_as_any (bool): Whether to serialize values by their types.
+            exclude_defaults (bool): Whether to exclude fields with the default values from the output.
+            exclude_unset (bool): Whether to exclude unset fields from the output.
         """
 
         if not file_path:
             file_path = self.config_path or self.DEFAULT_CONFIG_PATH #set configured or default
-        if not parent_section:
-            parent_section = self.config_parent_section #None is also valid, only set configured
+        if parent_section is None:
+            parent_section = self.config_parent_section
         if not section_name:
             section_name = self.shortname #Set configured
 
@@ -541,6 +563,9 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
                 self.extras.update(new_data)
 
     def update_from_yaml(self, overwrite: bool = False):
+        """
+        Update instance fields from linked YAML configuration
+        """
         profile  = self.from_yaml_auto(
             self.shortname,
             parent_section=self.config_parent_section,
