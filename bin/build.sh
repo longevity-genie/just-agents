@@ -29,7 +29,7 @@ echo "Building packages in order..."
 build_package "core"
 
 # Then build the components that depend on core
-for package in "tools" "coding" "web" "router"; do
+for package in "tools" "coding" "web" "router" "examples"; do
     build_package "$package"
 done
 

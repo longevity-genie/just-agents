@@ -66,7 +66,7 @@ if ! publish_package "core"; then
 fi
 
 # Then publish the components that depend on core
-for package in "tools" "coding" "web" "router"; do
+for package in "tools" "coding" "web" "router" "examples"; do
     if ! publish_package $package; then
         echo "Failed to publish $package package. Aborting."
         exit 1

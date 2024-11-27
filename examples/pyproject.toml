@@ -6,8 +6,7 @@ authors = ["Alex Karmazin <karmazinalex@gmail.com>"]
 maintainers = ["Anton Kulaga <antonkulaga@gmail.com>"]
 readme = "README.md"
 packages = [
-    { include = "just_agents" },
-    { include = "just_agents.*" }
+    { include = "just_agents" }
 ]
 license = "MIT"
 
