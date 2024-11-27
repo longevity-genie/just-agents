@@ -36,6 +36,10 @@ Deprecated = ">=1.2.15"
 requests = "*"
 numpydoc = "*"
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+python-dotenv = "*"
+
 [tool.poetry.urls]
 Homepage = "https://github.com/longevity-genie/just-agents"
 "Bug Tracker" = "https://github.com/longevity-genie/just-agents/issues"

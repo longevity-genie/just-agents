@@ -37,12 +37,12 @@ jobs:
           
       - name: Install packages in correct order
         run: |
-          cd core && poetry install && cd ..
-          if [ -d "coding" ]; then cd coding && poetry install && cd ..; fi
-          if [ -d "web" ]; then cd web && poetry install && cd ..; fi
-          if [ -d "tools" ]; then cd tools && poetry install && cd ..; fi
-          if [ -d "router" ]; then cd router && poetry install && cd ..; fi
-          if [ -d "examples" ]; then cd examples && poetry install; fi
+          cd core && poetry install --with dev && cd ..
+          if [ -d "coding" ]; then cd coding && poetry install --with dev && cd ..; fi
+          if [ -d "web" ]; then cd web && poetry install --with dev && cd ..; fi
+          if [ -d "tools" ]; then cd tools && poetry install --with dev && cd ..; fi
+          if [ -d "router" ]; then cd router && poetry install --with dev && cd ..; fi
+          if [ -d "examples" ]; then cd examples && poetry install --with dev; fi
 
       - name: Run tests
         run:  poetry run python -m pytest
