@@ -10,7 +10,6 @@ from abc import ABC
 OnMessageCallable = Callable[[AbstractMessage], None]
 OnFunctionCallable = Callable[[Function], None]
 
-
 class IBaseMemory(BaseModel, IMemory[Role, AbstractMessage], ABC):
     """
     Abstract Base Class to fulfill Pydantic schema requirements for concrete-attributes.

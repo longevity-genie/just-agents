@@ -57,8 +57,6 @@ class BaseAgent(
         exclude=True,
         description="Stores conversation history and maintains context between messages")
 
-
-
     streaming_method: StreamingMode = Field(
         StreamingMode.openai,
         description="protocol to handle llm format for function calling")
