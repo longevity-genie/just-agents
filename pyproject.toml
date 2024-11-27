@@ -14,15 +14,7 @@ maintainers = [
 readme = "README.md"
 license = "MIT"
 keywords = ["python", "llm", "agents", "AI", "machine-learning"]
-classifiers = [
-    "Development Status :: 4 - Beta",
-    "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Programming Language :: Python :: 3.12",
-    "Operating System :: OS Independent",
-]
-package-mode = false
+packages = [{include = "just_agents"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"

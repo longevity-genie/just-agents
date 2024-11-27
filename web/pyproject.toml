@@ -1,23 +1,36 @@
-[project]
+[tool.poetry]
 name = "just_agents_web"
 version = "0.4.1"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
+authors = [
+    "Alex Karmazin <karmazinalex@gmail.com>",
+    "Newton Winter <isoutthere@gmail.com>",
+    "Anton Kulaga <antonkulaga@gmail.com>"
+]
+maintainers = [
+    "Anton Kulaga <antonkulaga@gmail.com>",
+    "Newton Winter <isoutthere@gmail.com>"
+]
 readme = "README.md"
-requires-python = ">=3.10"
-dependencies = [
-    "just-agents-core>=0.4.1"
+packages = [
+    { include = "just_agents" }
 ]
-
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["just_agents", "just_agents.*"]
-exclude = [
-    "logs*",
-    "output*", 
-    "*.egg-info",
-    "build",
-    "dist"
+license = "MIT"
+keywords = ["python", "llm", "web", "agents", "AI"]
+classifiers = [
+    "Development Status :: 2 - Pre-Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: Unix",
+    "Operating System :: MacOS :: MacOS X",
+    "Operating System :: Microsoft :: Windows",
 ]
-
-[tool.setuptools.package-data]
-"*" = ["*.yaml", "*.yml"]
+[tool.poetry.dependencies]
+python = ">=3.10"
+"just-agents-core" = ">=0.4.1"
+loguru = "^0.7.2"
+fastapi = "^0.115.5"
+starlette = "^0.41.3"
+[tool.poetry.group.dev.dependencies]

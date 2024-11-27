@@ -1,0 +1,2 @@
+# This file is a placeholder to make just-agents a namespace package
+# just-agents is nothing than a metapackage, use just-agents-core, just-agents-code and so on for specific features
