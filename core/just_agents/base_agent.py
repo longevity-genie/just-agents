@@ -9,7 +9,7 @@ from just_agents.streaming.protocols.interfaces.IFunctionCall import IFunctionCa
 from just_agents.streaming.protocols.interfaces.IProtocolAdapter import IProtocolAdapter, BaseModelResponse
 from just_agents.core.interfaces.IAgent import IAgentWithInterceptors, QueryListener, ResponseListener
 
-from just_agents.base_memory import BaseMemory
+from just_agents.base_memory import IBaseMemory, BaseMemory
 from just_agents.just_profile import JustAgentProfile
 from just_agents.core.rotate_keys import RotateKeys
 from just_agents.streaming.protocol_factory import StreamingMode, ProtocolAdapterFactory
@@ -52,7 +52,7 @@ class BaseAgent(
         description="Maximum retry attempts before failing or falling back to backup_options")
     
     # Memory system to store conversation history
-    memory: BaseMemory = Field(
+    memory: IBaseMemory = Field(
         default_factory=BaseMemory,
         exclude=True,
         description="Stores conversation history and maintains context between messages")

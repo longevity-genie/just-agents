@@ -5,18 +5,18 @@ from functools import singledispatchmethod
 from just_agents.core.interfaces.IMemory import IMemory
 from just_agents.core.types import Role, AbstractMessage, SupportedMessages, SupportedMessage
 from litellm.types.utils import Function
+from abc import ABC, abstractmethod
 
 OnMessageCallable = Callable[[AbstractMessage], None]
 OnFunctionCallable = Callable[[Function], None]
 
-class BaseMemory(BaseModel, IMemory[Role, AbstractMessage]):
+
+class IBaseMemory(BaseModel, IMemory[Role, AbstractMessage], ABC):
     """
-    The Memory class provides storage and handling of messages for a language model session.
-    It supports adding, removing, and handling different types of messages and
-    function calls categorized by roles: assistant, tool, user, and system.
+    Abstract Base Class to fulfill Pydantic schema requirements for concrete-attributes.
     """
 
-    messages: List[AbstractMessage] = Field(default_factory=list, alias='messages')
+    messages: List[AbstractMessage] = Field(default_factory=list, validation_alias='conversation')
 
     # Private dict of message handlers for each role
     _on_message: Dict[Role, List[OnMessageCallable]] = PrivateAttr(default_factory=lambda: {
@@ -25,6 +25,13 @@ class BaseMemory(BaseModel, IMemory[Role, AbstractMessage]):
         Role.user: [],
         Role.system: [],
     })
+
+class BaseMemory(IBaseMemory):
+    """
+    The Memory class provides storage and handling of messages for a language model session.
+    It supports adding, removing, and handling different types of messages and
+    function calls categorized by roles: assistant, tool, user, and system.
+    """
 
     def handle_message(self, message: AbstractMessage) -> None:
         """
@@ -42,7 +49,6 @@ class BaseMemory(BaseModel, IMemory[Role, AbstractMessage]):
     def add_message(self, message: SupportedMessages) -> None:
         """
         Overrides the abstract method and provides dispatching to specific handlers.
-        see @add_message.register for the specific implementations
         """
         raise TypeError(f"Unsupported message format: {type(message)}")
 
@@ -78,8 +84,9 @@ class BaseMemory(BaseModel, IMemory[Role, AbstractMessage]):
     def last_message_str(self) -> Optional[str]:
         message_str = None
         last_message = self.last_message
-        result = last_message["content"] if "content" in last_message else last_message
-        return str(result)
+        if last_message:
+            message_str = last_message["content"] if "content" in last_message else str(last_message)
+        return message_str
 
     def add_on_tool_call(self, fun: OnFunctionCallable) -> None:
         """
