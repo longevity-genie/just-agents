@@ -30,23 +30,13 @@ jobs:
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
 
-      - name: Debug directory structure
-        run: |
-          pwd
-          ls -la
-          
-      - name: Install packages in correct order
-        run: |
-          cd core && poetry install --with dev && cd ..
-          if [ -d "coding" ]; then cd coding && poetry install --with dev && cd ..; fi
-          if [ -d "web" ]; then cd web && poetry install --with dev && cd ..; fi
-          if [ -d "tools" ]; then cd tools && poetry install --with dev && cd ..; fi
-          if [ -d "router" ]; then cd router && poetry install --with dev && cd ..; fi
-          if [ -d "examples" ]; then cd examples && poetry install --with dev; fi
-
-      - name: Run tests
-        run: poetry run python -m pytest
-        working-directory: .
+      - name: Install dependencies and run tests
         env:
-          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
+          GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
+        run: |
+          # Install root project dependencies which will include subprojects
+          poetry install --with dev
+          
+          # Run tests
+          poetry run pytest
