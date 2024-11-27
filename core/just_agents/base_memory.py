@@ -5,7 +5,7 @@ from functools import singledispatchmethod
 from just_agents.core.interfaces.IMemory import IMemory
 from just_agents.core.types import Role, AbstractMessage, SupportedMessages, SupportedMessage
 from litellm.types.utils import Function
-from abc import ABC, abstractmethod
+from abc import ABC
 
 OnMessageCallable = Callable[[AbstractMessage], None]
 OnFunctionCallable = Callable[[Function], None]
