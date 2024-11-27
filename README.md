@@ -59,18 +59,21 @@ git clone git@github.com:longevity-genie/just-agents.git
 cd just-agents
 ```
 
-2. Set up the environment 
-Note: we use micromamba but you can conda, anaconda, poetry or any other python environment manager:
+2. Set up the environment:
+We use Poetry for dependency management. First, [install Poetry](https://python-poetry.org/docs/#installation) if you haven't already.
 
+```bash
+# Install dependencies using Poetry
+poetry install
+
+# Activate the virtual environment
+poetry shell
+```
+
+Alternatively, you can use micromamba:
 ```bash
 micromamba create -f environment.yaml
 micromamba activate just-agents
-```
-
-(Optional) Install the package in editable mode:
-```bash
-micromamba activate just-agents
-bin/install-locally.sh # pip install -e . on each subpackage
 ```
 
 3. Configure API keys:

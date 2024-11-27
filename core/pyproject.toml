@@ -1,22 +1,21 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "just-agents-core"
-version = "0.4.0"
+version = "0.4.1"
 description = "Just Agents - Base Package"
-readme = "README.md"
-requires-python = ">=3.10"
 authors = [
-    { name = "Alex Karmazin", email = "karmazinalex@gmail.com" },
-    { name = "Newton Winter", email = "isoutthere@gmail.com" },
-    { name = "Anton Kulaga", email = "antonkulaga@gmail.com" },
+    "Alex Karmazin <karmazinalex@gmail.com>",
+    "Newton Winter <isoutthere@gmail.com>",
+    "Anton Kulaga <antonkulaga@gmail.com>"
 ]
 maintainers = [
-    { name = "Anton Kulaga", email = "antonkulaga@gmail.com" },
-    { name = "Newton Winter", email = "isoutthere@gmail.com" },
+    "Anton Kulaga <antonkulaga@gmail.com>",
+    "Newton Winter <isoutthere@gmail.com>"
 ]
+readme = "README.md"
+packages = [
+    { include = "just_agents" }
+]
+license = "MIT"
 keywords = ["python", "llm", "science", "review", "agents", "AI"]
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
@@ -28,29 +27,20 @@ classifiers = [
     "Operating System :: MacOS :: MacOS X",
     "Operating System :: Microsoft :: Windows",
 ]
-dependencies = [
-    "litellm>=1.52.14",
-    "Deprecated>=1.2.15",
-    "requests",
-    "numpydoc",
-]
-license = {text = "MIT"}
 
-[project.urls]
+[tool.poetry.dependencies]
+python = ">=3.10"
+litellm = ">=1.52.14"
+pydantic = ">=2.0.0,<3.0.0"
+Deprecated = ">=1.2.15"
+requests = "*"
+numpydoc = "*"
+
+[tool.poetry.urls]
 Homepage = "https://github.com/longevity-genie/just-agents"
 "Bug Tracker" = "https://github.com/longevity-genie/just-agents/issues"
 Documentation = "https://just-agents.readthedocs.io/"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["just_agents", "just_agents.*"]
-exclude = [
-    "logs*",
-    "output*", 
-    "*.egg-info",
-    "build",
-    "dist"
-]
-
-[tool.setuptools.package-data]
-"*" = ["*.yaml", "*.yml"]
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
