@@ -20,7 +20,7 @@ class IThinkingAgent(
 
     def think(self, 
               query: AbstractQueryInputType, 
-              max_iter: int = 3, 
+              max_iter: int = 8, 
               chain: Optional[list[THOUGHT_TYPE]] = None,
               **kwargs  ) -> tuple[Optional[THOUGHT_TYPE], Optional[list[THOUGHT_TYPE]]]:
         """

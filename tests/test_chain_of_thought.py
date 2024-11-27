@@ -17,7 +17,7 @@ def test_function_query():
 
     llm_options = just_agents.llm_options.OPENAI_GPT4oMINI.copy()
     agent: ChainOfThoughtAgent = ChainOfThoughtAgent(llm_options=llm_options, tools=[count_letters])
-    result, thoughts = agent.think("Count the number of occurrences of the letter ’L’ in the word - ’LOLLAPALOOZA’.")
+    result, thoughts = agent.think("Count the number of occurrences of the letter 'L' in the word - 'LOLLAPALOOZA'.")
     print("Thoughts: ", thoughts)
     print("Results: ", result)
     assert "4" in result.content

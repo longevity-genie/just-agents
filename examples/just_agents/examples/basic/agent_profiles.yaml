@@ -40,23 +40,15 @@ agent_profiles:
       tool_choice: auto
       tools: []
     tools:
-      get_current_weather:
+      mock_get_current_weather:
         arguments:
         - location:
             default: null
             kind: POSITIONAL_OR_KEYWORD
             type_annotation: <class 'str'>
-        description: 'Gets the current weather in a given location.
-
-          Args:
-
-          location (str): The name of the location to get the weather for.
-
-          Returns:
-
-          str: A JSON string containing the location, temperature, and unit of measurement.'
-        function: get_current_weather
-        package: just_agents_examples.tools
+        description: Gets the current weather in a given location
+        function: mock_get_current_weather
+        package: just_agents.tools.weather
         parameters:
           properties:
             location:

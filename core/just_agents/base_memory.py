@@ -1,4 +1,3 @@
-
 from pydantic import BaseModel, Field, PrivateAttr
 from typing import Optional, Callable, List, Dict, Union
 from functools import singledispatchmethod
@@ -80,6 +79,7 @@ class BaseMemory(IBaseMemory):
     def add_user_message(self, prompt: str) -> None:
         self.add_message({"role": Role.user, "content": prompt})
 
+    @property
     def last_message_str(self) -> Optional[str]:
         message_str = None
         last_message = self.last_message

@@ -167,3 +167,4 @@ cython_debug/
 .micromamba/
 
 *.egg-info
+/config #ignore only config folder that tests write by mistake
