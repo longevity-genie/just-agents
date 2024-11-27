@@ -21,56 +21,26 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install Micromamba
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Install Poetry
         run: |
-          sudo apt-get update
-          sudo apt-get install -y curl
-          mkdir -p $HOME/micromamba
-          curl -L https://micromamba.snakepit.net/api/micromamba/linux-64/latest | tar -xvj -C $HOME/micromamba --strip-components=1 bin/micromamba
+          curl -sSL https://install.python-poetry.org | python3 -
 
-      - name: Verify Micromamba Installation
-        run: $HOME/micromamba/micromamba --version
-
-      - name: Create environment
+      - name: Install packages in correct order
         run: |
-          $HOME/micromamba/micromamba create --root-prefix $HOME/micromamba --name just-agents -y -c conda-forge python=${{ matrix.python-version }}
-        env:
-          MAMBA_ROOT_PREFIX: $HOME/micromamba
-
-      - name: Verify environment creation
-        run: |
-          $HOME/micromamba/micromamba env list
-          ls -al $HOME/micromamba/envs/just-agents
-        env:
-          MAMBA_ROOT_PREFIX: $HOME/micromamba
-
-      - name: Install dependencies
-        run: |
-          $HOME/micromamba/micromamba install --root-prefix $HOME/micromamba -n just-agents -f environment.yaml -y -c conda-forge
-        env:
-          MAMBA_ROOT_PREFIX: $HOME/micromamba
-
-      - name: Set up Micromamba environment
-        run: echo "$HOME/micromamba/bin:$HOME/micromamba/envs/just-agents/bin" >> $GITHUB_PATH
-
-      - name: Install packages
-        run: |
-          # Install packages in the correct order
-          cd core && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents poetry install && cd ..
-          cd coding && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents poetry install && cd ..
-          cd web && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents poetry install && cd ..
-          cd tools && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents poetry install && cd ..
-          cd router && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents poetry install && cd ..
-          cd examples && $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents poetry install
-        env:
-          MAMBA_ROOT_PREFIX: $HOME/micromamba
+          cd core && poetry install && cd ..
+          cd coding && poetry install && cd ..
+          cd web && poetry install && cd ..
+          cd tools && poetry install && cd ..
+          cd router && poetry install && cd ..
+          cd examples && poetry install
 
       - name: Run tests
-        run: |
-          $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents which python
-          $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents which pytest
-          $HOME/micromamba/micromamba run -r $HOME/micromamba -n just-agents pytest
+        run:  poetry run python -m pytest
         env:
-          MAMBA_ROOT_PREFIX: $HOME/micromamba
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}

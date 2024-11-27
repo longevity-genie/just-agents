@@ -49,7 +49,7 @@ Browse our [examples](https://github.com/longevity-genie/just-agents/tree/main/e
 
 ### Quick Install
 ```bash
-pip install just-agents
+pip install just-agents-core
 ```
 
 ### Development Setup
@@ -68,12 +68,6 @@ poetry install
 
 # Activate the virtual environment
 poetry shell
-```
-
-Alternatively, you can use micromamba:
-```bash
-micromamba create -f environment.yaml
-micromamba activate just-agents
 ```
 
 3. Configure API keys:

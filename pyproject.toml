@@ -25,6 +25,10 @@ just-agents-coding = { path = "coding", develop = true }
 just-agents-web = { path = "web", develop = true }
 just-agents-router = { path = "router", develop = true }
 
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+python-dotenv = "*"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
