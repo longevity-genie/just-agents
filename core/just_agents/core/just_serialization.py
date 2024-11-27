@@ -5,6 +5,7 @@ from pathlib import Path
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from collections.abc import MutableMapping, MutableSequence
 
+
 class JustYaml:
     """
     A utility static class for reading and saving data to YAML files.
@@ -271,6 +272,9 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             file_path: Path,
             class_hint: Optional[str] = None
     ) -> dict:
+        """
+        Link YAML configuration file, sections and class info to an instance
+        """
         if not config_data.get("config_path"):
             config_data.update({"config_path": file_path})
         if not config_data.get("config_parent_section") and parent_section is not None: # '' is a valid value
@@ -293,7 +297,6 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             section_name (str): The section name (shortname) in the YAML file.
             parent_section (str): The parent section name in the YAML file.
             file_path (Path): The path to the YAML file.
-            class_hint (Optional[str]): Attempt instantiation with this class_qualname if not specified in schema
 
         Returns:
             JustSerializable: A new instance of JustYamlSerializable.
@@ -384,6 +387,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             by_alias (bool): Whether to use the field's alias (if defined) in the output.
             exclude_none (bool): Whether to exclude fields with None values from the output.
             serialize_as_any (bool): Whether to serialize values by their types.
+            exclude_defaults (bool): Whether to exclude fields with the default values from the output.
+            exclude_unset (bool): Whether to exclude unset fields from the output.
 
         Returns:
             Dict[str, Any]: A dictionary representation of the instance, including extra fields.
@@ -486,6 +491,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             by_alias (bool): Whether to use the field's alias (if defined) in the output.
             exclude_none (bool): Whether to exclude fields with None values from the output.
             serialize_as_any (bool): Whether to serialize values by their types.
+            exclude_defaults (bool): Whether to exclude fields with the default values from the output.
+            exclude_unset (bool): Whether to exclude unset fields from the output.
         """
 
         if not file_path:
@@ -556,6 +563,9 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
                 self.extras.update(new_data)
 
     def update_from_yaml(self, overwrite: bool = False):
+        """
+        Update instance fields from linked YAML configuration
+        """
         profile  = self.from_yaml_auto(
             self.shortname,
             parent_section=self.config_parent_section,
