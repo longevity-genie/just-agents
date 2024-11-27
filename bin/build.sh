@@ -33,7 +33,21 @@ for package in "tools" "coding" "web" "router" "examples"; do
     build_package "$package"
 done
 
-# Finally build the meta-package
+# Create temporary __init__.py for the meta-package build
+echo "Creating temporary __init__.py..."
+touch "./just_agents/__init__.py"
+
+# Store the current directory
+CURRENT_DIR=$(pwd)
+
+# Build the meta-package
 build_package "./"
+
+# Return to the original directory before cleanup
+cd "$CURRENT_DIR" || exit 1
+
+# Clean up temporary __init__.py
+echo "Cleaning up temporary __init__.py..."
+rm "./just_agents/__init__.py"
 
 echo "All packages built!"
