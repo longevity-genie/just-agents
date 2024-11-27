@@ -30,14 +30,19 @@ jobs:
         run: |
           curl -sSL https://install.python-poetry.org | python3 -
 
+      - name: Debug directory structure
+        run: |
+          pwd
+          ls -la
+          
       - name: Install packages in correct order
         run: |
           cd core && poetry install && cd ..
-          cd coding && poetry install && cd ..
-          cd web && poetry install && cd ..
-          cd tools && poetry install && cd ..
-          cd router && poetry install && cd ..
-          cd examples && poetry install
+          if [ -d "coding" ]; then cd coding && poetry install && cd ..; fi
+          if [ -d "web" ]; then cd web && poetry install && cd ..; fi
+          if [ -d "tools" ]; then cd tools && poetry install && cd ..; fi
+          if [ -d "router" ]; then cd router && poetry install && cd ..; fi
+          if [ -d "examples" ]; then cd examples && poetry install; fi
 
       - name: Run tests
         run:  poetry run python -m pytest
