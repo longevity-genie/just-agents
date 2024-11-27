@@ -48,7 +48,8 @@ poetry config pypi-token.pypi $PYPI_TOKEN
 version=$(cd core && poetry version -s)
 echo "Publishing version $version"
 
-for pkg in "tools" "coding" "web" "router" "examples"; do
+# Add just-agents to the package list
+for pkg in "tools" "coding" "web" "router" "examples" "."; do
     pkg_version=$(cd $pkg && poetry version -s)
     if [ "$pkg_version" != "$version" ]; then
         echo "Error: Version mismatch in $pkg ($pkg_version != $version)"
@@ -66,9 +67,16 @@ if ! publish_package "core"; then
 fi
 
 # Then publish the components that depend on core
+# Add just-agents to this list as well
 for package in "tools" "coding" "web" "router" "examples"; do
     if ! publish_package $package; then
         echo "Failed to publish $package package. Aborting."
         exit 1
     fi
 done
+
+# Finally publish the meta-package
+#if ! publish_package "."; then
+#    echo "Failed to publish just-agents meta-package. Aborting."
+#    exit 1
+#fi

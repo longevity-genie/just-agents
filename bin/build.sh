@@ -34,6 +34,6 @@ for package in "tools" "coding" "web" "router" "examples"; do
 done
 
 # Finally build the meta-package
-poetry build
+build_package "./"
 
 echo "All packages built!"

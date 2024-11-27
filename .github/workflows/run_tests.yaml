@@ -45,7 +45,8 @@ jobs:
           if [ -d "examples" ]; then cd examples && poetry install --with dev; fi
 
       - name: Run tests
-        run:  poetry run python -m pytest
+        run: poetry run python -m pytest
+        working-directory: .
         env:
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
