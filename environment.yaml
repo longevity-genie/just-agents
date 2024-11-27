@@ -1,22 +1,8 @@
-name: just-agents #has dependencies for all subpackages
+name: just-agents
 channels:
   - conda-forge
   - defaults
 dependencies:
   - python=3.11
-  - requests>=2.32.3
-  - pytest>=8.3.3 #for tests
-  - typer>=0.13.0 #for CLI
-  - twine #for publishing
-  - setuptools>=75.5.0
+  - poetry>=1.7.0
   - pip
-  - pip:
-      - litellm>=1.52.14
-      - numpydoc #for tool calling
-      - build #for building
-      - semanticscholar>=0.8.4 #for just-agents-tools
-      - llm-sandbox>=0.1.4 #for just-agents-coding
-      - loguru #for just-agents-web
-      - fastapi #for just-agents-web
-      - uvicorn #for just-agents-web
-      - thefuzz #for just-agents-web

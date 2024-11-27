@@ -1,38 +1,24 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "just-agents-examples"
-version = "0.4.0"
+version = "0.4.1"
 description = "Just Agents - Examples code"
+authors = ["Alex Karmazin <karmazinalex@gmail.com>"]
+maintainers = ["Anton Kulaga <antonkulaga@gmail.com>"]
 readme = "README.md"
-requires-python = ">=3.10"
-authors = [
-    { name = "Alex Karmazin", email = "karmazinalex@gmail.com" },
+packages = [
+    { include = "just_agents" },
+    { include = "just_agents.*" }
 ]
-maintainers = [
-    { name = "Anton Kulaga", email = "antonkulaga@gmail.com" },
-]
-dependencies = [
-    "just-agents-core>=0.4.0",
-    "just-agents-tools>=0.4.0",
-    "just-agents-coding>=0.4.0",
-    "just-agents-web>=0.4.0",
-    "just_agents-router>=0.4.0"
-]
-license = {text = "MIT"}
+license = "MIT"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["just_agents", "just_agents.*"]
-exclude = [
-    "logs*",
-    "output*", 
-    "*.egg-info",
-    "build",
-    "dist"
-]
+[tool.poetry.dependencies]
+python = ">=3.10"
+just-agents-core = ">=0.4.1"
+just-agents-tools = ">=0.4.1"
+just-agents-coding = ">=0.4.1"
+just-agents-web = ">=0.4.1"
+just-agents-router = ">=0.4.1"
 
-[tool.setuptools.package-data]
-"*" = ["*.yaml", "*.yml"]
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

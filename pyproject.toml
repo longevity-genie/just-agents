@@ -1,0 +1,38 @@
+[tool.poetry]
+name = "just-agents"
+version = "0.4.1"
+description = "Just Agents - A lightweight, straightforward library for LLM agents that focuses on simplicity over unnecessary abstractions."
+authors = [
+    "Alex Karmazin <karmazinalex@gmail.com>",
+    "Newton Winter <isoutthere@gmail.com>",
+    "Anton Kulaga <antonkulaga@gmail.com>"
+]
+maintainers = [
+    "Anton Kulaga <antonkulaga@gmail.com>",
+    "Newton Winter <isoutthere@gmail.com>"
+]
+readme = "README.md"
+license = "MIT"
+keywords = ["python", "llm", "agents", "AI", "machine-learning"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
+package-mode = false
+
+[tool.poetry.dependencies]
+python = ">=3.10,<4.0"
+llm-sandbox = ">=0.1.4"
+just-agents-core = { path = "core", develop = true }
+just-agents-tools = { path = "tools", develop = true }
+just-agents-coding = { path = "coding", develop = true }
+just-agents-web = { path = "web", develop = true }
+just-agents-router = { path = "router", develop = true }
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"

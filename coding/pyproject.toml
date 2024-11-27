@@ -1,38 +1,27 @@
-[build-system]
-requires = ["setuptools>=61.0"]
-build-backend = "setuptools.build_meta"
-
-[project]
+[tool.poetry]
 name = "just-agents-coding"
-version = "0.4.0"
+version = "0.4.1"
 description = "Just Agents - Coding Components"
-readme = "README.md"
-requires-python = ">=3.10"
 authors = [
-    { name = "Alex Karmazin", email = "karmazinalex@gmail.com" },
-    { name = "Anton Kulaga", email = "antonkulaga@gmail.com" },
-    { name = "Newton Winter", email = "isoutthere@gmail.com" },
+    "Alex Karmazin <karmazinalex@gmail.com>",
+    "Anton Kulaga <antonkulaga@gmail.com>",
+    "Newton Winter <isoutthere@gmail.com>"
 ]
 maintainers = [
-    { name = "Anton Kulaga", email = "antonkulaga@gmail.com" },
-    { name = "Newton Winter", email = "isoutthere@gmail.com" },
+    "Anton Kulaga <antonkulaga@gmail.com>",
+    "Newton Winter <isoutthere@gmail.com>"
 ]
-dependencies = [
-    "just-agents-core>=0.4.0",
-    "llm-sandbox>=0.1.4",
+readme = "README.md"
+packages = [
+    { include = "just_agents" }
 ]
-license = {text = "MIT"}
+license = "MIT"
 
-[tool.setuptools.packages.find]
-where = ["."]
-include = ["just_agents", "just_agents.*"]
-exclude = [
-    "logs*",
-    "output*", 
-    "*.egg-info",
-    "build",
-    "dist"
-]
+[tool.poetry.dependencies]
+python = ">=3.10"
+just-agents-core = ">=0.4.1"
+llm-sandbox = ">=0.1.4"
 
-[tool.setuptools.package-data]
-"*" = ["*.yaml", "*.yml"]
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
