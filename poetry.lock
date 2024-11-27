@@ -934,7 +934,7 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "just-agents-coding"
-version = "0.4.1"
+version = "0.4.2"
 description = "Just Agents - Coding Components"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -942,7 +942,7 @@ files = []
 develop = true
 
 [package.dependencies]
-just-agents-core = ">=0.4.1"
+just-agents-core = ">=0.4.2"
 llm-sandbox = ">=0.1.4"
 
 [package.source]
@@ -951,7 +951,7 @@ url = "coding"
 
 [[package]]
 name = "just-agents-core"
-version = "0.4.1"
+version = "0.4.2"
 description = "Just Agents - Base Package"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -971,7 +971,7 @@ url = "core"
 
 [[package]]
 name = "just-agents-router"
-version = "0.4.1"
+version = "0.4.2"
 description = "Just Agents - Router Components"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -979,7 +979,7 @@ files = []
 develop = true
 
 [package.dependencies]
-just-agents-core = ">=0.4.1"
+just-agents-core = ">=0.4.2"
 
 [package.source]
 type = "directory"
@@ -987,7 +987,7 @@ url = "router"
 
 [[package]]
 name = "just-agents-tools"
-version = "0.4.1"
+version = "0.4.2"
 description = "Just Agents - Tools Components"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -995,7 +995,7 @@ files = []
 develop = true
 
 [package.dependencies]
-just-agents-core = ">=0.4.1"
+just-agents-core = ">=0.4.2"
 semanticscholar = ">=0.8.4"
 typer = ">=0.13.0"
 
@@ -1005,7 +1005,7 @@ url = "tools"
 
 [[package]]
 name = "just-agents-web"
-version = "0.4.1"
+version = "0.4.2"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1014,7 +1014,7 @@ develop = true
 
 [package.dependencies]
 fastapi = "^0.115.5"
-just-agents-core = ">=0.4.1"
+just-agents-core = ">=0.4.2"
 loguru = "^0.7.2"
 starlette = "^0.41.3"
 
@@ -1536,13 +1536,13 @@ files = [
 
 [[package]]
 name = "pyasn1-modules"
-version = "0.4.1"
+version = "0.4.2"
 description = "A collection of ASN.1-based protocols modules"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "pyasn1_modules-0.4.1-py3-none-any.whl", hash = "sha256:49bfa96b45a292b711e986f222502c1c9a5e1f4e568fc30e2574a6c7d07838fd"},
-    {file = "pyasn1_modules-0.4.1.tar.gz", hash = "sha256:c28e2dbf9c06ad61c71a075c7e0f9fd0f1b0bb2d2ad4377f240d33ac2ab60a7c"},
+    {file = "pyasn1_modules-0.4.2-py3-none-any.whl", hash = "sha256:49bfa96b45a292b711e986f222502c1c9a5e1f4e568fc30e2574a6c7d07838fd"},
+    {file = "pyasn1_modules-0.4.2.tar.gz", hash = "sha256:c28e2dbf9c06ad61c71a075c7e0f9fd0f1b0bb2d2ad4377f240d33ac2ab60a7c"},
 ]
 
 [package.dependencies]
@@ -2214,7 +2214,7 @@ tomli = {version = ">=2", markers = "python_version < \"3.11\""}
 
 [package.extras]
 docs = ["sphinxcontrib-websupport"]
-lint = ["flake8 (>=6.0)", "mypy (==1.11.1)", "pyright (==1.1.384)", "pytest (>=6.0)", "ruff (==0.6.9)", "sphinx-lint (>=0.9)", "tomli (>=2)", "types-Pillow (==10.2.0.20240822)", "types-Pygments (==2.18.0.20240506)", "types-colorama (==0.4.15.20240311)", "types-defusedxml (==0.7.0.20240218)", "types-docutils (==0.21.0.20241005)", "types-requests (==2.32.0.20240914)", "types-urllib3 (==1.26.25.14)"]
+lint = ["flake8 (>=6.0)", "mypy (==1.11.1)", "pyright (==1.1.384)", "pytest (>=6.0)", "ruff (==0.6.9)", "sphinx-lint (>=0.9)", "tomli (>=2)", "types-Pillow (==10.2.0.20240822)", "types-Pygments (==2.18.0.20240506)", "types-colorama (==0.4.25.20240311)", "types-defusedxml (==0.7.0.20240218)", "types-docutils (==0.21.0.20241005)", "types-requests (==2.32.0.20240914)", "types-urllib3 (==1.26.25.14)"]
 test = ["cython (>=3.0)", "defusedxml (>=0.7.1)", "pytest (>=8.0)", "setuptools (>=70.0)", "typing_extensions (>=4.9)"]
 
 [[package]]

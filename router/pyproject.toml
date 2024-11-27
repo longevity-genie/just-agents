@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-router"
-version = "0.4.1"
+version = "0.4.2"
 description = "Just Agents - Router Components"
 authors = [
     "Newton Winter <isoutthere@gmail.com>",
@@ -18,7 +18,11 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-just-agents-core = ">=0.4.1"
+just-agents-core = ">=0.4.2"
+
+[tool.poetry.group.dev.dependencies]
+pytest = "^7.4.4"
+python-dotenv = "*"
 
 [build-system]
 requires = ["poetry-core"]
