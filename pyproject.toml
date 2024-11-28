@@ -14,7 +14,7 @@ maintainers = [
 readme = "README.md"
 license = "MIT"
 keywords = ["python", "llm", "agents", "AI", "machine-learning"]
-packages = [{include = "just_agents"}]
+package-mode = false
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
@@ -24,6 +24,7 @@ just-agents-tools = { path = "tools", develop = true }
 just-agents-coding = { path = "coding", develop = true }
 just-agents-web = { path = "web", develop = true }
 just-agents-router = { path = "router", develop = true }
+just-agents-examples = { path = "examples", develop = true }
 
 [tool.poetry.group.publish.dependencies]
 just-agents-core = "0.4.2"
@@ -31,6 +32,7 @@ just-agents-tools = "0.4.2"
 just-agents-coding = "0.4.2"
 just-agents-web = "0.4.2"
 just-agents-router = "0.4.2"
+just-agents-examples = "0.4.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = "^7.4.4"

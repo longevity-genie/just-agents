@@ -33,15 +33,24 @@ for package in "tools" "coding" "web" "router" "examples"; do
     build_package "$package"
 done
 
-# Create temporary __init__.py for the meta-package build
-echo "Creating temporary __init__.py..."
-touch "./just_agents/__init__.py"
-
 # Store the current directory
 CURRENT_DIR=$(pwd)
 
+# Backup and modify pyproject.toml
+echo "Modifying pyproject.toml for meta-package build..."
+cp pyproject.toml pyproject.toml.bak
+sed -i 's/package-mode = false/packages = \[{include = "just_agents"}\]/' pyproject.toml
+
+# Create temporary __init__.py
+echo "Creating temporary __init__.py..."
+touch "./just_agents/__init__.py"
+
 # Build the meta-package
 build_package "./"
+
+# Restore original pyproject.toml
+echo "Restoring original pyproject.toml..."
+mv pyproject.toml.bak pyproject.toml
 
 # Return to the original directory before cleanup
 cd "$CURRENT_DIR" || exit 1

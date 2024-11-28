@@ -970,6 +970,26 @@ type = "directory"
 url = "core"
 
 [[package]]
+name = "just-agents-examples"
+version = "0.4.2"
+description = "Just Agents - Examples code"
+optional = false
+python-versions = ">=3.10,<4.0"
+files = []
+develop = true
+
+[package.dependencies]
+just-agents-coding = ">=0.4.2"
+just-agents-core = ">=0.4.2"
+just-agents-router = ">=0.4.2"
+just-agents-tools = ">=0.4.2"
+just-agents-web = ">=0.4.2"
+
+[package.source]
+type = "directory"
+url = "examples"
+
+[[package]]
 name = "just-agents-router"
 version = "0.4.2"
 description = "Just Agents - Router Components"
@@ -2765,4 +2785,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4.0"
-content-hash = "e86a4447116fc2cd04123a58eb6e5e1ab1c5c859a12118a4bbcb89050b622cc5"
+content-hash = "55b01e34749099e413f42046d5192df0a9d6e1434509cad49a4beb4c71f5130c"

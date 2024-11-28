@@ -20,7 +20,7 @@ agent_profiles:
             type_annotation: <class 'str'>
         description: returns number of letters in the word
         function: letter_count
-        package: examples.tools
+        package: examples.just_agents.examples.tools
         parameters:
           properties:
             letter:

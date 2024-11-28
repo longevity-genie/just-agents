@@ -82,14 +82,17 @@ touch "./just_agents/__init__.py"
 # Store the current directory
 CURRENT_DIR=$(pwd)
 
-# Temporarily modify pyproject.toml to use published versions
-echo "Updating dependencies in pyproject.toml..."
-sed -i.bak \
+# Temporarily modify pyproject.toml to use published versions and update package mode
+echo "Updating dependencies and package mode in pyproject.toml..."
+cp pyproject.toml pyproject.toml.bak
+sed -i \
     -e "s|{ path = \"core\", develop = true }|\"$version\"|g" \
     -e "s|{ path = \"tools\", develop = true }|\"$version\"|g" \
     -e "s|{ path = \"coding\", develop = true }|\"$version\"|g" \
     -e "s|{ path = \"web\", develop = true }|\"$version\"|g" \
     -e "s|{ path = \"router\", develop = true }|\"$version\"|g" \
+    -e "s|{ path = \"examples\", develop = true }|\"$version\"|g" \
+    -e 's/package-mode = false/packages = [{include = "just_agents"}]/' \
     pyproject.toml
 
 # Finally publish the meta-package
@@ -104,10 +107,10 @@ fi
 # Return to the original directory before cleanup
 cd "$CURRENT_DIR" || exit 1
 
-# Restore original pyproject.toml
-echo "Restoring original pyproject.toml..."
-mv pyproject.toml.bak pyproject.toml
-
 # Clean up temporary __init__.py
 echo "Cleaning up temporary __init__.py..."
 rm "./just_agents/__init__.py"
+
+# Restore package mode in pyproject.toml
+echo "Restoring original pyproject.toml..."
+mv pyproject.toml.bak pyproject.toml

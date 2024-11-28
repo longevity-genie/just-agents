@@ -35,9 +35,6 @@ jobs:
           OPENAI_API_KEY: ${{ secrets.OPENAI_API_KEY }}
           GROQ_API_KEY: ${{ secrets.GROQ_API_KEY }}
         run: |
-          # Create temporary __init__.py for the meta-package build
-          echo "Creating temporary __init__.py..."
-          touch "./just_agents/__init__.py"
 
           # Install root project dependencies which will include subprojects
           poetry install --with dev
