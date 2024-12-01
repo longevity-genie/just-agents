@@ -3,6 +3,7 @@ import io
 import re
 import contextlib
 import subprocess
+import requests
 
 def get_next_filename(directory: str, prefix: str, extension: str) -> str:
     """
@@ -121,3 +122,25 @@ def clean_folder(folder: str):
     return f"All files in '{folder}' have been cleaned."
 
 
+def download_file(file_url: str, destination_path: str) -> str:
+    """
+    Downloads a file from the specified URL and saves it to the given destination path.
+
+    Parameters:
+    file_url (str): The URL of the file to download.
+    destination_path (str): The local path where the file should be saved.
+
+    Returns:
+    str: A message indicating success or failure.
+    """
+    try:
+        response = requests.get(file_url, stream=True)
+        if response.status_code == 200:
+            with open(destination_path, "wb") as file:
+                for chunk in response.iter_content(chunk_size=8192):
+                    file.write(chunk)
+            return f"File downloaded successfully: {destination_path}"
+        else:
+            return f"Failed to download file. Status code: {response.status_code}"
+    except Exception as e:
+        return f"Error downloading file: {str(e)}"
