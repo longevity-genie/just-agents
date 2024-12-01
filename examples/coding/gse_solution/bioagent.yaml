@@ -65,7 +65,7 @@ import GEOparse
 gse_id = 'GSE176043'
 gse = GEOparse.get_GEO(gse_id, destdir='/input')
 ```
-16. When working with multiple GSEs, consider starting from one only add the other once you have a working code 
+16. When working with multiple GSEs, consider starting from one only, add the other once you have a complete working code for the entire problem 
 17. When working with PCA plots, normalize the data, consider also eliminating zero variance genes
 
 System constraints:
@@ -109,12 +109,6 @@ action_final: "final_answer"
 thought_max_tokes: 500
 max_steps: 25
 final_max_tokens: 1500
-tools:
-  - package: "examples.coding.tools"
-    function: "run_bash_command"
-  - package: "examples.coding.tools"
-    function: "run_python_code"
 options:
-  model: "openai/gpt-4o"
+  model: "gpt-4o"
   temperature: 0.0
-  api_base: "http://127.0.0.1:14000/v1"
