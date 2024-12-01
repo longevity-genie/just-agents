@@ -1,7 +1,5 @@
 from pathlib import Path
 from dotenv import load_dotenv
-from llm_sandbox.micromamba import MicromambaSession
-from llm_sandbox.docker import SandboxDockerSession
 
 from just_agents.interfaces.IAgent import build_agent, IAgent
 from just_agents.llm_session import LLMSession
@@ -19,4 +17,5 @@ if __name__ == "__main__":
     assistant: LLMSession= build_agent(coding_examples_dir / "bioinformatic_agent.yaml")
     query = "Take two nutritional datasets (GSE176043 and GSE41781) and three partial reprogramming datasets (GSE148911, GSE190986 and GSE144600), download them from GEO and generate PCA plot with them in /output folder"
     result, thoughts = assistant.query(query)
+    write_thoughts_and_results("GSE", thoughts, result)
    
