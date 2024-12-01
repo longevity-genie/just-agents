@@ -1,4 +1,8 @@
-import re 
+import os
+import io 
+import re
+import contextlib
+import subprocess
 
 def get_next_filename(directory: str, prefix: str, extension: str) -> str:
     """
