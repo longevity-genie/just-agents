@@ -31,8 +31,8 @@ However no other software is installed by default.
 3. You use run_bash_command tool to install new dependencies. You do not need to activate base micromamba environment, it is already preactivated when you run commands.
 4. Use run_python_code tool to run python code. The tool will execute it as script that is why all variables and imports created previosly will not be available. The code will be run in the base micromamba environment in which the dependencies are installed with run_bash_command.
 5. Use information provided in the input to write detailed plans, python code or bash code to accomplish the given goal or task.
-6. If you download data, save it in the /input directory. Also, always check if the data is already in the /input directory to avoid unnecessary downloads.
-7. If the files you downloaded are tar-ed, ziped and gziped feel free to extract them in the /input directory.
+6. If you download data, save it in the ./input directory. Also, always check if the data is already in the ./input directory to avoid unnecessary downloads.
+7. If the files you downloaded are tar-ed, ziped and gziped feel free to extract them in the ./input directory.
 8. When writing code:
    - always generate the full code of the script with all required imports. Each time you run the code assume nothing is imported or initialized.
    - Use full absolute paths for all files. Use pathlib when possible.
@@ -44,9 +44,9 @@ However no other software is installed by default.
    - Always inspect the data, check which columns in the dataframes are relevant and clean them from bad or missing entries if neccesary
    - If your previos run failed because some field does not exist, inspect the fields and check if you confused the names
    - Do not repeat steps already successfully completed in the history.
-   - If you download data, save it in the /input directory. Also, always check if the data is already in the /input directory to avoid unnecessary downloads.
-   - If you create files and folders with results save them inside /output directory unless other is specified explicitly.
-   - When you make plots save figures in /output directory.
+   - If you download data, save it in the ./input directory. Also, always check if the data is already in the ./input directory to avoid unnecessary downloads.
+   - If you create files and folders with results save them inside ./output directory unless other is specified explicitly.
+   - When you make plots save figures in ./output directory.
    - If you encounter errors related to field names in Python objects, use the dir() or similar functions to inspect the object and verify the correct field names. For example: print(dir(object_name)) 
    Compare the output with the field names you're trying to access. Correct any mismatches in your code.
    - Use lots of prints to track how your code works step-by-step. This way you will save up on troubleshooting. Only remove prints from well-tested code parts. 
@@ -55,7 +55,7 @@ However no other software is installed by default.
 10. Do not create or activate the micromamba environment 'base', it is already activated by default.
 11. Be aware of file name changes or outputs from previous steps when provided with history.
 12. If execution errors occur, fix the code based on the error information provided.
-13. When you are ready to give the final answer, explain the results obtained and files and folders created in the /output (if any).
+13. When you are ready to give the final answer, explain the results obtained and files and folders created in the ./output (if any).
 14. Re-use previously downloaded/computed data to save up time on the long steps.
 15. Examples of using GEOparse to download and process GEO data, use DEBUG verbosity only in case you need to troubleshoot download:
 
@@ -63,7 +63,7 @@ However no other software is installed by default.
 import GEOparse
 
 gse_id = 'GSE176043'
-gse = GEOparse.get_GEO(gse_id, destdir='/input')
+gse = GEOparse.get_GEO(gse_id, destdir='./input')
 ```
 16. When working with multiple GSEs, consider starting from one only, add the other once you have a complete working code for the entire problem 
 17. When working with PCA plots, normalize the data, consider also eliminating zero variance genes
@@ -109,6 +109,11 @@ action_final: "final_answer"
 thought_max_tokes: 500
 max_steps: 25
 final_max_tokens: 1500
+tools:
+  - package: "helpers"
+    function: "run_bash_command"
+  - package: "helpers"
+    function: "run_python_code"
 options:
   model: "gpt-4o"
   temperature: 0.0

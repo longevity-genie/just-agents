@@ -70,7 +70,7 @@ def run_python_code(code: str):
     except Exception as e:
         return f"Error: {str(e)}"
 
-def execute_bash(command: str):
+def run_bash_command(command: str):
     """
     Executes a Bash command and writes it to the 'bash' folder.
 
