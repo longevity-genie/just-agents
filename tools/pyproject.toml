@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-tools"
-version = "0.4.2"
+version = "0.4.3"
 description = "Just Agents - Tools Components"
 authors = ["Alex Karmazin <karmazinalex@gmail.com>"]
 maintainers = ["Anton Kulaga <antonkulaga@gmail.com>"]
@@ -12,7 +12,7 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-just-agents-core = ">=0.4.2"
+just-agents-core = ">=0.4.3"
 semanticscholar = ">=0.8.4"
 typer = ">=0.13.0"
 
