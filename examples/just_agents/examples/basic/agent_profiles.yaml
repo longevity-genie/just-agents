@@ -3,7 +3,7 @@ agent_profiles:
     class_qualname: just_agents.patterns.chain_of_throught.ChainOfThoughtAgent
     llm_options:
       api_base: https://api.groq.com/openai/v1
-      model: groq/llama-3.2-90b-vision-preview
+      model: groq/llama-3.3-70b-versatile
       temperature: 0.0
       tool_choice: auto
       tools: []
@@ -35,7 +35,7 @@ agent_profiles:
     class_qualname: just_agents.base_agent.BaseAgent
     llm_options:
       api_base: https://api.groq.com/openai/v1
-      model: groq/llama-3.2-90b-vision-preview
+      model: groq/llama-3.3-70b-versatile
       temperature: 0.0
       tool_choice: auto
       tools: []

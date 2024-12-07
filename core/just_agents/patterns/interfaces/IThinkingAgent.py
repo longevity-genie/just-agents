@@ -31,6 +31,6 @@ class IThinkingAgent(
         thought = self.thought_query(query, **kwargs) #queries itself with thought as expected output
         new_chain = [*current_chain, thought] #updates chain with the new thought
         if thought.is_final() or max_iter <= 0:
-            return (self.thought_query(query, **kwargs), new_chain) #returns the final thought and the chain that preceded it
+            return (thought, new_chain) #returns the final thought and the chain that preceded it
         else:
             return self.think(query, max_iter - 1, new_chain, **kwargs) #continues the thought process

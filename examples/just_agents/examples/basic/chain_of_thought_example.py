@@ -25,7 +25,7 @@ if __name__ == "__main__":
     # - LLAMA 3.2 Vision as the language model
     agent: ChainOfThoughtAgent = ChainOfThoughtAgent(  # type: ignore
         tools=tools,
-        llm_options=llm_options.LLAMA3_2_VISION
+        llm_options=llm_options.LLAMA3_3
     )
 
     # Add a callback to print all messages that the agent processes

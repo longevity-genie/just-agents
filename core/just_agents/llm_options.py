@@ -29,6 +29,20 @@ LLAMA3_2_VISION: dict[str, Any] = {
     "tools": []
 }
 
+LLAMA3_3: dict[str, Any] = {
+    "model": "groq/llama-3.3-70b-versatile",
+    "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0,
+    "tools": []
+}
+
+LLAMA3_3_specdec: dict[str, Any] = {
+    "model": "groq/llama-3.3-70b-specdec",
+    "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0,
+    "tools": []
+}
+
 
 MISTRAL_8x22B = {
     "model": "mistral/open-mixtral-8x22b",

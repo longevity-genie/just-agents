@@ -140,7 +140,7 @@ def count_letters(character: str, word: str) -> str:
 # Initialize agent with tools and LLM options
 agent = ChainOfThoughtAgent(
     tools=[count_letters],
-    llm_options=llm_options.LLAMA3_2_VISION
+    llm_options=llm_options.LLAMA3_3
 )
 
 # Optional: Add callback to see all messages

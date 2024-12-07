@@ -20,7 +20,7 @@ if __name__ == "__main__":
     config_path = basic_examples_dir / "agent_profiles.yaml"
 
     created_agent = BaseAgent(
-        llm_options=llm_options.LLAMA3_2_VISION,
+        llm_options=llm_options.LLAMA3_3,
         config_path=config_path,
         tools=[mock_get_current_weather]
     )
