@@ -1,9 +1,9 @@
-from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
+from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 import json
 import time
 
 
-class OpenaiStreamingProtocol(AbstractStreamingProtocol):
+class OpenaiStreamingProtocol(IAbstractStreamingProtocol):
 
     def get_chunk(self, index: int, delta: str, options: dict):
         chunk = {

@@ -1,19 +1,13 @@
 from typing import AsyncGenerator
 
-from litellm import ModelResponse, completion
-from typing import Callable, Optional
-
-from just_agents.simple.memory import Memory
-from just_agents.streaming.abstract_streaming import AbstractStreaming, FunctionParser
-from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
-from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
-import time
-import litellm
+from just_agents.simple.streaming.protocols.abstract_streaming import AbstractStreaming
+from just_agents.simple.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
+from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 import json
 
 class ChainOfThought(AbstractStreaming):
 
-    def __init__(self, llm_session, output_streaming: AbstractStreamingProtocol = OpenaiStreamingProtocol()):
+    def __init__(self, llm_session, output_streaming: IAbstractStreamingProtocol = OpenaiStreamingProtocol()):
         super().__init__(llm_session)
         self.output_streaming = output_streaming
 

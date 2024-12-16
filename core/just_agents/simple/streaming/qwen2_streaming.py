@@ -1,11 +1,9 @@
 from typing import AsyncGenerator
-from litellm import ModelResponse, completion
-from typing import Callable, Optional
+from typing import Callable
 
-from just_agents.simple.memory import Memory
-from just_agents.streaming.abstract_streaming import AbstractStreaming, FunctionParser
-from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
-from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
+from just_agents.simple.streaming.protocols.abstract_streaming import AbstractStreaming
+from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
+from just_agents.simple.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
 import json
 from qwen_agent.llm import get_chat_model # deprecated, so far we do not use qwen_agent
 import litellm
@@ -13,7 +11,7 @@ import litellm
 
 class Qwen2AsyncSession(AbstractStreaming):
 
-    def __init__(self, llm_session, output_streaming: AbstractStreamingProtocol = OpenaiStreamingProtocol()):
+    def __init__(self, llm_session, output_streaming: IAbstractStreamingProtocol = OpenaiStreamingProtocol()):
         super().__init__(llm_session)
         self.output_streaming = output_streaming
 

@@ -1,8 +1,8 @@
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
 from typing import Callable, Coroutine, Union, AsyncGenerator, List, Sequence, ClassVar, Type, TypeVar, Generic, Any
-from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
-from just_agents.streaming.protocols.interfaces.IFunctionCall import IFunctionCall
+from just_agents.interfaces.abstract_protocol import IAbstractStreamingProtocol
+from just_agents.interfaces.function_call import IFunctionCall
 
 BaseModelResponse = TypeVar('BaseModelResponse', bound=BaseModel)
 AbstractMessage = TypeVar("AbstractMessage")
@@ -11,12 +11,12 @@ ModelResponseCallback=Callable[...,BaseModelResponse]
 MessageUnpackCallback=Callable[[BaseModelResponse], AbstractMessage]
 ExecuteToolCallback=Callable[[Sequence[IFunctionCall]],List[AbstractMessage]]
 
-class IProtocolAdapter(AbstractStreamingProtocol, ABC, Generic[BaseModelResponse, AbstractMessage]):
+class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelResponse, AbstractMessage]):
     """
     Class that is required to wrap the model protocol
     """
     function_convention: ClassVar[Type[IFunctionCall[Any]]]
-    _output_streaming: AbstractStreamingProtocol
+    _output_streaming: IAbstractStreamingProtocol
     execute_function_hook: ExecuteToolCallback[AbstractMessage]
 
     @abstractmethod

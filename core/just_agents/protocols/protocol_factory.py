@@ -1,5 +1,5 @@
 from enum import Enum
-from just_agents.streaming.protocols.interfaces.IProtocolAdapter import IProtocolAdapter, ExecuteToolCallback
+from just_agents.interfaces.IProtocolAdapter import IProtocolAdapter, ExecuteToolCallback
 
 class StreamingMode(str, Enum):
     openai = "openai"
@@ -21,8 +21,8 @@ class ProtocolAdapterFactory:
 
     ) -> IProtocolAdapter:
         if mode == StreamingMode.openai:
-            from just_agents.streaming.openai_protocol_adapter import OAIAdapter
-            return OAIAdapter(
+            from just_agents.streaming.openai_protocol_adapter import LiteLLMAdapter
+            return LiteLLMAdapter(
                 execute_function_hook=execute_functions,
             )
         elif mode == StreamingMode.qwen2:
