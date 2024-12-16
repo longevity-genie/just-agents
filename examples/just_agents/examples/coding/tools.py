@@ -1,17 +1,80 @@
 import re
-from dotenv import load_dotenv
+from gse.just_bus import JustEventBus
+
 import requests
-from just_agents.core.interfaces.IAgent import IAgent
-from just_agents.simple.utils import build_agent
-from just_agents.simple.llm_session import LLMSession
+
 from llm_sandbox.micromamba import MicromambaSession
-from llm_sandbox.docker import SandboxDockerSession
+
 from pathlib import Path
-from mounts import make_mounts, input_dir, output_dir
+from just_agents.examples.coding.mounts import make_mounts, input_dir, output_dir
 
 """
 Tools for running code in sandboxed environment that also mounts input and output directories.
 """
+CODE_OK : str = "Code syntax is correct"
+
+##HELPER TOOLS##
+
+def submit_code(code: str, filename: str)-> str:
+    """
+    Validates the syntax of a Python code string and submits the code for future processing if correct
+
+    Attempts to compile the provided code to check for syntax errors. Code is not executed at this step.
+    Returns a success message if valid or an error message with details if invalid.
+
+    Parameters
+    ----------
+    code : str
+        Python code to validate.
+    filename : str
+        Filename to include in error messages for context.
+
+    Returns
+    -------
+    str
+        'Code syntax is correct' if valid, or an error message if syntax errors are found.
+    """
+    result = validate_python_code_syntax(code, filename)
+    # Publish the validation result
+    event_bus = JustEventBus()
+    event_bus.publish("submit_code", code, filename, result)
+    return result
+
+def submit_console_output(output: str, append :bool = True)-> bool:
+    """
+    Submits console output for further recording and analysis
+
+    Parameters
+    ----------
+    output : str
+        Python code to validate.
+    append : bool
+        Filename to include in error messages for context.
+
+    Returns
+    -------
+    bool
+        True denotes successful submission.
+    """
+    # Publish the validation result
+    try:
+        event_bus = JustEventBus()
+        event_bus.publish("submit_console_output", output, append)
+    except Exception as e:
+        return False
+    return True
+
+def validate_python_code_syntax(code: str, filename: str)-> str:
+    """
+    Validates the syntax of a Python code string.
+    """
+    try:
+        # Compile the code string to check for syntax errors
+        compiled_code = compile(code, f"/example/{filename}", "exec")
+        return (CODE_OK)
+    except SyntaxError as e:
+        return (f"Syntax error in code: {e}")
+
 
 def download_file(source_url: str, file_name: str) -> bool:
     """ Download file from source_url and save it to '/input' folder with file_name that available mount for runtime. """
@@ -73,9 +136,9 @@ def run_bash_command(command: str) -> str:
     """
     mounts = make_mounts()
     try:
-        with MicromambaSession(image="ghcr.io/longevity-genie/just-agents/biosandbox:main", 
-                               lang="python", 
-                               keep_template=True, 
+        with MicromambaSession(image="ghcr.io/longevity-genie/just-agents/biosandbox:main",
+                               lang="python",
+                               keep_template=True,
                                verbose=True,
                                mounts=mounts) as session:
             result = session.execute_command(command=command)
@@ -91,9 +154,9 @@ def run_python_code(code: str) -> str:
     """
     mounts = make_mounts()
     try:
-        with MicromambaSession(image="ghcr.io/longevity-genie/just-agents/biosandbox:main", 
-                               lang="python", 
-                               keep_template=True, 
+        with MicromambaSession(image="ghcr.io/longevity-genie/just-agents/biosandbox:main",
+                               lang="python",
+                               keep_template=True,
                                verbose=True,
                                mounts=mounts) as session:
             result = session.run(code)

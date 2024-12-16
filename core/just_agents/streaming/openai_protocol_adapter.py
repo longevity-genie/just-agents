@@ -3,7 +3,6 @@ import json
 
 from litellm import ModelResponse, CustomStreamWrapper, completion, acompletion, stream_chunk_builder
 from typing import Optional, Callable, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
-
 from pydantic import Field, AliasPath, PrivateAttr, BaseModel, Json, field_validator
 
 from just_agents.core.types import AbstractMessage

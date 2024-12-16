@@ -1,6 +1,7 @@
 from pathlib import Path
 from pydantic import Field, model_validator
-from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict
+from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict, Union, Type
+
 from just_agents.core.just_serialization import JustSerializable
 from just_agents.core.just_tool import JustTool, JustTools
 
@@ -114,11 +115,11 @@ class JustAgentProfile(JustSerializable):
     def convert_from_legacy(
             legacy_file_path: Path,
             output_file_path: Optional[Path] = None,
-            class_hint: str = "just_agents.base_agent.BaseAgent",
+            class_hint:  Optional[Union[Type|str]] = 'just_agents.base_agent.BaseAgent',
             section_name: Optional[str] = None,
             parent_section: Optional[str] = DEFAULT_PARENT_SECTION,
-            exclude_defaults: bool = True,
-            exclude_unset: bool = True
+            exclude_defaults: bool = False,
+            exclude_unset: bool = False
         ) -> 'JustAgentProfile':
         """
         Converts a legacy agent schema file to the new format and saves it.
@@ -129,6 +130,8 @@ class JustAgentProfile(JustSerializable):
             section_name (str): Name of the section to save the converted agent under
             parent_section (str): Parent section name to save the converted agent under
             class_hint (str): A substitute class to use if not specified by legacy schema
+            exclude_defaults (bool): Whether to exclude fields with the default values from the output.
+            exclude_unset (bool): Whether to exclude unset fields from the output.
 
         Returns:
             JustAgentProfile: The converted agent profile instance
@@ -138,7 +141,6 @@ class JustAgentProfile(JustSerializable):
             file_path=legacy_file_path,
             class_hint=class_hint
         )
-
         file_path = output_file_path or legacy_file_path
         
         # Save in new format

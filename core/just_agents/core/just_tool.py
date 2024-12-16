@@ -17,7 +17,7 @@ class JustTool(LiteLLMDescription):
     package: str = Field(..., description="The name of the module where the function is located.")
     auto_refresh: bool = Field(True, description="Whether to automatically refresh the tool after initialization.")
     arguments: Optional[FunctionParams] = Field(
-         None, description="List of parameters with their details."
+         None, description="List of parameters with their details.", exclude=True
     )
     _callable: Optional[Callable] = PrivateAttr(default=None)
 
@@ -88,7 +88,7 @@ class JustTool(LiteLLMDescription):
 
             return self  # Return self to allow chaining or direct appending
         except (ImportError, AttributeError) as e:
-            raise ImportError(f"Error refreshing {self.name} from {self.package}: {e}")
+            raise ImportError(f"Error refreshing {self.name} from {self.package}: {e}") from e
 
     def get_callable(self, refresh: bool = False) -> Callable:
         """

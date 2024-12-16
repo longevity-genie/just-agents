@@ -1,9 +1,13 @@
 import yaml
 import importlib
-from typing import Optional, Dict, Any, ClassVar, Sequence, Union, Set
+from typing import Optional, Dict, Any, ClassVar, Sequence, Union, Set, Type
 from pathlib import Path
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from collections.abc import MutableMapping, MutableSequence
+
+
+
+
 
 
 class JustYaml:
@@ -17,6 +21,19 @@ class JustYaml:
         save_to_yaml(file_path: Path, section_data: Dict, section_name: str, parent_section: str = DEFAULT_AGENT_PROFILES_SECTION) -> None:
             Updates a section within a YAML file with new data.
     """
+
+    @staticmethod
+    def str_presenter(dumper, data):
+        """
+        An override to write multiline strings (like prompts!) to yaml in scalar form that removes trailing spaces
+        see https://stackoverflow.com/questions/8640959/how-can-i-control-what-scalar-form-pyyaml-uses-for-my-data
+        pyyaml bug: https://github.com/yaml/pyyaml/issues/121
+        """
+        if len(data.splitlines()) > 1 or '\n' in data:  # check for multiline string
+            text_list = [line.rstrip() for line in data.splitlines()]
+            fixed_data = "\n".join(text_list)
+            return dumper.represent_scalar('tag:yaml.org,2002:str', fixed_data, style='|')
+        return dumper.represent_scalar('tag:yaml.org,2002:str', data)
 
     @staticmethod
     def read_yaml_data(
@@ -40,7 +57,7 @@ class JustYaml:
         """
         if file_path.exists():
             with file_path.open('r') as f:
-                data = yaml.safe_load(f) or {}
+                data = yaml.load(f, Loader=yaml.FullLoader) or {}
         else:
             raise FileNotFoundError(
                 f"File '{file_path}' not found."
@@ -51,10 +68,10 @@ class JustYaml:
                 return data[parent_section][section_name]
             else:
                 return data[section_name]
-        except KeyError:
-            raise ValueError(
+        except KeyError as e:
+            raise KeyError(
                 f"Section '{section_name}' under parent section '{parent_section}' not found in '{file_path}'"
-            )
+            ) from e
 
     @staticmethod
     def read_yaml_data_safe(
@@ -136,7 +153,13 @@ class JustYaml:
         # Write the updated data back to the YAML file
         with file_path.open('w') as f:
             yaml.safe_dump(data, f)
+            #yaml.safe_dump(data, f)
 
+
+# configure YAML to use fixed representer:
+yaml.add_representer(str, JustYaml.str_presenter)
+# to use with safe_dump:
+yaml.representer.SafeRepresenter.add_representer(str, JustYaml.str_presenter)
 
 class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_assignment=True, populate_by_name=True):
     """
@@ -320,7 +343,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
     def from_yaml_auto(section_name: str,
                        parent_section: Optional[str],
                        file_path: Path,
-                       class_hint: Optional[str] = None,
+                       class_hint: Optional[Union[Type|str]] = None,
                        ) -> Any:
         """
         Creates an instance from a YAML file.
@@ -339,6 +362,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             Any: An instance of the dynamically imported class if `class_qualname` is found in the
                  configuration data; otherwise, returns None.
         """
+        if isinstance(class_hint, type):
+            class_hint : str = f"{class_hint.__module__}.{class_hint.__qualname__}"
         config_data = JustYaml.read_yaml_data_safe(
             file_path,
             section_name,
@@ -346,7 +371,6 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
         )
         if config_data is None:
             return None
-        instance = None
         config_data = JustSerializable.update_config_data(config_data, section_name, parent_section, file_path, class_hint=class_hint)
         class_qualname = config_data.get("class_qualname")
         if class_qualname:
@@ -357,10 +381,9 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
                 cls = getattr(module, class_name)
                 # Dynamic instantiation of `Child class` or whatever class is specified
                 instance = cls.from_json(config_data)
-            except Exception as e:
-                raise ValueError(f"Exception occurred: {str(e)}")
-            finally:
                 return instance
+            except Exception as e:
+                raise ValueError(f"Exception occurred: {str(e)}") from e
         else:
             return None
 
@@ -388,7 +411,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             exclude_none (bool): Whether to exclude fields with None values from the output.
             serialize_as_any (bool): Whether to serialize values by their types.
             exclude_defaults (bool): Whether to exclude fields with the default values from the output.
-            exclude_unset (bool): Whether to exclude unset fields from the output.
+            exclude_unset (bool): Whether to exclude fields that were not explicitly set during instance creation from the output.
 
         Returns:
             Dict[str, Any]: A dictionary representation of the instance, including extra fields.
@@ -400,8 +423,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             include=include,
             exclude=exclude,
             serialize_as_any=serialize_as_any,
-            exclude_defaults=exclude_defaults, 
-            exclude_unset=exclude_unset
+            exclude_defaults=exclude_defaults,
+            exclude_unset=exclude_unset,
         )
         # Flatten Extras
         if include_extras and self.extras:
@@ -474,7 +497,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             exclude_none: bool = True,
             serialize_as_any: bool = True,
             exclude_defaults: bool = True, 
-            exclude_unset: bool = True
+            exclude_unset: bool = False
     ):
         """
         Saves the instance's data to a YAML file under the specified parent section and section name (shortname).

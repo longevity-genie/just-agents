@@ -24,6 +24,9 @@ class IBaseMemory(BaseModel, IMemory[Role, AbstractMessage], ABC):
         Role.system: [],
     })
 
+    def deepcopy(self) -> 'IBaseMemory':
+        return self.model_copy(deep=True)
+
 class BaseMemory(IBaseMemory):
     """
     The Memory class provides storage and handling of messages for a language model session.
@@ -168,8 +171,4 @@ class BaseMemory(IBaseMemory):
         :param handler: The handler to be removed.
         """
         self._remove_on_message(handler, Role.system)
-
-    def deepcopy(self) -> 'BaseMemory':
-        return self.model_copy(deep=True)
-
 

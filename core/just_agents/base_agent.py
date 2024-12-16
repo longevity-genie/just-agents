@@ -64,10 +64,16 @@ class BaseAgent(
     key_list_path: Optional[str] = Field(
         default=None,
         exclude=True,
-        description="path to text file with list of api keys, one key per line")
+        description="Path to text file with list of api keys, one key per line")
+
+    max_tool_calls: int = Field(
+        ge=1,
+        default=50,
+        description="A safeguard to prevent tool calls stuck in a loop")
+
     drop_params: bool = Field(
         default=True,
-        description=" drop params from the request, useful for some models that do not support them")
+        description="Drop params from the request, useful for some models that do not support them")
 
     # Protected handlers implementation
     _on_query : List[QueryListener] = PrivateAttr(default_factory=list)
@@ -78,7 +84,7 @@ class BaseAgent(
     _partial_streaming_chunks: List[BaseModelResponse] = PrivateAttr(
         default_factory=list)  # Buffers streaming responses
     _key_getter: Optional[RotateKeys] = PrivateAttr(None)  # Manages API key rotation
-
+    _tool_fuse_broken: bool = PrivateAttr(False) #Fuse to prevent tool loops
 
     def instruct(self, prompt: str): #backward compatibility
         self.memory.add_message({"role": Role.system, "content": prompt})
@@ -129,7 +135,7 @@ class BaseAgent(
 
     def _prepare_options(self, options: LLMOptions):
         opt = options.copy()
-        if self.tools is not None:  # populate llm_options based on available tools
+        if self.tools is not None and not self._tool_fuse_broken:  # populate llm_options based on available tools
             opt["tools"] = [{"type": "function",
                              "function": self.tools[tool].get_litellm_description()} for tool in self.tools]
         return opt
@@ -182,27 +188,32 @@ class BaseAgent(
         return messages
     
     def query_with_current_memory(self, **kwargs): #former proceed() aka llm_think()
-        while True:
+        for step in range(self.max_tool_calls):
             # individual llm call, unpacking the message, processing handlers
             response = self._execute_completion(stream=False, **kwargs)
             msg: AbstractMessage = self._protocol.message_from_response(response) # type: ignore
             self.handle_on_response(msg)
             self.add_to_memory(msg)
 
-            if not self.tools:
+            if not self.tools or self._tool_fuse_broken:
+               self._tool_fuse_broken = False
                break
             # If there are no tool calls or tools available, exit the loop
             tool_calls = self._protocol.tool_calls_from_message(msg)
+            # Process each tool call if they exist and re-execute query
+            self._process_function_calls(
+                tool_calls)  # NOTE: no kwargs here as tool calls might need different parameters
+
             if not tool_calls:
                 break
-            # Process each tool call if they exist and re-execute query
-            self._process_function_calls(tool_calls) #NOTE: no kwargs here as tool calls might need different parameters
+            elif step == self.max_tool_calls - 2: #special case where we ran out of tool calls or stuck in a loop
+                self._tool_fuse_broken = True #one last attempt at graceful response
 
 
     def streaming_query_with_current_memory(self, reconstruct_chunks = False, **kwargs):
         try:
             self._partial_streaming_chunks.clear()
-            while True: #TODO rewrite this super-ugly while-True-break stuff into proper recursion
+            for step in range(self.max_tool_calls):
                 response = self._execute_completion(stream=True, **kwargs)
                 tool_messages: list[AbstractMessage] = []
                 for i, part in enumerate(response):
@@ -214,7 +225,7 @@ class BaseAgent(
                             yield self._protocol.get_chunk(i, delta, options={'model': part["model"]})
                         else:
                             yield response
-                    if self.tools:
+                    if self.tools and not self._tool_fuse_broken:
                         tool_calls = self._protocol.tool_calls_from_message(msg)
                         if tool_calls:
                             self.add_to_memory(
@@ -222,10 +233,14 @@ class BaseAgent(
                             )
                             self._process_function_calls(tool_calls)
                             tool_messages.append(self._process_function_calls(tool_calls))
+
                 if not tool_messages:
                     break
+                elif step == self.max_tool_calls - 2:  # special case where we ran out of tool calls or stuck in a loop
+                    self._tool_fuse_broken = True  # one last attempt at graceful response
 
         finally:
+            self._tool_fuse_broken = False #defuse
             yield self._protocol.done()
             if len(self._partial_streaming_chunks) > 0:
                 response = self._protocol.response_from_deltas(self._partial_streaming_chunks)
