@@ -1,11 +1,10 @@
-import json
 from typing import ClassVar, Optional, Any, Dict
 from just_agents.base_agent import BaseAgent
 from pydantic import Field, PrivateAttr
 from just_bus import JustEventBus
 
 from cot_memory import ActionableThought, IBaseThoughtMemory, BaseThoughtMemory
-from just_agents.core.types import SupportedMessages
+from just_agents.types import SupportedMessages
 from just_agents.patterns.interfaces.IThinkingAgent import IThinkingAgent
 
 

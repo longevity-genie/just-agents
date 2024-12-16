@@ -27,11 +27,11 @@ class JustEventBus(metaclass=SingletonMeta):
         if event_name not in self._subscribers:
             self._subscribers[event_name] = []
         self._subscribers[event_name].append(callback)
-        print(f"Subscribed to event '{event_name}': {callback.__name__}")
+       # print(f"Subscribed to event '{event_name}': {callback.__name__}")
 
     def publish(self, event_name: str, *args, **kwargs):
         """Publish an event to all its subscribers."""
         subscribers = self._subscribers.get(event_name, [])
-        print(f"Publishing event '{event_name}' to {len(subscribers)} subscriber(s).")
+       # print(f"Publishing event '{event_name}' to {len(subscribers)} subscriber(s).")
         for callback in subscribers:
             callback(*args, **kwargs)

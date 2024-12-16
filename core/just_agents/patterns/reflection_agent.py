@@ -1,5 +1,5 @@
 from typing import Union, Dict, Sequence, AsyncGenerator, Any
-from just_agents.core.interfaces.IAgent import IAgent
+from just_agents.interfaces.agent import IAgent
 
 ITERATIONS = "iterations"
 CRITIC_PROMPT = "critic_prompt"

@@ -1,4 +1,4 @@
-from just_agents.core.interfaces.IAgent import *
+from just_agents.interfaces.agent import *
 
 class ITypedAgent(
     IAgent[AbstractQueryInputType, AbstractQueryResponseType, AbstractStreamingChunkType],

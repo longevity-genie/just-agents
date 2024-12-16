@@ -1,8 +1,9 @@
 from enum import Enum
-from just_agents.interfaces.IProtocolAdapter import IProtocolAdapter, ExecuteToolCallback
+from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
 
 class StreamingMode(str, Enum):
     openai = "openai"
+    echo = "echo"
     qwen2 = "qwen2"
 
     def __new__(cls, value, *args, **kwargs):
@@ -21,8 +22,13 @@ class ProtocolAdapterFactory:
 
     ) -> IProtocolAdapter:
         if mode == StreamingMode.openai:
-            from just_agents.streaming.openai_protocol_adapter import LiteLLMAdapter
+            from just_agents.protocols.litellm_protocol import LiteLLMAdapter
             return LiteLLMAdapter(
+                execute_function_hook=execute_functions,
+            )
+        elif mode == StreamingMode.echo:
+            from just_agents.protocols.mock_protocol import EchoProtocolAdapter
+            return EchoProtocolAdapter(
                 execute_function_hook=execute_functions,
             )
         elif mode == StreamingMode.qwen2:

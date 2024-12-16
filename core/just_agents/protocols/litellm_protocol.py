@@ -1,17 +1,39 @@
-
 import json
 
 from litellm import ModelResponse, CustomStreamWrapper, completion, acompletion, stream_chunk_builder
 from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
-from pydantic import Field, AliasPath, PrivateAttr, BaseModel, Json, field_validator
+from pydantic import HttpUrl, Field, AliasPath, PrivateAttr, BaseModel, Json, field_validator
 
-from just_agents.types import AbstractMessage
+from just_agents.types import AbstractMessage, Role
 
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
-from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
+from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
 
+#from openai.types import CompletionUsage
+#from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam, ChatCompletionAssistantMessageParam, ChatCompletionToolMessageParam,ChatCompletionFunctionMessageParam
+#from openai.types.chat.chat_completion import ChatCompletion, Choice, ChatCompletionMessage
+
+# Content types
+class TextContent(BaseModel):
+    type: str = Field("text", examples=["text"])
+    text: str = Field(..., examples=["What are in these images? Is there any difference between them?"])
+
+class ImageContent(BaseModel):
+    type: str = Field("image_url", examples=["image_url"])
+    image_url: HttpUrl = Field(..., examples=["https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"])
+
+# Message class - Simple string content or a list of text or image content for vision model
+class Message(BaseModel):
+    role: Role = Field(..., examples=[Role.assistant])
+    content: Union[
+        str,  # Simple string content
+        List[Union[TextContent, ImageContent]]
+    ] = Field(
+        ...,
+        description="Content can be a simple string, or a list of content items including text or image URLs."
+    )
 
 class LiteLLMFunctionCall(BaseModel, IFunctionCall[AbstractMessage], extra="allow"):
     id: str = Field(...)

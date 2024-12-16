@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field, PrivateAttr
-from typing import Optional, Callable, List, Dict, Union
+from typing import Optional, Callable, List, Dict
 from functools import singledispatchmethod
-from just_agents.core.interfaces.IMemory import IMemory
-from just_agents.core.types import Role, AbstractMessage, SupportedMessages, SupportedMessage
+from just_agents.interfaces.memory import IMemory
+from just_agents.types import Role, AbstractMessage, SupportedMessages
 from litellm.types.utils import Function
 from abc import ABC
 

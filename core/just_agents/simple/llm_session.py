@@ -6,13 +6,13 @@ from typing import Any, AsyncGenerator
 import litellm
 from litellm import ModelResponse, completion
 from litellm.utils import Choices
-from just_agents.core.interfaces.IAgent import IAgent
+from just_agents.interfaces.agent import IAgent
 from just_agents.simple.memory import Memory
 from typing import Callable, Optional
-from just_agents.streaming.abstract_streaming import AbstractStreaming
-from just_agents.streaming.openai_streaming import AsyncSession
+from just_agents.simple.streaming import AbstractStreaming
+from just_agents.simple.streaming.openai_streaming import AsyncSession
 from just_agents.simple.utils import resolve_and_validate_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
-from just_agents.core.rotate_keys import RotateKeys
+from just_agents.rotate_keys import RotateKeys
 
 OnCompletion = Callable[[ModelResponse], None]
 
@@ -70,10 +70,10 @@ class LLMSession(
         if streaming_method is None or streaming_method == OPENAI:
             self.streaming = AsyncSession(self)
         elif streaming_method.lower() == QWEN2:
-            from just_agents.streaming.qwen2_streaming import Qwen2AsyncSession
+            from just_agents.simple.streaming import Qwen2AsyncSession
             self.streaming = Qwen2AsyncSession(self)
         elif streaming_method.lower() == CHAIN_OF_THOUGHT:
-            from just_agents.streaming.chain_of_thought import ChainOfThought
+            from just_agents.simple.streaming.chain_of_thought import ChainOfThought
             self.streaming = ChainOfThought(self)
         else:
             raise ValueError("just_streaming_method is incorrect. "

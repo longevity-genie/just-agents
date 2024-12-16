@@ -1,9 +1,9 @@
-from typing import ClassVar, Literal, Any
+from typing import ClassVar, Literal
 from just_agents.base_agent import BaseAgent
-from pydantic import BaseModel, Field
-from just_agents.core.types import Output, SupportedMessages
-from just_agents.core.interfaces.IAgent import IAgent
-from just_agents.patterns.interfaces.IThinkingAgent import IThinkingAgent, IThought, THOUGHT_TYPE
+from pydantic import Field
+from just_agents.types import SupportedMessages
+from just_agents.patterns.interfaces.IThinkingAgent import IThinkingAgent, IThought
+
 
 class Thought(IThought):
     """

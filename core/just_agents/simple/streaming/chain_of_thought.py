@@ -1,7 +1,7 @@
 from typing import AsyncGenerator
 
 from just_agents.simple.streaming.protocols.abstract_streaming import AbstractStreaming
-from just_agents.simple.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
+from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 import json
 

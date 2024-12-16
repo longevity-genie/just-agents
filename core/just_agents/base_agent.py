@@ -2,17 +2,17 @@ from pydantic import Field, PrivateAttr
 from typing import Optional, List, Union, Any, Generator
 
 from just_agents.core.interfaces.IMemory import IMemory
-from just_agents.core.types import Role, AbstractMessage, SupportedMessages, SupportedMessage
+from just_agents.types import Role, AbstractMessage, SupportedMessages, SupportedMessage
 
 from just_agents.llm_options import LLMOptions
-from just_agents.streaming.protocols.interfaces.IFunctionCall import IFunctionCall
-from just_agents.streaming.protocols.interfaces.IProtocolAdapter import IProtocolAdapter, BaseModelResponse
-from just_agents.core.interfaces.IAgent import IAgentWithInterceptors, QueryListener, ResponseListener
+from just_agents.interfaces.function_call import IFunctionCall
+from just_agents.interfaces.protocol_adapter import IProtocolAdapter, BaseModelResponse
+from just_agents.interfaces.agent import IAgentWithInterceptors, QueryListener, ResponseListener
 
 from just_agents.base_memory import IBaseMemory, BaseMemory
 from just_agents.just_profile import JustAgentProfile
-from just_agents.core.rotate_keys import RotateKeys
-from just_agents.streaming.protocol_factory import StreamingMode, ProtocolAdapterFactory
+from just_agents.rotate_keys import RotateKeys
+from just_agents.protocols.protocol_factory import StreamingMode, ProtocolAdapterFactory
 from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
 
 

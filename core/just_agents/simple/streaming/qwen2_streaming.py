@@ -3,7 +3,7 @@ from typing import Callable
 
 from just_agents.simple.streaming.protocols.abstract_streaming import AbstractStreaming
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
-from just_agents.simple.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
+from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
 import json
 from qwen_agent.llm import get_chat_model # deprecated, so far we do not use qwen_agent
 import litellm

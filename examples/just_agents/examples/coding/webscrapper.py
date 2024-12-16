@@ -2,8 +2,7 @@ from pathlib import Path
 
 from dotenv import load_dotenv
 
-from examples.coding.mounts import make_mounts, input_dir, output_dir, coding_examples_dir
-from just_agents.core.interfaces.IAgent import IAgent
+from just_agents.interfaces.agent import IAgent
 from just_agents.simple.utils import build_agent
 from just_agents.simple.llm_session import LLMSession
 from examples.coding.tools import write_thoughts_and_results, amino_match_endswith

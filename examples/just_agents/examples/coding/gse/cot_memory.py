@@ -1,8 +1,8 @@
-from pydantic import BaseModel, Field, PrivateAttr
-from typing import Optional, Callable, List, Dict, Union, Literal
+from pydantic import Field, PrivateAttr
+from typing import Optional, Callable, List, Dict, Literal
 from functools import singledispatchmethod
-from just_agents.core.interfaces.IMemory import IMemory
-from just_agents.core.just_serialization import JustSerializable
+from just_agents.interfaces.memory import IMemory
+from just_agents.just_serialization import JustSerializable
 
 from just_agents.patterns.interfaces.IThinkingAgent import IThought
 from abc import ABC
