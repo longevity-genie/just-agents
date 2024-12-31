@@ -1,8 +1,6 @@
 from pydantic import Field, PrivateAttr
 from typing import Optional, List, Union, Any, Generator
-
-from just_agents.core.interfaces.IMemory import IMemory
-from just_agents.types import Role, AbstractMessage, SupportedMessages, SupportedMessage
+from just_agents.types import Role, SupportedMessages
 
 from just_agents.llm_options import LLMOptions
 from just_agents.interfaces.function_call import IFunctionCall
@@ -93,7 +91,7 @@ class BaseAgent(
         self.memory.clear_messages()
         self.instruct(self.system_prompt)
 
-    def deepcopy_memory(self) -> IMemory:
+    def deepcopy_memory(self) -> IBaseMemory:
         return self.memory.deepcopy()
 
     def add_to_memory(self, messages: SupportedMessages) -> None:
@@ -144,7 +142,7 @@ class BaseAgent(
             self,
             stream: bool,
             **kwargs
-    ) -> Union[AbstractMessage, BaseModelResponse]:
+    ) -> Union[SupportedMessages, BaseModelResponse]:
         
         opt = self._prepare_options(self.llm_options)
         opt.update(kwargs)
@@ -178,7 +176,7 @@ class BaseAgent(
             return self._protocol.completion(messages=self.memory.messages, stream=stream, **opt)
 
 
-    def _process_function_calls(self, function_calls: List[IFunctionCall[AbstractMessage]]) -> SupportedMessages:
+    def _process_function_calls(self, function_calls: List[IFunctionCall[SupportedMessages]]) -> SupportedMessages:
         messages: SupportedMessages = []
         for call in function_calls:
             msg = call.execute_function(lambda function_name: self.tools[function_name].get_callable())
@@ -191,7 +189,7 @@ class BaseAgent(
         for step in range(self.max_tool_calls):
             # individual llm call, unpacking the message, processing handlers
             response = self._execute_completion(stream=False, **kwargs)
-            msg: AbstractMessage = self._protocol.message_from_response(response) # type: ignore
+            msg: SupportedMessage = self._protocol.message_from_response(response) # type: ignore
             self.handle_on_response(msg)
             self.add_to_memory(msg)
 
@@ -215,10 +213,10 @@ class BaseAgent(
             self._partial_streaming_chunks.clear()
             for step in range(self.max_tool_calls):
                 response = self._execute_completion(stream=True, **kwargs)
-                tool_messages: list[AbstractMessage] = []
+                tool_messages: list[SupportedMessages] = []
                 for i, part in enumerate(response):
                     self._partial_streaming_chunks.append(part)
-                    msg: AbstractMessage = self._protocol.message_from_delta(response) # type: ignore
+                    msg: SupportedMessage = self._protocol.message_from_delta(response) # type: ignore
                     delta = self._protocol.content_from_delta(msg)
                     if delta:
                         if reconstruct_chunks:
@@ -244,7 +242,7 @@ class BaseAgent(
             yield self._protocol.done()
             if len(self._partial_streaming_chunks) > 0:
                 response = self._protocol.response_from_deltas(self._partial_streaming_chunks)
-                msg: AbstractMessage = self._protocol.message_from_response(response) # type: ignore
+                msg: SupportedMessage = self._protocol.message_from_response(response) # type: ignore
                 self.handle_on_response(msg)
                 self.add_to_memory(msg)
             self._partial_streaming_chunks.clear()
@@ -263,7 +261,7 @@ class BaseAgent(
         return result
     
 
-    def stream(self, query_input: SupportedMessages, reconstruct_chunks = False, **kwargs) -> Generator[Union[BaseModelResponse, AbstractMessage],None,None]:
+    def stream(self, query_input: SupportedMessages, reconstruct_chunks = False, **kwargs) -> Generator[Union[BaseModelResponse, SupportedMessages],None,None]:
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
         return self.streaming_query_with_current_memory(reconstruct_chunks=reconstruct_chunks, **kwargs)

@@ -4,7 +4,7 @@ from litellm import ModelResponse, CustomStreamWrapper, completion, acompletion,
 from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
 from pydantic import HttpUrl, Field, AliasPath, PrivateAttr, BaseModel, Json, field_validator
 
-from just_agents.types import AbstractMessage, Role
+from just_agents.types import MessageDict, Role
 
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
@@ -35,7 +35,7 @@ class Message(BaseModel):
         description="Content can be a simple string, or a list of content items including text or image URLs."
     )
 
-class LiteLLMFunctionCall(BaseModel, IFunctionCall[AbstractMessage], extra="allow"):
+class LiteLLMFunctionCall(BaseModel, IFunctionCall[MessageDict], extra="allow"):
     id: str = Field(...)
     name: str = Field(..., validation_alias=AliasPath('function', 'name'))
     arguments: Json[dict] = Field(..., validation_alias=AliasPath('function', 'arguments'))
@@ -68,11 +68,11 @@ class LiteLLMFunctionCall(BaseModel, IFunctionCall[AbstractMessage], extra="allo
         return {"role": "assistant", "content": None, "tool_calls": tool_calls}
 
 
-class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,AbstractMessage]):
+class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict]):
     #Class that describes function convention
-    function_convention: ClassVar[Type[IFunctionCall[AbstractMessage]]] = LiteLLMFunctionCall
+    function_convention: ClassVar[Type[IFunctionCall[MessageDict]]] = LiteLLMFunctionCall
     #hooks to agent class
-    execute_function_hook:  ExecuteToolCallback[AbstractMessage] = Field(...)
+    execute_function_hook:  ExecuteToolCallback[MessageDict] = Field(...)
     _output_streaming: IAbstractStreamingProtocol = PrivateAttr(default_factory=OpenaiStreamingProtocol)
 
     def model_post_init(self, __context: Any) -> None:
@@ -85,7 +85,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,AbstractMessage])
             -> Coroutine[Any, Any, Union[ModelResponse, CustomStreamWrapper, AsyncGenerator]]:
         return acompletion(*args, **kwargs)
 
-    def message_from_response(self, response: ModelResponse) -> AbstractMessage:
+    def message_from_response(self, response: ModelResponse) -> MessageDict:
         message = response.choices[0].message.model_dump(
             mode="json",
             exclude_none=True,
@@ -98,7 +98,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,AbstractMessage])
         assert "function_call" not in message
         return message
 
-    def message_from_delta(self, response: ModelResponse) -> AbstractMessage:
+    def message_from_delta(self, response: ModelResponse) -> MessageDict:
         message = response.choices[0].delta.model_dump(
             mode="json",
             exclude_none=True,
@@ -109,10 +109,10 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,AbstractMessage])
         assert "function_call" not in message
         return message
 
-    def content_from_delta(self, delta: AbstractMessage) -> str:
+    def content_from_delta(self, delta: MessageDict) -> str:
         return delta.get("content")
 
-    def tool_calls_from_message(self, message: AbstractMessage) -> List[LiteLLMFunctionCall]:
+    def tool_calls_from_message(self, message: MessageDict) -> List[LiteLLMFunctionCall]:
         # If there are no tool calls or tools available, exit the loop
         tool_calls = message.get("tool_calls")
         if not tool_calls:

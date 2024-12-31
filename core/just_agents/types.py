@@ -2,9 +2,9 @@ from enum import Enum
 from typing import TypeVar, Any, List, Union, Dict
 
 ######### Common ###########
-AbstractMessage = Dict[str, Any]
-SupportedMessage = Union[str, AbstractMessage]
-SupportedMessages = Union[SupportedMessage, List[SupportedMessage]]
+MessageDict = Dict[str, Any]
+MessageDictOrStr = Union[str, MessageDict]
+SupportedMessages = Union[MessageDictOrStr, List[MessageDictOrStr]]
 Output = TypeVar('Output')
 
 class Role(str, Enum):

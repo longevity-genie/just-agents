@@ -1,7 +1,7 @@
 from typing import ClassVar, Optional, Any, Dict
 from just_agents.base_agent import BaseAgent
 from pydantic import Field, PrivateAttr
-from just_bus import JustEventBus
+from just_agents.just_tool import JustToolsBus
 
 from cot_memory import ActionableThought, IBaseThoughtMemory, BaseThoughtMemory
 from just_agents.types import SupportedMessages
@@ -112,10 +112,9 @@ Example 2 of INVALID response including multiple JSON objects instead of one, DO
     thoughts: IBaseThoughtMemory = Field(default_factory= BaseThoughtMemory, exclude=True, description="Memory of thought chains")
 
     max_steps: int = Field(IThinkingAgent.MAX_STEPS, ge=1, description="Maximum number of reasoning steps")
-
     append_response_format: bool = Field(True, description="Whether to append default COT prompt of this agent to the provided")
 
-    _event_bus : JustEventBus = PrivateAttr(default_factory= JustEventBus)
+    _event_bus : JustToolsBus = PrivateAttr(default_factory= JustToolsBus)
     _code_buffer: Dict[str,str]  = PrivateAttr(default_factory=dict)
     _console_buffer: str = PrivateAttr("")
 
@@ -128,8 +127,8 @@ Example 2 of INVALID response including multiple JSON objects instead of one, DO
             self.instruct(system_prompt) # don't modify self system prompt to avoid saving it into profile
 
         # Subscribe handlers to events
-        self.event_bus.subscribe("submit_code", self.handle_submit_code)
-        self.event_bus.subscribe("submit_console_output", self.handle_submit_console_output)
+        self.event_bus.subscribe("submit_code.call", self.handle_submit_code)
+        self.event_bus.subscribe("submit_console_output.call", self.handle_submit_console_output)
 
 
     def thought_query(self, query: SupportedMessages, **kwargs) -> ActionableThought:

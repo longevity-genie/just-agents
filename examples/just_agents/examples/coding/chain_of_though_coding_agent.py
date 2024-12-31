@@ -20,7 +20,7 @@ if __name__ == "__main__":
     print("RESULT+++++++++++++++++++++++++++++++++++++++++++++++")
     pprint.pprint(result)
     pprint.pprint(thoought)
-    #agent = ChainOfThoughtAgent.with_prompt_prefix(llm_options=options, custom_prompt=prompt)
+
     #agent.save_to_yaml("Bioinformatician", file_path=config_path)
     #agent: BaseAgent = BaseAgent.from_yaml("Bioinformatician", file_path=config_path)
     #result = agent.query("Get FGF2 human protein sequence from uniprot using biopython. As a result, return only the sequence")

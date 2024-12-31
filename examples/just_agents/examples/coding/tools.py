@@ -1,5 +1,5 @@
 import re
-from gse.just_bus import JustEventBus
+from just_agents.just_bus import JustEventBus
 
 import requests
 

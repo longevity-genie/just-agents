@@ -1,4 +1,4 @@
-from typing import ClassVar, Literal
+from typing import ClassVar, Literal, Any
 from just_agents.base_agent import BaseAgent
 from pydantic import Field
 from just_agents.types import SupportedMessages
@@ -28,8 +28,9 @@ class ChainOfThoughtAgent(BaseAgent, IThinkingAgent[SupportedMessages, Supported
     # 3. Consider limitations and alternative answers
     # 4. Use multiple methods to verify answers
     # 5. Format response as JSON with specific fields
-    DEFAULT_SYSTEM_PROMPT: ClassVar[str] = """
-You are an expert AI assistant that explains your reasoning step by step. 
+    DEFAULT_COT_PROMPT: ClassVar[str] = """ You are an expert AI assistant that explains your reasoning step by step. 
+    """
+    RESPONSE_FORMAT: ClassVar[str] = """
   For each step, provide a title that describes what you're doing in that step, along with the content. 
   Decide if you need another step or if you're ready to give the final answer. 
   Respond in JSON format with "title", "content", and "next_action" (either "continue" or "final_answer") keys. 
@@ -52,22 +53,29 @@ You are an expert AI assistant that explains your reasoning step by step.
               }
 """
 
-   
-    # Allow customization of the system prompt while maintaining the default as fallback
     system_prompt: str = Field(
-        DEFAULT_SYSTEM_PROMPT,
+        DEFAULT_COT_PROMPT,
         description="System prompt of the agent")
-    
+
+    response_format: str = Field(
+        RESPONSE_FORMAT,
+        description="Response format of the agent")
+
+    max_steps: int = Field(IThinkingAgent.MAX_STEPS, ge=1, description="Maximum number of reasoning steps")
+    append_response_format: bool = Field(True,
+                                         description="Whether to append default COT prompt of this agent to the provided")
+
+    def model_post_init(self, __context: Any) -> None:
+        # Call parent class's post_init first (from JustAgentProfile)
+        super().model_post_init(__context)
+        if self.append_response_format:
+            system_prompt  = self.system_prompt + "\n\n" + self.response_format
+            self.memory.clear_messages()
+            self.instruct(system_prompt) # don't modify self system prompt to avoid saving it into profile
+
     def thought_query(self, query: SupportedMessages, **kwargs) -> Thought:
         # Parses the LLM response into a structured Thought object
         if self.supports_response_format and "gpt-4" in self.llm_options["model"]: # despite what they declare only openai does support reponse format right
            return self.query_structural(query, parser=Thought, response_format={"type": "json_object"}, **kwargs) # type: ignore
         else:
             return self.query_structural(query, parser=Thought, **kwargs) # type: ignore
-
-    @classmethod
-    def with_prompt_prefix(cls, llm_options: dict, custom_prompt: str) -> "ChainOfThoughtAgent":
-        # Factory method (alternative constructor) to create an agent with a custom prompt prefix
-        # Preserves the default system prompt by appending it to the custom prompt
-        system_prompt=custom_prompt + "\n\n" + cls.DEFAULT_SYSTEM_PROMPT
-        return cls(llm_options=llm_options, system_prompt=system_prompt) # type: ignore

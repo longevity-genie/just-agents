@@ -1,11 +1,8 @@
 from dotenv import load_dotenv
 from pathlib import Path
-from just_agents.llm_options import OPENAI_GPT4o
-from cot_dev import ChainOfThoughtDevAgent
+from just_agents.examples.coding.cot_dev import ChainOfThoughtDevAgent
 
-from just_agents.examples.coding.mounts import coding_examples_dir
 #from just_agents.simple.utils import build_agent
-from just_agents.examples.coding.tools import run_python_code
 
 load_dotenv(override=True)
 
@@ -25,15 +22,15 @@ if __name__ == "__main__":
     #test_agent.save_to_yaml(file_path=current_dir/"agent_profiles.yaml", exclude_unset=False, exclude_defaults=False)
 
     bio_coder : ChainOfThoughtDevAgent= ChainOfThoughtDevAgent.convert_from_legacy(
-        Path(current_dir/"bioinformatic_agent.yaml"),
-        Path(current_dir/"agent_profiles.yaml"),
+        Path(current_dir/"bioinformatic_dev_agent.yaml"),
+        Path(current_dir/"cot_dev_agent_profiles.yaml"),
         ChainOfThoughtDevAgent,
         "bioinformatic_cot_agent",
        )
 
     dev_ops : ChainOfThoughtDevAgent= ChainOfThoughtDevAgent.convert_from_legacy(
         Path(current_dir / "devops_agent.yaml"),
-        Path(current_dir / "agent_profiles.yaml"),
+        Path(current_dir / "cot_dev_agent_profiles.yaml"),
         ChainOfThoughtDevAgent,
         "devops_cot_agent",
     )
