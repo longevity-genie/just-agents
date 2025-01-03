@@ -1,20 +1,20 @@
 from pydantic import BaseModel, Field, PrivateAttr
-from typing import Optional, Callable, List, Dict, Union
+from typing import Optional, Callable, List, Dict
 from functools import singledispatchmethod
-from just_agents.core.interfaces.IMemory import IMemory
-from just_agents.core.types import Role, AbstractMessage, SupportedMessages, SupportedMessage
+from just_agents.interfaces.memory import IMemory
+from just_agents.types import Role, MessageDict, SupportedMessages
 from litellm.types.utils import Function
 from abc import ABC
 
-OnMessageCallable = Callable[[AbstractMessage], None]
+OnMessageCallable = Callable[[MessageDict], None]
 OnFunctionCallable = Callable[[Function], None]
 
-class IBaseMemory(BaseModel, IMemory[Role, AbstractMessage], ABC):
+class IBaseMemory(BaseModel, IMemory[Role, MessageDict], ABC):
     """
     Abstract Base Class to fulfill Pydantic schema requirements for concrete-attributes.
     """
 
-    messages: List[AbstractMessage] = Field(default_factory=list, validation_alias='conversation')
+    messages: List[MessageDict] = Field(default_factory=list, validation_alias='conversation')
 
     # Private dict of message handlers for each role
     _on_message: Dict[Role, List[OnMessageCallable]] = PrivateAttr(default_factory=lambda: {
@@ -24,6 +24,9 @@ class IBaseMemory(BaseModel, IMemory[Role, AbstractMessage], ABC):
         Role.system: [],
     })
 
+    def deepcopy(self) -> 'IBaseMemory':
+        return self.model_copy(deep=True)
+
 class BaseMemory(IBaseMemory):
     """
     The Memory class provides storage and handling of messages for a language model session.
@@ -31,7 +34,7 @@ class BaseMemory(IBaseMemory):
     function calls categorized by roles: assistant, tool, user, and system.
     """
 
-    def handle_message(self, message: AbstractMessage) -> None:
+    def handle_message(self, message: MessageDict) -> None:
         """
         Implements the abstract method to handle messages based on their roles.
         """
@@ -92,7 +95,7 @@ class BaseMemory(IBaseMemory):
         Adds a handler to track function calls.
         """
 
-        def tool_handler(message: AbstractMessage) -> None:
+        def tool_handler(message: MessageDict) -> None:
             tool_calls = message.get('tool_calls', [])
             for call in tool_calls:
                 function_name = call.get('function')
@@ -168,8 +171,4 @@ class BaseMemory(IBaseMemory):
         :param handler: The handler to be removed.
         """
         self._remove_on_message(handler, Role.system)
-
-    def deepcopy(self) -> 'BaseMemory':
-        return self.model_copy(deep=True)
-
 

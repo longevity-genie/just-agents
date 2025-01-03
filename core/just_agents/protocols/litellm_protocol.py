@@ -1,20 +1,41 @@
-
 import json
 
 from litellm import ModelResponse, CustomStreamWrapper, completion, acompletion, stream_chunk_builder
-from typing import Optional, Callable, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
+from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
+from pydantic import HttpUrl, Field, AliasPath, PrivateAttr, BaseModel, Json, field_validator
 
-from pydantic import Field, AliasPath, PrivateAttr, BaseModel, Json, field_validator
+from just_agents.types import MessageDict, Role
 
-from just_agents.core.types import AbstractMessage
+from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
+from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
+from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
+from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
 
-from just_agents.streaming.protocols.interfaces.IFunctionCall import IFunctionCall, ToolByNameCallback
-from just_agents.streaming.protocols.interfaces.IProtocolAdapter import IProtocolAdapter, ExecuteToolCallback
-from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
-from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
+#from openai.types import CompletionUsage
+#from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam, ChatCompletionAssistantMessageParam, ChatCompletionToolMessageParam,ChatCompletionFunctionMessageParam
+#from openai.types.chat.chat_completion import ChatCompletion, Choice, ChatCompletionMessage
 
+# Content types
+class TextContent(BaseModel):
+    type: str = Field("text", examples=["text"])
+    text: str = Field(..., examples=["What are in these images? Is there any difference between them?"])
 
-class OAIFunctionCall(BaseModel, IFunctionCall[AbstractMessage], extra="allow"):
+class ImageContent(BaseModel):
+    type: str = Field("image_url", examples=["image_url"])
+    image_url: HttpUrl = Field(..., examples=["https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"])
+
+# Message class - Simple string content or a list of text or image content for vision model
+class Message(BaseModel):
+    role: Role = Field(..., examples=[Role.assistant])
+    content: Union[
+        str,  # Simple string content
+        List[Union[TextContent, ImageContent]]
+    ] = Field(
+        ...,
+        description="Content can be a simple string, or a list of content items including text or image URLs."
+    )
+
+class LiteLLMFunctionCall(BaseModel, IFunctionCall[MessageDict], extra="allow"):
     id: str = Field(...)
     name: str = Field(..., validation_alias=AliasPath('function', 'name'))
     arguments: Json[dict] = Field(..., validation_alias=AliasPath('function', 'arguments'))
@@ -39,7 +60,7 @@ class OAIFunctionCall(BaseModel, IFunctionCall[AbstractMessage], extra="allow"):
         return message
 
     @staticmethod
-    def reconstruct_tool_call_message(calls: Sequence['OAIFunctionCall']) -> dict:
+    def reconstruct_tool_call_message(calls: Sequence['LiteLLMFunctionCall']) -> dict:
         tool_calls = []
         for call_params in calls:
             tool_calls.append({"type": "function",
@@ -47,12 +68,12 @@ class OAIFunctionCall(BaseModel, IFunctionCall[AbstractMessage], extra="allow"):
         return {"role": "assistant", "content": None, "tool_calls": tool_calls}
 
 
-class OAIAdapter(BaseModel, IProtocolAdapter[ModelResponse,AbstractMessage]):
+class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict]):
     #Class that describes function convention
-    function_convention: ClassVar[Type[IFunctionCall[AbstractMessage]]] = OAIFunctionCall
+    function_convention: ClassVar[Type[IFunctionCall[MessageDict]]] = LiteLLMFunctionCall
     #hooks to agent class
-    execute_function_hook:  ExecuteToolCallback[AbstractMessage] = Field(...)
-    _output_streaming: AbstractStreamingProtocol = PrivateAttr(default_factory=OpenaiStreamingProtocol)
+    execute_function_hook:  ExecuteToolCallback[MessageDict] = Field(...)
+    _output_streaming: IAbstractStreamingProtocol = PrivateAttr(default_factory=OpenaiStreamingProtocol)
 
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
@@ -64,7 +85,7 @@ class OAIAdapter(BaseModel, IProtocolAdapter[ModelResponse,AbstractMessage]):
             -> Coroutine[Any, Any, Union[ModelResponse, CustomStreamWrapper, AsyncGenerator]]:
         return acompletion(*args, **kwargs)
 
-    def message_from_response(self, response: ModelResponse) -> AbstractMessage:
+    def message_from_response(self, response: ModelResponse) -> MessageDict:
         message = response.choices[0].message.model_dump(
             mode="json",
             exclude_none=True,
@@ -77,7 +98,7 @@ class OAIAdapter(BaseModel, IProtocolAdapter[ModelResponse,AbstractMessage]):
         assert "function_call" not in message
         return message
 
-    def message_from_delta(self, response: ModelResponse) -> AbstractMessage:
+    def message_from_delta(self, response: ModelResponse) -> MessageDict:
         message = response.choices[0].delta.model_dump(
             mode="json",
             exclude_none=True,
@@ -88,10 +109,10 @@ class OAIAdapter(BaseModel, IProtocolAdapter[ModelResponse,AbstractMessage]):
         assert "function_call" not in message
         return message
 
-    def content_from_delta(self, delta: AbstractMessage) -> str:
+    def content_from_delta(self, delta: MessageDict) -> str:
         return delta.get("content")
 
-    def tool_calls_from_message(self, message: AbstractMessage) -> List[OAIFunctionCall]:
+    def tool_calls_from_message(self, message: MessageDict) -> List[LiteLLMFunctionCall]:
         # If there are no tool calls or tools available, exit the loop
         tool_calls = message.get("tool_calls")
         if not tool_calls:
@@ -99,7 +120,7 @@ class OAIAdapter(BaseModel, IProtocolAdapter[ModelResponse,AbstractMessage]):
         else:
             # Auto-convert each item in tool_calls to a FunctionCall instance with validation
             return [
-                OAIFunctionCall(**tool_call)
+                LiteLLMFunctionCall(**tool_call)
                 for tool_call in tool_calls
             ]
 

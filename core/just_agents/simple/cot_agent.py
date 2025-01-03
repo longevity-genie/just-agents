@@ -1,8 +1,8 @@
-from just_agents.core.interfaces.IAgent import IAgent
+from just_agents.interfaces.agent import IAgent
 from just_agents.simple.llm_session import LLMSession
 import json
-from just_agents.streaming.protocols.openai_streaming import OpenaiStreamingProtocol
-from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
+from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
+from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 from pathlib import Path
 from just_agents.simple.utils import resolve_and_validate_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
 
@@ -20,7 +20,7 @@ FINAL_PROMPT = "final_prompt"
 class ChainOfThoughtAgent(IAgent):
 
     def __init__(self, llm_options: dict = None, agent_schema: str | Path | dict | None = None,
-                 tools: list = None, output_streaming:AbstractStreamingProtocol = OpenaiStreamingProtocol()):
+                 tools: list = None, output_streaming:IAbstractStreamingProtocol = OpenaiStreamingProtocol()):
         self.agent_schema: dict = resolve_and_validate_agent_schema(agent_schema, "cot_agent_prompt.yaml")
         if tools is None:
             tools = resolve_tools(self.agent_schema)
@@ -28,7 +28,7 @@ class ChainOfThoughtAgent(IAgent):
                                               system_prompt=resolve_system_prompt(self.agent_schema),
                                               agent_schema=self.agent_schema.get(LLM_SESSION, None), tools=tools)
 
-        self.output_streaming: AbstractStreamingProtocol = output_streaming
+        self.output_streaming: IAbstractStreamingProtocol = output_streaming
 
 
     def _process_initial_query(self, input: str | dict | list) -> tuple[dict, str]:

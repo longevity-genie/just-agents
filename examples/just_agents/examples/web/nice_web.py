@@ -1,6 +1,6 @@
 from pathlib import Path
 from dotenv import load_dotenv
-from just_agents.core.interfaces.IAgent import IAgent
+from just_agents.interfaces.agent import IAgent
 from just_agents.simple.utils import build_agent
 from just_agents_web.web import create_app, run_server
 

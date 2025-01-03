@@ -1,11 +1,8 @@
 import json
-import time
 from abc import ABC, abstractmethod
 from dataclasses import dataclass
-from typing import Dict, Callable, AsyncGenerator, Optional
-from just_agents.streaming.protocols.abstract_protocol import AbstractStreamingProtocol
-
-from just_agents.simple.memory import Memory
+from typing import Dict, Callable, AsyncGenerator
+from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 
 
 @dataclass
@@ -28,7 +25,7 @@ class AbstractStreaming(ABC):
     """
     Class that is required to implement the streaming logic
     """
-    output_streaming: AbstractStreamingProtocol
+    output_streaming: IAbstractStreamingProtocol
 
     def __init__(self, llm_session):
         self.session = llm_session

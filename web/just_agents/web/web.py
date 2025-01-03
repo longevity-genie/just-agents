@@ -1,7 +1,7 @@
 import time
 from pathlib import Path
-from fastapi import FastAPI, Request
-from just_agents.core.interfaces.IAgent import IAgent
+from fastapi import FastAPI
+from just_agents.interfaces.agent import IAgent
 from just_agents.simple.utils import build_agent
 from starlette.responses import StreamingResponse
 from dotenv import load_dotenv

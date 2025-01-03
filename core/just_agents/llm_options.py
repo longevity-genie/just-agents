@@ -1,9 +1,42 @@
 from typing import Any, Dict, List, Optional
-from pydantic import Field, HttpUrl
-
-from just_agents.core.types import ModelOptions
+from pydantic import Field, HttpUrl, BaseModel
 
 LLMOptions = Dict[str, Any]
+
+class ModelOptions(BaseModel):
+    model: str = Field(
+        ...,
+        examples=["gpt-4o-mini"],
+        description="LLM model name"
+    )
+    temperature: Optional[float] = Field(
+        0.0,
+        ge=0.0,
+        le=2.0,
+        examples=[0.7],
+        description="Sampling temperature, values from 0.0 to 2.0"
+    )
+    top_p: Optional[float] = Field(
+        1.0,
+        ge=0.0,
+        le=1.0,
+        examples=[0.9],
+        description="Nucleus sampling probability, values from 0.0 to 1.0"
+    )
+    presence_penalty: Optional[float] = Field(
+        0.0,
+        ge=-2.0,
+        le=2.0,
+        examples=[0.6],
+        description="Presence penalty, values from -2.0 to 2.0"
+    )
+    frequency_penalty: Optional[float] = Field(
+        0.0,
+        ge=-2.0,
+        le=2.0,
+        examples=[0.5],
+        description="Frequency penalty, values from -2.0 to 2.0"
+    )
 
 class LLMOptionsBase(ModelOptions, extra="allow"):
     api_key: Optional[str] = Field(None, examples=["sk-proj-...."])
@@ -16,12 +49,12 @@ class LLMOptionsBase(ModelOptions, extra="allow"):
     tool_choice : Optional[str] = None
 
 
-ANTHROPIC_CLAUDE_3_5_SONNET: dict[str, Any] = {
+ANTHROPIC_CLAUDE_3_5_SONNET: LLMOptions = {
     "model": "claude-3-5-sonnet-20240620",
     "temperature": 0.0
 }
 
-LLAMA3_2_VISION: dict[str, Any] = {
+LLAMA3_2_VISION: LLMOptions = {
     #supports both text and vision
     "model": "groq/llama-3.2-90b-vision-preview",
     "api_base": "https://api.groq.com/openai/v1",
@@ -44,75 +77,75 @@ LLAMA3_3_specdec: dict[str, Any] = {
 }
 
 
-MISTRAL_8x22B = {
+MISTRAL_8x22B: LLMOptions = {
     "model": "mistral/open-mixtral-8x22b",
     "temperature": 0.0
 }
 
-OPENAI_GPT4o: dict[str, Any] = {
+OPENAI_GPT4o: LLMOptions = {
     "model": "gpt-4o",
     "temperature": 0.0
 }
 
-OPENAI_GPT4oMINI: dict[str, Any] = {
+OPENAI_GPT4oMINI: LLMOptions = {
     "model": "gpt-4o-mini",
     "temperature": 0.0
 }
 
-OPENAI_O1_MINI: dict[str, Any] = {
+OPENAI_O1_MINI: LLMOptions = {
     "model": "o1-mini",
     "temperature": 0.0
 }
 
-OPENAI_O1_PREVIEW: dict[str, Any] = {
+OPENAI_O1_PREVIEW: LLMOptions = {
     "model": "o1-preview",
     "temperature": 0.0
 }
 
-PERPLEXITY_LLAMA_3_1_SONAR_LARGE_128K_ONLINE: dict[str, Any]= {
+PERPLEXITY_LLAMA_3_1_SONAR_LARGE_128K_ONLINE: LLMOptions= {
     "model": "perplexity/llama-3.1-sonar-large-128k-online",
     "temperature": 0.0,
     "return_citations": True,
     "return_related_questions": True
 }
 
-OPEN_ROUTER_Qwen_2_72B_Instruct: dict[str, Any] = {
+OPEN_ROUTER_Qwen_2_72B_Instruct: LLMOptions = {
     "model": "openrouter/qwen/qwen-2-72b-instruct",
     "temperature": 0.0,
     "tools": []
 }
 
-OPEN_ROUTER_Qwen_2_72B_Instruct_Vision: dict[str, Any] = {
+OPEN_ROUTER_Qwen_2_72B_Instruct_Vision: LLMOptions = {
     "model": "openrouter/qwen/qwen-2-vl-72b-instruct",
     "temperature": 0.0,
     "tools": []
 }
 
-OPEN_ROUTER_LLAMA_3_8B_FREE: dict[str, Any] = {
+OPEN_ROUTER_LLAMA_3_8B_FREE: LLMOptions = {
     "model": "openrouter/meta-llama/llama-3-8b-instruct:free",
     "temperature": 0.0,
     "tools": []
 }
 
-OPEN_ROUTER_GEMINI_1_5_FLASH_EXP_FREE: dict[str, Any] = {
+OPEN_ROUTER_GEMINI_1_5_FLASH_EXP_FREE: LLMOptions = {
     "model": "openrouter/google/gemini-flash-1.5-exp",
     "temperature": 0.0,
     "tools": []
 }
 
-DEEPSEEK_CODER: dict[str, Any] = {
+DEEPSEEK_CODER: LLMOptions = {
     "model": "deepseek/deepseek-coder",
     "temperature": 0.0,
     "tools": []
 }
 
-DEEPSEEK_CHAT: dict[str, Any] = {
+DEEPSEEK_CHAT: LLMOptions = {
     "model": "deepseek/deepseek-chat",
     "temperature": 0.0,
     "tools": []
 }
 
-def local_vllm_model(model: str = "models/granite-7b-lab.Q4_K_M.gguf", host: str="http://localhost:8000") -> dict[str, Any]:
+def local_vllm_model(model: str = "models/granite-7b-lab.Q4_K_M.gguf", host: str="http://localhost:8000") -> LLMOptions:
     return {
         "model": f"hosted_vllm/{model}",
         "temperature": 0.0,

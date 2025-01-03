@@ -2,11 +2,20 @@ from typing import Callable, Optional, List, Dict, Any, Sequence, Union, Literal
 
 from litellm.utils import function_to_dict
 from pydantic import BaseModel, Field, PrivateAttr
-import importlib
+from just_bus import JustEventBus
+from importlib import import_module
 import inspect
 
 FunctionParamFields=Literal["kind","default","type_annotation"]
 FunctionParams = List[Dict[str, Dict[FunctionParamFields,Optional[str]]]]
+
+
+class JustToolsBus(JustEventBus):
+    """
+    A simple singleton tools bus.
+    Inherits from JustEventBus with no additional changes.
+    """
+    pass
 
 class LiteLLMDescription(BaseModel, populate_by_name=True):
     name: Optional[str] = Field(..., alias='function', description="The name of the function")
@@ -17,7 +26,7 @@ class JustTool(LiteLLMDescription):
     package: str = Field(..., description="The name of the module where the function is located.")
     auto_refresh: bool = Field(True, description="Whether to automatically refresh the tool after initialization.")
     arguments: Optional[FunctionParams] = Field(
-         None, description="List of parameters with their details."
+         None, description="List of parameters with their details.", exclude=True
     )
     _callable: Optional[Callable] = PrivateAttr(default=None)
 
@@ -27,28 +36,19 @@ class JustTool(LiteLLMDescription):
         if self.auto_refresh:
             self.refresh()
 
-    def get_litellm_description(self) -> Dict[str, Any]:
-        dump = self.model_dump(
-            mode='json',
-            by_alias=False,
-            exclude_none=True,
-            serialize_as_any=False,
-            include=set(super().model_fields)
-        )
-        return dump
+    @staticmethod
+    def _wrap_function(func: Callable, name: str) -> Callable:
+        """
+        Helper to wrap a function with event publishing logic to JustToolsBus.
+        """
+        def __wrapper(*args, **kwargs):
+            bus = JustToolsBus()
+            bus.publish(f"{name}.call", args=args, kwargs=kwargs)
+            result = func(*args, **kwargs)
+            bus.publish(f"{name}.result", args=args, kwargs=kwargs, result=result)
+            return result
+        return __wrapper
 
-    @classmethod
-    def from_callable(cls, input_function: Callable) -> 'JustTool':
-        """Create a JustTool instance from a callable."""
-        package = input_function.__module__
-        litellm_description = function_to_dict(input_function)
-        arguments = cls._extract_parameters(input_function)
-        return cls(
-            **litellm_description,
-            package=package,
-            arguments=arguments,
-            _callable=input_function,
-        )
 
     @staticmethod
     def _extract_parameters(func: Callable) -> List[Dict[str, Any]]:
@@ -64,6 +64,35 @@ class JustTool(LiteLLMDescription):
             parameters.append({ name: param_info})
         return parameters
 
+    def get_litellm_description(self) -> Dict[str, Any]:
+        dump = self.model_dump(
+            mode='json',
+            by_alias=False,
+            exclude_none=True,
+            serialize_as_any=False,
+            include=set(super().model_fields)
+        )
+        return dump
+
+
+    @classmethod
+    def from_callable(cls, input_function: Callable) -> 'JustTool':
+        """Create a JustTool instance from a callable."""
+        package = input_function.__module__
+        litellm_description = function_to_dict(input_function)
+        arguments = cls._extract_parameters(input_function)
+
+        wrapped_callable = cls._wrap_function(input_function, litellm_description['function'])
+
+        return cls(
+            **litellm_description,
+            package=package,
+            arguments=arguments,
+            _callable=wrapped_callable,
+        )
+
+
+
     def refresh(self)->'JustTool':
         """
         Refresh the JustTool instance to reflect the current state of the actual function.
@@ -72,10 +101,8 @@ class JustTool(LiteLLMDescription):
             JustTool: Returns self to allow method chaining or direct appending.
         """
         try:
-            # Import the module
-            package = importlib.import_module(self.package)
             # Get the function from the module
-            func = getattr(package, self.name)
+            func = getattr(import_module(self.package), self.name)
             # Update LiteLLM description
             litellm_description = LiteLLMDescription (**function_to_dict(func))
             # Update the description
@@ -83,12 +110,12 @@ class JustTool(LiteLLMDescription):
             # Update parameters
             self.parameters= litellm_description.parameters
             self.arguments = self._extract_parameters(func)
-            # Update the cached callable
-            self._callable = func
+            # Rewrap with the updated callable
+            self._callable = self._wrap_function(func, self.name)
 
-            return self  # Return self to allow chaining or direct appending
+            return self
         except (ImportError, AttributeError) as e:
-            raise ImportError(f"Error refreshing {self.name} from {self.package}: {e}")
+            raise ImportError(f"Error refreshing {self.name} from {self.package}: {e}") from e
 
     def get_callable(self, refresh: bool = False) -> Callable:
         """
@@ -100,10 +127,9 @@ class JustTool(LiteLLMDescription):
         if self._callable is not None:
             return self._callable
         try:
-            package = importlib.import_module(self.package)
-            func = getattr(package, self.name)
-            self._callable = func  # Cache the callable
-            return func
+            func = getattr(import_module(self.package), self.name)
+            self._callable = self._wrap_function(func, self.name)
+            return self._callable
         except (ImportError, AttributeError) as e:
             raise ImportError(f"Error importing {self.name} from {self.package}: {e}")
 
@@ -118,4 +144,3 @@ JustTools = Union[
         Union[JustTool, Callable]
     ]  # A sequence (like a list or tuple) containing either JustTool instances or callable objects (functions).
 ]
-# Although an internal dictionary representation is preferable, a list representation of tools can be handled and converted to a dictionary using validation.
