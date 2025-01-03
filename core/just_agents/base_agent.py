@@ -1,6 +1,6 @@
 from pydantic import Field, PrivateAttr
 from typing import Optional, List, Union, Any, Generator
-from just_agents.types import Role, SupportedMessages
+from just_agents.types import MessageDict, Role, SupportedMessages
 
 from just_agents.llm_options import LLMOptions
 from just_agents.interfaces.function_call import IFunctionCall
@@ -97,7 +97,7 @@ class BaseAgent(
     def add_to_memory(self, messages: SupportedMessages) -> None:
         self.memory.add_message(messages)
 
-    def get_last_message(self) -> SupportedMessage:  # type: ignore
+    def get_last_message(self) -> Optional[MessageDict]:
         msg = self.memory.last_message
         if msg is None:
             raise ValueError("No messages in memory")

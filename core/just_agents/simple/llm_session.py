@@ -9,7 +9,8 @@ from litellm.utils import Choices
 from just_agents.interfaces.agent import IAgent
 from just_agents.simple.memory import Memory
 from typing import Callable, Optional
-from just_agents.simple.streaming import AbstractStreaming
+
+from just_agents.simple.streaming.protocols.abstract_streaming import AbstractStreaming
 from just_agents.simple.streaming.openai_streaming import AsyncSession
 from just_agents.simple.utils import resolve_and_validate_agent_schema, resolve_llm_options, resolve_system_prompt, resolve_tools
 from just_agents.rotate_keys import RotateKeys

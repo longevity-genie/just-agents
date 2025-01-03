@@ -2,7 +2,7 @@ from typing import Callable, Optional, List, Dict, Any, Sequence, Union, Literal
 
 from litellm.utils import function_to_dict
 from pydantic import BaseModel, Field, PrivateAttr
-from just_bus import JustEventBus
+from just_agents.just_bus import JustEventBus
 from importlib import import_module
 import inspect
 
@@ -81,8 +81,15 @@ class JustTool(LiteLLMDescription):
         package = input_function.__module__
         litellm_description = function_to_dict(input_function)
         arguments = cls._extract_parameters(input_function)
-
-        wrapped_callable = cls._wrap_function(input_function, litellm_description['function'])
+        
+        # Get function name either from litellm description or directly from the function
+        function_name = litellm_description.get('function') or input_function.__name__
+        
+        wrapped_callable = cls._wrap_function(input_function, function_name)
+        
+        # Ensure function name is in litellm_description
+        if 'function' not in litellm_description:
+            litellm_description['function'] = function_name
 
         return cls(
             **litellm_description,

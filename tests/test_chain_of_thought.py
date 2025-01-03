@@ -2,7 +2,7 @@ from dotenv import load_dotenv
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
 import just_agents.llm_options
 
-def count_letters(character:str, word:str) -> str:
+def count_letters(character: str, word: str) -> str:
     """ Returns the number of character occurrences in the word. """
     count:int = 0
     for char in word:
