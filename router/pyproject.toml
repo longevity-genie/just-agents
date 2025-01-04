@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-router"
-version = "0.4.3"
+version = "0.4.4"
 description = "Just Agents - Router Components"
 authors = [
     "Newton Winter <isoutthere@gmail.com>",

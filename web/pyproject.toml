@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just_agents_web"
-version = "0.4.3"
+version = "0.4.4"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",

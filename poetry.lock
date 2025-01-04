@@ -866,7 +866,7 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "just-agents-coding"
-version = "0.4.3"
+version = "0.4.4"
 description = "Just Agents - Coding Components"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -883,7 +883,7 @@ url = "coding"
 
 [[package]]
 name = "just-agents-core"
-version = "0.4.3"
+version = "0.4.4"
 description = "Just Agents - Base Package"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -903,7 +903,7 @@ url = "core"
 
 [[package]]
 name = "just-agents-examples"
-version = "0.4.3"
+version = "0.4.4"
 description = "Just Agents - Examples code"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -923,7 +923,7 @@ url = "examples"
 
 [[package]]
 name = "just-agents-router"
-version = "0.4.3"
+version = "0.4.4"
 description = "Just Agents - Router Components"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -939,7 +939,7 @@ url = "router"
 
 [[package]]
 name = "just-agents-tools"
-version = "0.4.3"
+version = "0.4.4"
 description = "Just Agents - Tools Components"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -957,7 +957,7 @@ url = "tools"
 
 [[package]]
 name = "just-agents-web"
-version = "0.4.3"
+version = "0.4.4"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 optional = false
 python-versions = ">=3.10,<4.0"
