@@ -2,8 +2,9 @@ from typing import Any, Dict, Optional
 
 from just_agents.simple.llm_session import LLMSession
 from just_agents.simple.utils import load_config
+from deprecated import deprecated
 
-
+@deprecated(reason="This is old memory implementation, everything in simple package is deprecated")
 class ChatAgent(LLMSession):
     """
     Default agent class, it assumes that each agent has a role, goal, and background story.

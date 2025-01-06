@@ -1,6 +1,7 @@
 from dataclasses import dataclass, field
 from typing import Callable, Optional
 from litellm.types.utils import Function
+from deprecated import deprecated
 
 OnMessageCallable = Callable[[dict], None]
 OnFunctionCallable = Callable[[Function], None]
@@ -10,6 +11,7 @@ USER = "user"
 ASSISTANT = "assistant"
 SYSTEM = "system"
 
+@deprecated(reason="This is old memory implementation, everything in simple package is deprecated")
 class Memory:
     def __init__(self):
         self.on_message:dict[str, list] = {TOOL:[], USER:[], ASSISTANT:[], SYSTEM:[]}

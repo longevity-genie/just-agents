@@ -3,6 +3,7 @@ import json
 from pathlib import Path
 from typing import Any, AsyncGenerator
 
+from deprecated import deprecated
 import litellm
 from litellm import ModelResponse, completion
 from litellm.utils import Choices
@@ -29,7 +30,7 @@ OPENAI = "openai"
 QWEN2 = "qwen2"
 CHAIN_OF_THOUGHT = "chain_of_thought"
 
-
+@deprecated(reason="This is old memory implementation, everything in simple package is deprecated")
 class LLMSession(
     IAgent[
         str | dict | list[dict],

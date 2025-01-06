@@ -1,3 +1,4 @@
+from deprecated import deprecated
 from just_agents.interfaces.agent import IAgent
 from just_agents.simple.llm_session import LLMSession
 import json
@@ -17,6 +18,7 @@ FINAL_MAX_TOKENS = "final_max_tokens"
 FINAL_PROMPT = "final_prompt"
 
 
+@deprecated(reason="This is old memory implementation, everything in simple package is deprecated")
 class ChainOfThoughtAgent(IAgent):
 
     def __init__(self, llm_options: dict = None, agent_schema: str | Path | dict | None = None,

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-coding"
-version = "0.4.4"
+version = "0.4.5"
 description = "Just Agents - Coding Components"
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",
@@ -19,8 +19,8 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-just-agents-core = ">=0.4.3"
-llm-sandbox = ">=0.1.4"
+just-agents-core = ">=0.4.5"
+llm-sandbox = ">=0.1.8"
 
 [build-system]
 requires = ["poetry-core"]

@@ -7,8 +7,9 @@ from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
 import json
 from qwen_agent.llm import get_chat_model # deprecated, so far we do not use qwen_agent
 import litellm
+from deprecated import deprecated
 
-
+@deprecated(reason="This is old memory implementation, everything in simple package is deprecated")
 class Qwen2AsyncSession(AbstractStreaming):
 
     def __init__(self, llm_session, output_streaming: IAbstractStreamingProtocol = OpenaiStreamingProtocol()):

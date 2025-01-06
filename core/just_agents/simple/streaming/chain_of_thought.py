@@ -4,7 +4,9 @@ from just_agents.simple.streaming.protocols.abstract_streaming import AbstractSt
 from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 import json
+from deprecated import deprecated
 
+@deprecated(reason="This is old memory implementation, everything in simple package is deprecated")
 class ChainOfThought(AbstractStreaming):
 
     def __init__(self, llm_session, output_streaming: IAbstractStreamingProtocol = OpenaiStreamingProtocol()):

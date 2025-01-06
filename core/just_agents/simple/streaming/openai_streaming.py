@@ -6,8 +6,9 @@ from typing import Optional
 from just_agents.simple.streaming.protocols.abstract_streaming import AbstractStreaming, FunctionParser
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
+from deprecated import deprecated
 
-
+@deprecated(reason="This is old memory implementation, everything in simple package is deprecated")
 class AsyncSession(AbstractStreaming):
 
     def __init__(self, llm_session, output_streaming: IAbstractStreamingProtocol = OpenaiStreamingProtocol()):
