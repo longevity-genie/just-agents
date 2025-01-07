@@ -110,7 +110,6 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
             by_alias=True,
             exclude={"function_call"} if not response.choices[0].delta.function_call else {}  # failsafe
         )
-        assert "function_call" not in message
         return message
     
     def content_from_delta(self, delta: MessageDict) -> str:
@@ -130,5 +129,5 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
 
     def response_from_deltas(self, chunks: List[Any]) -> ModelResponse:
         return stream_chunk_builder(chunks)
-        complete_response = litellm.stream_chunk_builder(chunks=chunks, messages=messages)
+        #complete_response = litellm.stream_chunk_builder(chunks=chunks, messages=messages)
 

@@ -195,9 +195,8 @@ class BaseAgent(
             self.add_to_memory(msg)
 
             if not self.tools or self._tool_fuse_broken:
-               self._tool_fuse_broken = False
-               break
-            # If there are no tool calls or tools available, exit the loop
+               break         # If there are no tool calls or tools available, exit the loop
+
             tool_calls = self._protocol.tool_calls_from_message(msg)
             # Process each tool call if they exist and re-execute query
             self._process_function_calls(
@@ -208,46 +207,57 @@ class BaseAgent(
             elif step == self.max_tool_calls - 2: #special case where we ran out of tool calls or stuck in a loop
                 self._tool_fuse_broken = True #one last attempt at graceful response
 
+        self._tool_fuse_broken = False
 
     def streaming_query_with_current_memory(self, reconstruct_chunks = False, **kwargs):
-        try:
+
+        for step in range(self.max_tool_calls):
             self._partial_streaming_chunks.clear()
-            for step in range(self.max_tool_calls):
-                response = self._execute_completion(stream=True, **kwargs)
-                tool_messages: SupportedMessages = []
-                for i, part in enumerate(response):
-                    self._partial_streaming_chunks.append(part)
-                    msg : SupportedMessages = self._protocol.delta_from_response(part)
-                    delta = self._protocol.content_from_delta(msg)
-                    if delta:
-                        if reconstruct_chunks:
-                            yield self._protocol.get_chunk(i, delta, options={'model': part["model"]})
-                        else:
-                            yield self._protocol.sse_wrap(part.model_dump(mode='json'))
-                    if self.tools and not self._tool_fuse_broken:
-                        tool_calls = self._protocol.tool_calls_from_message(msg)
-                        if tool_calls:
-                            self.add_to_memory(
-                                self._protocol.function_convention.reconstruct_tool_call_message(tool_calls)
-                            )
-                            self._process_function_calls(tool_calls)
-                            tool_messages.append(self._process_function_calls(tool_calls))
+            response = self._execute_completion(stream=True, **kwargs)
+            yielded = False
+            tool_calls = []
+            for i, part in enumerate(response):
+                self._partial_streaming_chunks.append(part)
+                msg : SupportedMessages = self._protocol.delta_from_response(part)
+                delta = self._protocol.content_from_delta(msg)
+                if delta: #stream content as is
+                    yielded = True
+                    if reconstruct_chunks:
+                        yield self._protocol.get_chunk(i, delta, options={'model': part["model"]})
+                    else:
+                        yield self._protocol.sse_wrap(part.model_dump(mode='json'))
 
-                if not tool_messages:
-                    break
-                elif step == self.max_tool_calls - 2:  # special case where we ran out of tool calls or stuck in a loop
-                    self._tool_fuse_broken = True  # one last attempt at graceful response
+                # if self.tools and not self._tool_fuse_broken:
+                #     tool_calls = self._protocol.tool_calls_from_message(msg)
+                #     if tool_calls:
+                #         self.add_to_memory(
+                #             self._protocol.function_convention.reconstruct_tool_call_message(tool_calls)
+                #         )
+                #         self._process_function_calls(tool_calls)
+                #         tool_messages.append(self._process_function_calls(tool_calls))
 
-        finally:
-            self._tool_fuse_broken = False #defuse
-            yield self._protocol.done()
             if len(self._partial_streaming_chunks) > 0:
-                response = self._protocol.response_from_deltas(self._partial_streaming_chunks)
-                msg: SupportedMessages = self._protocol.message_from_response(response) # type: ignore
+                assembly = self._protocol.response_from_deltas(self._partial_streaming_chunks)
+                self._partial_streaming_chunks.clear()
+                msg: SupportedMessages = self._protocol.message_from_response(assembly)  # type: ignore
                 self.handle_on_response(msg)
                 self.add_to_memory(msg)
-            self._partial_streaming_chunks.clear()
 
+                tool_calls = self._protocol.tool_calls_from_message(msg)
+                if not tool_calls and not yielded:
+                    yield self._protocol.sse_wrap(assembly.model_dump(mode='json')) #not delta and not tool, pass as is
+
+            if not self.tools or self._tool_fuse_broken or not tool_calls:
+                self._tool_fuse_broken = False
+                break  # If there are no tool calls or tools available, exit the loop
+            else:
+                self._process_function_calls(tool_calls)  # NOTE: no kwargs here as tool calls might need different parameters
+
+            if step == self.max_tool_calls - 2:  # special case where we ran out of tool calls or stuck in a loop
+                self._tool_fuse_broken = True  # one last attempt at graceful response without tools
+
+        self._tool_fuse_broken = False #defuse
+        yield self._protocol.done()
 
     def query(self, query_input: SupportedMessages, **kwargs) -> str:
         """

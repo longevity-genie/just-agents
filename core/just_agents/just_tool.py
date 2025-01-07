@@ -45,7 +45,7 @@ class JustTool(LiteLLMDescription):
             bus = JustToolsBus()
             bus.publish(f"{name}.call", args=args, kwargs=kwargs)
             result = func(*args, **kwargs)
-            bus.publish(f"{name}.result", args=args, kwargs=kwargs, result=result)
+            bus.publish(f"{name}.result", result_interceptor=result)
             return result
         return __wrapper
 

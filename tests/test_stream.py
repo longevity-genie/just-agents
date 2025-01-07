@@ -1,10 +1,10 @@
 import json
 from dotenv import load_dotenv
 import pytest
-
+from typing import Callable, Any
 from just_agents.base_agent import BaseAgent
 from just_agents.llm_options import LLMOptions, LLAMA3_3, OPENAI_GPT4oMINI
-
+from just_agents.just_tool import JustToolsBus
 @pytest.fixture(scope="module", autouse=True)
 def load_env():
     load_dotenv(override=True)
@@ -52,7 +52,6 @@ def agent_call(prompt: str, options: LLMOptions, reconstruct_chunks: bool):
 
 def test_stream():
     result = agent_call("Why is the sky blue?", OPENAI_GPT4oMINI, False)
-    print(result)
     assert "wavelength" in result
 
 def test_stream_grok():
@@ -67,17 +66,28 @@ def test_stream_grok_recon():
     result = agent_call("Why is the grass green?", LLAMA3_3, True)
     assert "chlorophyll" in result
 
-def test_tool_only():
+def validate_tool_call(call : Callable[[Any,...],str],*args,**kwargs):
     prompt = "What's the weather like in San Francisco, Tokyo, and Paris?"
-    non_stream = agent_query(prompt,OPENAI_GPT4oMINI)
-    assert "72" in non_stream
-    assert "22" in non_stream
-    assert "10" in non_stream
+    bus = JustToolsBus()
+    results = []
+    result_callback = 'get_current_weather.result'
+    def callback(event_name: str, result_interceptor: str):
+        assert event_name == result_callback
+        results.append(result_interceptor)
+    bus.subscribe(result_callback,callback)
+    result = call(prompt,*args,**kwargs)
+    assert len(results) == 3
+    assert "72" in result
+    assert "22" in result
+    assert "10" in result
+    assert any('72' in item for item in results), "San Francisco weather call missing"
+    assert any('22' in item for item in results), "Paris weather call missing"
+    assert any('10' in item for item in results), "Tokyo weather call missing"
 
-#def test_stream_tool():
-#    prompt = "What's the weather like in San Francisco, Tokyo, and Paris?"
-#    result = agent_call(prompt, OPENAI_GPT4oMINI, False)
-#    assert "72" in result
-#    assert "22" in result
-#    assert "10" in result
+def test_query_tool():
+    validate_tool_call(agent_query, OPENAI_GPT4oMINI)
+
+def test_stream_tool():
+    validate_tool_call(agent_call, OPENAI_GPT4oMINI, False)
+
 
