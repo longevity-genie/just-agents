@@ -10,6 +10,9 @@ from fastapi.middleware.cors import CORSMiddleware
 import loguru
 import yaml
 import os
+from pycomfort.logging import log_function
+from eliot import log_call
+import json
 
 
 class AgentRestAPI(FastAPI):
@@ -73,7 +76,6 @@ class AgentRestAPI(FastAPI):
         if agent_config is None:
             # Load from environment variable or use default
             agent_config = os.getenv('AGENT_CONFIG_PATH', 'agent_profiles.yaml')
-        
         self.agent = BaseAgent.from_yaml(file_path=agent_config, section_name=agent_section, parent_section=agent_parent_section)
 
       
@@ -92,6 +94,8 @@ class AgentRestAPI(FastAPI):
         self.post("/v1/chat/completions")(self.chat_completions)
 
 
+
+
     def _clean_messages(self, request: dict):
         for message in request["messages"]:
             if message["role"] == "user":
@@ -103,7 +107,6 @@ class AgentRestAPI(FastAPI):
                                 if type(content[0].get("text", None)) is str:
                                     message["content"] = content[0]["text"]
 
-
     def _remove_system_prompt(self, request: dict):
         if request["messages"][0]["role"] == "system":
             request["messages"] = request["messages"][1:]
@@ -111,26 +114,45 @@ class AgentRestAPI(FastAPI):
     def default(self):
         return f"This is default page for the {self.title}"
 
+    @log_call(action_type="chat_completions", include_result=False)
+    #TODO: I think this is wrong, we should send deltas when required using litellm streaming
     def chat_completions(self, request: dict):
         try:
             loguru.logger.debug(request)
+            agent = self.agent
             self._clean_messages(request)
             self._remove_system_prompt(request)
             if request["messages"]:
                 if request.get("stream") and str(request.get("stream")).lower() != "false":
                     return StreamingResponse(
-                        self.agent.stream(request["messages"]), media_type="application/x-ndjson"
+                        agent.stream(request["messages"]), media_type="text/event-stream"
                     )
-                resp_content = self.agent.query(request["messages"])
+                resp_content = agent.query(request["messages"])
             else:
                 resp_content = "Something goes wrong, request did not contain messages!!!"
         except Exception as e:
             loguru.logger.error(str(e))
             resp_content = str(e)
+
+        #TODO: I took it from Alex Karmazin implementation in LongevityGPTs but I THINK THIS IS TOTALLY WRONG
+        
+        # Updated response format to match OpenAI API v1
         return {
-            "id": "1",
+            "id": f"chatcmpl-{time.time()}",  # Should be a unique identifier
             "object": "chat.completion",
-            "created": time.time(),
-            "model": request["model"],
-            "choices": [{"message": {"role": "assistant", "content": resp_content}}],
+            "created": int(time.time()),
+            "model": request.get("model", "unknown"),
+            "choices": [{
+                "index": 0,
+                "message": {
+                    "role": "assistant",
+                    "content": resp_content
+                },
+                "finish_reason": "stop"  # Added finish_reason
+            }],
+            "usage": {
+                "prompt_tokens": 0,  # Should implement token counting
+                "completion_tokens": 0,  # Should implement token counting
+                "total_tokens": 0  # Should implement token counting
+            }
         }

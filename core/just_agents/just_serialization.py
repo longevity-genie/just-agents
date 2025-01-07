@@ -169,7 +169,7 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
     """
     DEFAULT_CONFIG_PATH : ClassVar[Path] = Path('./config/default_config.yaml')
     DEFAULT_PARENT_SECTION : ClassVar[Optional[str]] = None
-    DEFAULT_SECTION_NAME : ClassVar[Optional[str]] = 'RenameMe'
+    DEFAULT_SECTION_NAME : ClassVar[Optional[str]] = "Agent" #'RenameMe'
     #MODULE_DIR : ClassVar[Path] = Path(os.path.abspath(os.path.dirname(__file__)))
 
     config_path : Optional[Path] = Field(None,exclude=True)
@@ -327,6 +327,8 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
             file_path = cls.DEFAULT_CONFIG_PATH
         if parent_section is None:
             parent_section = cls.DEFAULT_PARENT_SECTION
+        if section_name is None:
+            section_name = cls.DEFAULT_SECTION_NAME
         section_data = JustYaml.read_yaml_data(
             file_path,
             section_name,

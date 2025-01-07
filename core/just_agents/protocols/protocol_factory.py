@@ -1,6 +1,7 @@
 from enum import Enum
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
 
+
 class StreamingMode(str, Enum):
     openai = "openai"
     echo = "echo"
@@ -27,7 +28,7 @@ class ProtocolAdapterFactory:
                 execute_function_hook=execute_functions,
             )
         elif mode == StreamingMode.echo:
-            from just_agents.protocols.mock_protocol import EchoProtocolAdapter
+            from just_agents.protocols.echo_protocol import EchoProtocolAdapter
             return EchoProtocolAdapter(
                 execute_function_hook=execute_functions,
             )

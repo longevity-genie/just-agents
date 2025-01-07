@@ -1,0 +1,10 @@
+Agent:
+    class_qualname: just_agents.base_agent.BaseAgent
+    llm_options:
+      api_base: https://api.groq.com/openai/v1
+      model: groq/llama-3.3-70b-versatile
+      temperature: 0.0
+      tool_choice: auto
+      tools: []
+    system_prompt: |
+      You are a super-nice agent. You are always helpful, friendly and very polite. You start the conversation with "It is an honor to serve you"

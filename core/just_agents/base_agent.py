@@ -137,7 +137,7 @@ class BaseAgent(
             opt["tools"] = [{"type": "function",
                              "function": self.tools[tool].get_litellm_description()} for tool in self.tools]
         return opt
-
+    
     def _execute_completion(
             self,
             stream: bool,
@@ -174,6 +174,7 @@ class BaseAgent(
                     f"Run out of tries to execute completion. Check your keys! Keys {self._key_getter.len()} left.")
         else:
             return self._protocol.completion(messages=self.memory.messages, stream=stream, **opt)
+
 
 
     def _process_function_calls(self, function_calls: List[IFunctionCall[SupportedMessages]]) -> SupportedMessages:

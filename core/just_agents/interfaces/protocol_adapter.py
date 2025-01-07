@@ -5,13 +5,14 @@ from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 from just_agents.interfaces.function_call import IFunctionCall
 
 BaseModelResponse = TypeVar('BaseModelResponse', bound=BaseModel)
+BaseModelStreamWrapper = TypeVar('BaseModelStreamWrapper', bound=BaseModel)
 AbstractMessage = TypeVar("AbstractMessage")
 
 ModelResponseCallback=Callable[...,BaseModelResponse]
 MessageUnpackCallback=Callable[[BaseModelResponse], AbstractMessage]
 ExecuteToolCallback=Callable[[Sequence[IFunctionCall]],List[AbstractMessage]]
 
-class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelResponse, AbstractMessage]):
+class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelResponse, AbstractMessage, BaseModelStreamWrapper]):
     """
     Class that is required to wrap the model protocol
     """
@@ -32,11 +33,11 @@ class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelRespons
         raise NotImplementedError("You need to implement message_from_response first!")
 
     @abstractmethod
-    def message_from_delta(self, response: BaseModelResponse) -> AbstractMessage:
+    def message_from_delta(self, response: BaseModelStreamWrapper) -> AbstractMessage:
         raise NotImplementedError("You need to implement message_from_delta first!")
 
     @abstractmethod
-    def content_from_delta(self, delta: AbstractMessage) -> str:
+    def content_from_delta(self, delta: BaseModelStreamWrapper) -> str:
         raise NotImplementedError("You need to implement content_from_delta first!")
 
     @abstractmethod
@@ -44,7 +45,7 @@ class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelRespons
         raise NotImplementedError("You need to implement tool_calls_from_response first!")
 
     @abstractmethod
-    def response_from_deltas(self, deltas: List[BaseModelResponse]) -> BaseModelResponse:
+    def response_from_deltas(self, deltas: List[BaseModelStreamWrapper]) -> BaseModelResponse:
         raise NotImplementedError("You need to implement message_from_deltas first!")
 
     def get_chunk(self, index:int, delta:str, options:dict) -> BaseModelResponse:

@@ -1,4 +1,5 @@
 import json
+import pprint
 
 from litellm import ModelResponse, CustomStreamWrapper, completion, acompletion, stream_chunk_builder
 from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
@@ -10,7 +11,7 @@ from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallba
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
-
+from litellm.types.utils import StreamingChoices, Delta
 #from openai.types import CompletionUsage
 #from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam, ChatCompletionAssistantMessageParam, ChatCompletionToolMessageParam,ChatCompletionFunctionMessageParam
 #from openai.types.chat.chat_completion import ChatCompletion, Choice, ChatCompletionMessage
@@ -68,7 +69,7 @@ class LiteLLMFunctionCall(BaseModel, IFunctionCall[MessageDict], extra="allow"):
         return {"role": "assistant", "content": None, "tool_calls": tool_calls}
 
 
-class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict]):
+class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, CustomStreamWrapper]):
     #Class that describes function convention
     function_convention: ClassVar[Type[IFunctionCall[MessageDict]]] = LiteLLMFunctionCall
     #hooks to agent class
@@ -78,12 +79,14 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict]):
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
 
-    def completion(self, *args, **kwargs) -> ModelResponse:
+    def completion(self, *args, **kwargs) -> Union[ModelResponse, CustomStreamWrapper]: # for the stream it is CustomStreamWrapper
         return completion(*args, **kwargs)
 
     async def async_completion(self, *args, **kwargs) \
             -> Coroutine[Any, Any, Union[ModelResponse, CustomStreamWrapper, AsyncGenerator]]:
         return acompletion(*args, **kwargs)
+    
+    # TODO: what about https://docs.litellm.ai/docs/providers/custom_llm_server ?
 
     def message_from_response(self, response: ModelResponse) -> MessageDict:
         message = response.choices[0].message.model_dump(
@@ -98,7 +101,8 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict]):
         assert "function_call" not in message
         return message
 
-    def message_from_delta(self, response: ModelResponse) -> MessageDict:
+    # TODO: wrong old stuff, YOU DO NOT GET A RESPONSE BUT YOU GET CustomStreamWrapper
+    def message_from_delta(self, response: CustomStreamWrapper): # ModelResponse) -> MessageDict:
         message = response.choices[0].delta.model_dump(
             mode="json",
             exclude_none=True,
@@ -108,7 +112,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict]):
         )
         assert "function_call" not in message
         return message
-
+    
     def content_from_delta(self, delta: MessageDict) -> str:
         return delta.get("content")
 
@@ -126,4 +130,5 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict]):
 
     def response_from_deltas(self, chunks: List[Any]) -> ModelResponse:
         return stream_chunk_builder(chunks)
+        complete_response = litellm.stream_chunk_builder(chunks=chunks, messages=messages)
 

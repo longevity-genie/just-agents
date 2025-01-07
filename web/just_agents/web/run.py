@@ -12,8 +12,8 @@ def run_server(
     port: int = 8088,
     workers: int = 1,
     title: str = "Just-Agent endpoint",
-    agent_section: Optional[str] = None,
-    agent_parent_section: Optional[str] = None
+    section: Optional[str] = None,
+    parent_section: Optional[str] = None
 ) -> None:
     """
     Run the FastAPI server with the given configuration.
@@ -30,8 +30,9 @@ def run_server(
     api = AgentRestAPI(
         agent_config=config,
         title=title,
-        agent_section=agent_section,
-        agent_parent_section=agent_parent_section
+        agent_section=section,
+        agent_parent_section=parent_section,
+        debug=True
     )
     
     uvicorn.run(
@@ -43,7 +44,7 @@ def run_server(
 
 @app.command()
 def run_server_command(
-    config: Path = typer.Option(help="Path to the YAML configuration file"), #typer.Argument(..., help="Path to the YAML configuration file"),
+    config: Path = typer.Argument(..., help="Path to the YAML configuration file"),
     host: str = typer.Option("0.0.0.0", help="Host to bind the server to"),
     port: int = typer.Option(8088, help="Port to run the server on"),
     workers: int = typer.Option(1, help="Number of worker processes"),

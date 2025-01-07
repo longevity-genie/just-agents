@@ -11,7 +11,7 @@ class JustAgentProfile(JustSerializable):
     A Pydantic model representing an agent profile
     """
     DEFAULT_GENERIC_PROMPT: ClassVar[str] = "You are a helpful AI assistant"
-    DEFAULT_PARENT_SECTION: ClassVar[str] = 'agent_profiles'
+    DEFAULT_PARENT_SECTION: ClassVar[str] = None#'agent_profiles'
     DEFAULT_CONFIG_PATH: ClassVar[Path] = Path('./config/agent_profiles.yaml')
     config_parent_section: Optional[str] = Field(DEFAULT_PARENT_SECTION, exclude=True)
 
