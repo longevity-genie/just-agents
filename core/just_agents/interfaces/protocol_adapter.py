@@ -33,11 +33,11 @@ class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelRespons
         raise NotImplementedError("You need to implement message_from_response first!")
 
     @abstractmethod
-    def message_from_delta(self, response: BaseModelStreamWrapper) -> AbstractMessage:
-        raise NotImplementedError("You need to implement message_from_delta first!")
+    def delta_from_response(self, response: BaseModelStreamWrapper) -> AbstractMessage:
+        raise NotImplementedError("You need to implement delta_from_response first!")
 
     @abstractmethod
-    def content_from_delta(self, delta: BaseModelStreamWrapper) -> str:
+    def content_from_delta(self, delta: AbstractMessage) -> str:
         raise NotImplementedError("You need to implement content_from_delta first!")
 
     @abstractmethod
@@ -45,10 +45,10 @@ class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelRespons
         raise NotImplementedError("You need to implement tool_calls_from_response first!")
 
     @abstractmethod
-    def response_from_deltas(self, deltas: List[BaseModelStreamWrapper]) -> BaseModelResponse:
+    def response_from_deltas(self, deltas: List[AbstractMessage]) -> BaseModelResponse:
         raise NotImplementedError("You need to implement message_from_deltas first!")
 
-    def get_chunk(self, index:int, delta:str, options:dict) -> BaseModelResponse:
+    def get_chunk(self, index:int, delta:str, options:dict) -> AbstractMessage:
         return self._output_streaming.get_chunk(index, delta, options)
 
     def done(self) -> str:

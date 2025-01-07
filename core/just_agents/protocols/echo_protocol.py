@@ -186,7 +186,7 @@ class EchoProtocolAdapter(BaseModel, IProtocolAdapter[EchoModelResponse, Abstrac
             "metadata": response.metadata
         }
 
-    def message_from_delta(self, response: EchoModelResponse) -> AbstractMessage:
+    def delta_from_response(self, response: EchoModelResponse) -> AbstractMessage:
         """
         Convert a delta EchoModelResponse to an abstract message.
 

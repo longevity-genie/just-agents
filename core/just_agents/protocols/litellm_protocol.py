@@ -1,7 +1,7 @@
 import json
 import pprint
 
-from litellm import ModelResponse, CustomStreamWrapper, completion, acompletion, stream_chunk_builder
+from litellm import ModelResponse, CustomStreamWrapper, GenericStreamingChunk, completion, acompletion, stream_chunk_builder
 from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
 from pydantic import HttpUrl, Field, AliasPath, PrivateAttr, BaseModel, Json, field_validator
 
@@ -38,6 +38,7 @@ class Message(BaseModel):
 
 class LiteLLMFunctionCall(BaseModel, IFunctionCall[MessageDict], extra="allow"):
     id: str = Field(...)
+    index: Optional[int] = Field(None)
     name: str = Field(..., validation_alias=AliasPath('function', 'name'))
     arguments: Json[dict] = Field(..., validation_alias=AliasPath('function', 'arguments'))
     type: Optional[str] = Field('function')
@@ -101,8 +102,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         assert "function_call" not in message
         return message
 
-    # TODO: wrong old stuff, YOU DO NOT GET A RESPONSE BUT YOU GET CustomStreamWrapper
-    def message_from_delta(self, response: CustomStreamWrapper): # ModelResponse) -> MessageDict:
+    def delta_from_response(self, response: GenericStreamingChunk) -> MessageDict:
         message = response.choices[0].delta.model_dump(
             mode="json",
             exclude_none=True,

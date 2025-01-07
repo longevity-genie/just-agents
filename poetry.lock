@@ -1080,13 +1080,13 @@ url = "web"
 
 [[package]]
 name = "litellm"
-version = "1.57.0"
+version = "1.57.1"
 description = "Library to easily interface with LLM API providers"
 optional = false
 python-versions = "!=2.7.*,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,!=3.7.*,>=3.8"
 files = [
-    {file = "litellm-1.57.0-py3-none-any.whl", hash = "sha256:339aec6f3ecac2035bf6311aa8913ce587c9aca2dc7d72a63a210c659e9721ca"},
-    {file = "litellm-1.57.0.tar.gz", hash = "sha256:53a6f2bd9575823e102f7d18dde5cbd2d48eed027cecbb585f18a208605b34c5"},
+    {file = "litellm-1.57.1-py3-none-any.whl", hash = "sha256:f9e93689f2d96df3bcebe723d44b6e2e71b9b047ec7ebd1054b6c9bc96cd9515"},
+    {file = "litellm-1.57.1.tar.gz", hash = "sha256:2ce6ce1707c92fb278f828a8ea058fa12b3eeb8081dd8c10776569995e03bb6f"},
 ]
 
 [package.dependencies]
@@ -1376,13 +1376,13 @@ test = ["matplotlib", "pytest", "pytest-cov"]
 
 [[package]]
 name = "openai"
-version = "1.59.3"
+version = "1.59.4"
 description = "The official Python library for the openai API"
 optional = false
 python-versions = ">=3.8"
 files = [
-    {file = "openai-1.59.3-py3-none-any.whl", hash = "sha256:b041887a0d8f3e70d1fc6ffbb2bf7661c3b9a2f3e806c04bf42f572b9ac7bc37"},
-    {file = "openai-1.59.3.tar.gz", hash = "sha256:7f7fff9d8729968588edf1524e73266e8593bb6cab09298340efb755755bb66f"},
+    {file = "openai-1.59.4-py3-none-any.whl", hash = "sha256:82113498699998e98104f87c19a890e82df9b01251a0395484360575d3a1d98a"},
+    {file = "openai-1.59.4.tar.gz", hash = "sha256:b946dc5a2308dc1e03efbda80bf1cd64b6053b536851ad519f57ee44401663d2"},
 ]
 
 [package.dependencies]

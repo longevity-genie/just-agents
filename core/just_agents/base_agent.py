@@ -142,7 +142,7 @@ class BaseAgent(
             self,
             stream: bool,
             **kwargs
-    ) -> Union[SupportedMessages, BaseModelResponse]:
+    ) -> BaseModelResponse:
         
         opt = self._prepare_options(self.llm_options)
         opt.update(kwargs)
@@ -214,16 +214,16 @@ class BaseAgent(
             self._partial_streaming_chunks.clear()
             for step in range(self.max_tool_calls):
                 response = self._execute_completion(stream=True, **kwargs)
-                tool_messages: list[SupportedMessages] = []
+                tool_messages: SupportedMessages = []
                 for i, part in enumerate(response):
                     self._partial_streaming_chunks.append(part)
-                    msg: SupportedMessage = self._protocol.message_from_delta(response) # type: ignore
+                    msg : SupportedMessages = self._protocol.delta_from_response(part)
                     delta = self._protocol.content_from_delta(msg)
                     if delta:
                         if reconstruct_chunks:
                             yield self._protocol.get_chunk(i, delta, options={'model': part["model"]})
                         else:
-                            yield response
+                            yield self._protocol.sse_wrap(part.model_dump(mode='json'))
                     if self.tools and not self._tool_fuse_broken:
                         tool_calls = self._protocol.tool_calls_from_message(msg)
                         if tool_calls:
@@ -243,7 +243,7 @@ class BaseAgent(
             yield self._protocol.done()
             if len(self._partial_streaming_chunks) > 0:
                 response = self._protocol.response_from_deltas(self._partial_streaming_chunks)
-                msg: SupportedMessage = self._protocol.message_from_response(response) # type: ignore
+                msg: SupportedMessages = self._protocol.message_from_response(response) # type: ignore
                 self.handle_on_response(msg)
                 self.add_to_memory(msg)
             self._partial_streaming_chunks.clear()
