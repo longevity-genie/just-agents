@@ -3,14 +3,25 @@ from dotenv import load_dotenv
 import pytest
 from typing import Callable, Any
 from just_agents.base_agent import BaseAgent
-from just_agents.llm_options import LLMOptions, LLAMA3_3, OPENAI_GPT4oMINI
+from just_agents.llm_options import LLMOptions, LLAMA3_3, LLAMA3_2_VISION, OPENAI_GPT4oMINI
 from just_agents.just_tool import JustToolsBus
 @pytest.fixture(scope="module", autouse=True)
 def load_env():
     load_dotenv(override=True)
 
 def get_current_weather(location: str):
-    """Gets the current weather in a given location"""
+    """
+    Gets the current weather in a given location
+
+    Args:
+        location (str): The name of the location for which to get the weather.
+
+    Returns:
+        str: A JSON-encoded string with the following keys:
+            - "location" (str): The location name.
+            - "temperature" (str): The temperature value, or "unknown" if not recognized.
+            - "unit" (str, optional): The unit of measurement for temperature (e.g., "celsius", "fahrenheit").
+    """
     if "tokyo" in location.lower():
         return json.dumps({"location": "Tokyo", "temperature": "10", "unit": "celsius"})
     elif "san francisco" in location.lower():
@@ -89,5 +100,8 @@ def test_query_tool():
 
 def test_stream_tool():
     validate_tool_call(agent_call, OPENAI_GPT4oMINI, False)
+
+def test_stream_tool_grok():
+    validate_tool_call(agent_call, LLAMA3_3, False)
 
 

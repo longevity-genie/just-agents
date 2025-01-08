@@ -126,8 +126,23 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
                 LiteLLMFunctionCall(**tool_call)
                 for tool_call in tool_calls
             ]
+    @staticmethod
+    def reenumerate_tool_call_chunks(chunks : List[Any]):
+        tool_calls = []
+        message = None
+        for chunk in chunks:
+            if (
+                    len(chunk["choices"]) > 0
+                    and "tool_calls" in chunk["choices"][0]["delta"]
+                    and chunk["choices"][0]["delta"]["tool_calls"]
+            ):
+                message = stream_chunk_builder(chunks=[chunk,chunks[-1]])
+                tool_calls.append(message.choices[0].message.tool_calls[0])
+        message.choices[0].message.tool_calls = tool_calls
+        return message
 
     def response_from_deltas(self, chunks: List[Any]) -> ModelResponse:
-        return stream_chunk_builder(chunks)
-        #complete_response = litellm.stream_chunk_builder(chunks=chunks, messages=messages)
+        if "llama" in chunks[-1]["model"] and chunks[-1].choices[0].finish_reason=="tool_calls":
+           return self.reenumerate_tool_call_chunks(chunks) # bug fix
+        return stream_chunk_builder(chunks=chunks)
 
