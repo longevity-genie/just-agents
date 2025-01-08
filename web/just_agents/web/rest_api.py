@@ -7,11 +7,11 @@ from just_agents.interfaces.agent import IAgent
 from starlette.responses import StreamingResponse
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
-import loguru
+from pycomfort.logging import log_function
 import yaml
 import os
 from pycomfort.logging import log_function
-from eliot import log_call
+from eliot import log_call, log_message
 import json
 
 
@@ -76,7 +76,7 @@ class AgentRestAPI(FastAPI):
         if agent_config is None:
             # Load from environment variable or use default
             agent_config = os.getenv('AGENT_CONFIG_PATH', 'agent_profiles.yaml')
-        self.agent = BaseAgent.from_yaml(file_path=agent_config, section_name=agent_section, parent_section=agent_parent_section)
+        self.agent: BaseAgent = BaseAgent.from_yaml(file_path=agent_config, section_name=agent_section, parent_section=agent_parent_section)
 
       
 
@@ -115,44 +115,105 @@ class AgentRestAPI(FastAPI):
         return f"This is default page for the {self.title}"
 
     @log_call(action_type="chat_completions", include_result=False)
-    #TODO: I think this is wrong, we should send deltas when required using litellm streaming
     def chat_completions(self, request: dict):
         try:
-            loguru.logger.debug(request)
             agent = self.agent
             self._clean_messages(request)
             self._remove_system_prompt(request)
-            if request["messages"]:
-                if request.get("stream") and str(request.get("stream")).lower() != "false":
-                    return StreamingResponse(
-                        agent.stream(request["messages"]), media_type="text/event-stream"
-                    )
-                resp_content = agent.query(request["messages"])
-            else:
-                resp_content = "Something goes wrong, request did not contain messages!!!"
-        except Exception as e:
-            loguru.logger.error(str(e))
-            resp_content = str(e)
+            
+            if not request["messages"]:
+                log_message(
+                    message_type="validation_error",
+                    error="No messages provided in request"
+                )
+                return {
+                    "error": {
+                        "message": "No messages provided in request",
+                        "type": "invalid_request_error",
+                        "param": "messages",
+                        "code": "invalid_request_error"
+                    }
+                }, 400
 
-        #TODO: I took it from Alex Karmazin implementation in LongevityGPTs but I THINK THIS IS TOTALLY WRONG
-        
-        # Updated response format to match OpenAI API v1
-        return {
-            "id": f"chatcmpl-{time.time()}",  # Should be a unique identifier
-            "object": "chat.completion",
-            "created": int(time.time()),
-            "model": request.get("model", "unknown"),
-            "choices": [{
-                "index": 0,
-                "message": {
-                    "role": "assistant",
-                    "content": resp_content
-                },
-                "finish_reason": "stop"  # Added finish_reason
-            }],
-            "usage": {
-                "prompt_tokens": 0,  # Should implement token counting
-                "completion_tokens": 0,  # Should implement token counting
-                "total_tokens": 0  # Should implement token counting
-            }
-        }
+            # Validate required fields
+            if "model" not in request:
+                log_message(
+                    message_type="validation_error",
+                    error="model is required"
+                )
+                return {
+                    "error": {
+                        "message": "model is required",
+                        "type": "invalid_request_error",
+                        "param": "model",
+                        "code": "invalid_request_error"
+                    }
+                }, 400
+
+            is_streaming = request.get("stream", False)
+            stream_generator = agent.stream(request["messages"])
+
+            if is_streaming:
+                return StreamingResponse(
+                    stream_generator,
+                    media_type="text/event-stream",
+                    headers={
+                        "Cache-Control": "no-cache",
+                        "Connection": "keep-alive",
+                        "Content-Type": "text/event-stream"
+                    }
+                )
+            else:
+                # Collect all chunks into final response
+                response_content = ""
+                for chunk in stream_generator:
+                    if chunk == "[DONE]":
+                        break
+                    try:
+                        # Parse the SSE data
+                        data = json.loads(chunk.decode().split("data: ")[1])
+                        if "choices" in data and len(data["choices"]) > 0:
+                            delta = data["choices"][0].get("delta", {})
+                            if "content" in delta:
+                                response_content += delta["content"]
+                    except Exception:
+                        continue
+
+                return {
+                    "id": f"chatcmpl-{time.time()}",
+                    "object": "chat.completion",
+                    "created": int(time.time()),
+                    "model": request.get("model", "unknown"),
+                    "choices": [{
+                        "index": 0,
+                        "message": {
+                            "role": "assistant",
+                            "content": response_content
+                        },
+                        "finish_reason": "stop"
+                    }],
+                    "usage": {
+                        "prompt_tokens": 0,
+                        "completion_tokens": 0,
+                        "total_tokens": 0
+                    }
+                }
+
+        except Exception as e:
+            log_message(
+                message_type="chat_completion_error",
+                error=str(e),
+                error_type=type(e).__name__,
+                request_details={
+                    "model": request.get("model"),
+                    "message_count": len(request.get("messages", [])),
+                    "streaming": request.get("stream", False)
+                }
+            )
+            return {
+                "error": {
+                    "message": str(e),
+                    "type": "server_error",
+                    "code": "internal_server_error"
+                }
+            }, 500

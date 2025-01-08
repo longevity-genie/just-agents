@@ -37,6 +37,9 @@ just-agents-examples = "0.4.6"
 pytest = ">=8.3.4"
 python-dotenv = "*"
 
+[tool.poetry.scripts]
+run-agent = "just_agents.web.run:app"
+
 [build-system]
 requires = ["poetry-core"]
 build-backend = "poetry.core.masonry.api"
