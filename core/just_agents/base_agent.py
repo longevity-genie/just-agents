@@ -227,15 +227,6 @@ class BaseAgent(
                     else:
                         yield self._protocol.sse_wrap(part.model_dump(mode='json'))
 
-                # if self.tools and not self._tool_fuse_broken:
-                #     tool_calls = self._protocol.tool_calls_from_message(msg)
-                #     if tool_calls:
-                #         self.add_to_memory(
-                #             self._protocol.function_convention.reconstruct_tool_call_message(tool_calls)
-                #         )
-                #         self._process_function_calls(tool_calls)
-                #         tool_messages.append(self._process_function_calls(tool_calls))
-
             if len(self._partial_streaming_chunks) > 0:
                 assembly = self._protocol.response_from_deltas(self._partial_streaming_chunks)
                 self._partial_streaming_chunks.clear()
