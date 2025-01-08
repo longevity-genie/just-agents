@@ -959,13 +959,13 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "just-agents-core"
-version = "0.4.5"
+version = "0.4.6"
 description = "Just Agents - Base Package"
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "just_agents_core-0.4.5-py3-none-any.whl", hash = "sha256:dc3932e2793b83322df4e04100f70a83c2aada9298db236b2df8890f7233a5aa"},
-    {file = "just_agents_core-0.4.5.tar.gz", hash = "sha256:bd0b0b000425f4c0e5ee15a6ee82a2ef8b5d25c3d254c6023ac03460d3f8f243"},
+    {file = "just_agents_core-0.4.6-py3-none-any.whl", hash = "sha256:dc3932e2793b83322df4e04100f70a83c2aada9298db236b2df8890f7233a5aa"},
+    {file = "just_agents_core-0.4.6.tar.gz", hash = "sha256:bd0b0b000425f4c0e5ee15a6ee82a2ef8b5d25c3d254c6023ac03460d3f8f243"},
 ]
 
 [package.dependencies]

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents"
-version = "0.4.5"
+version = "0.4.6"
 description = "Just Agents - A lightweight, straightforward library for LLM agents that focuses on simplicity over unnecessary abstractions."
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",
@@ -26,15 +26,15 @@ just-agents-router = { path = "router", develop = true }
 just-agents-examples = { path = "examples", develop = true }
 
 [tool.poetry.group.publish.dependencies]
-just-agents-core = "0.4.5"
-just-agents-tools = "0.4.5"
-just-agents-coding = "0.4.5"
-just-agents-web = "0.4.5"
-just-agents-router = "0.4.5"
-just-agents-examples = "0.4.5"
+just-agents-core = "0.4.6"
+just-agents-tools = "0.4.6"
+just-agents-coding = "0.4.6"
+just-agents-web = "0.4.6"
+just-agents-router = "0.4.6"
+just-agents-examples = "0.4.6"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.4"
+pytest = ">=8.3.4"
 python-dotenv = "*"
 
 [build-system]

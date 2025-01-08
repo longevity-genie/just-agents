@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-core"
-version = "0.4.5"
+version = "0.4.6"
 description = "Just Agents - Base Package"
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",
@@ -30,15 +30,16 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-litellm = ">=1.52.14"
+litellm = ">=1.57.2"
 pydantic = ">=2.0.0,<3.0.0"
 Deprecated = ">=1.2.15"
 requests = "*"
 numpydoc = "*"
+python-dotenv = ">=1.0.1"
 
 [tool.poetry.group.dev.dependencies]
-pytest = "^7.4.4"
-python-dotenv = "*"
+pytest = ">=8.3.4"
+
 
 [tool.poetry.urls]
 Homepage = "https://github.com/longevity-genie/just-agents"
