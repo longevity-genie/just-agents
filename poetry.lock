@@ -992,7 +992,7 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "just-agents-coding"
-version = "0.4.6"
+version = "0.4.7"
 description = "Just Agents - Coding Components"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1000,7 +1000,7 @@ files = []
 develop = true
 
 [package.dependencies]
-just-agents-core = ">=0.4.6"
+just-agents-core = ">=0.4.7"
 llm-sandbox = ">=0.1.8"
 
 [package.source]
@@ -1009,7 +1009,7 @@ url = "coding"
 
 [[package]]
 name = "just-agents-core"
-version = "0.4.6"
+version = "0.4.7"
 description = "Just Agents - Base Package"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1030,7 +1030,7 @@ url = "core"
 
 [[package]]
 name = "just-agents-examples"
-version = "0.4.6"
+version = "0.4.7"
 description = "Just Agents - Examples code"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1039,11 +1039,11 @@ develop = true
 
 [package.dependencies]
 docker = ">=7.1.0"
-just-agents-coding = ">=0.4.6"
-just-agents-core = ">=0.4.6"
-just-agents-router = ">=0.4.6"
-just-agents-tools = ">=0.4.6"
-just-agents-web = ">=0.4.6"
+just-agents-coding = ">=0.4.7"
+just-agents-core = ">=0.4.7"
+just-agents-router = ">=0.4.7"
+just-agents-tools = ">=0.4.7"
+just-agents-web = ">=0.4.7"
 
 [package.source]
 type = "directory"
@@ -1051,7 +1051,7 @@ url = "examples"
 
 [[package]]
 name = "just-agents-router"
-version = "0.4.6"
+version = "0.4.7"
 description = "Just Agents - Router Components"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1059,7 +1059,7 @@ files = []
 develop = true
 
 [package.dependencies]
-just-agents-core = ">=0.4.6"
+just-agents-core = ">=0.4.7"
 
 [package.source]
 type = "directory"
@@ -1067,7 +1067,7 @@ url = "router"
 
 [[package]]
 name = "just-agents-tools"
-version = "0.4.6"
+version = "0.4.7"
 description = "Just Agents - Tools Components"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1075,7 +1075,7 @@ files = []
 develop = true
 
 [package.dependencies]
-just-agents-core = ">=0.4.6"
+just-agents-core = ">=0.4.7"
 semanticscholar = ">=0.8.4"
 typer = ">=0.13.0"
 
@@ -1085,7 +1085,7 @@ url = "tools"
 
 [[package]]
 name = "just-agents-web"
-version = "0.4.6"
+version = "0.4.7"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1094,7 +1094,7 @@ develop = true
 
 [package.dependencies]
 fastapi = ">=0.115.6"
-just-agents-core = ">=0.4.6"
+just-agents-core = ">=0.4.7"
 pycomfort = ">=0.0.17"
 uvicorn = ">=0.34.0"
 
@@ -1104,13 +1104,13 @@ url = "web"
 
 [[package]]
 name = "litellm"
-version = "1.57.3"
+version = "1.57.4"
 description = "Library to easily interface with LLM API providers"
 optional = false
 python-versions = "!=2.7.*,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,!=3.7.*,>=3.8"
 files = [
-    {file = "litellm-1.57.3-py3-none-any.whl", hash = "sha256:24a1f2207b3abe8c14770da7d3f47cce4f39e748693a4febc8d58ea2b5de1b63"},
-    {file = "litellm-1.57.3.tar.gz", hash = "sha256:5b93f94a453358ab7b937a8f85adee4cfe638d120f2761a5eb85d8f56eaa6283"},
+    {file = "litellm-1.57.4-py3-none-any.whl", hash = "sha256:afe48924d8a36db801018970a101622fce33d117fe9c54441c0095c491511abb"},
+    {file = "litellm-1.57.4.tar.gz", hash = "sha256:747a870ddee9c71f9560fc68ad02485bc1008fcad7d7a43e87867a59b8ed0669"},
 ]
 
 [package.dependencies]
@@ -2971,4 +2971,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4.0"
-content-hash = "141602cecb7adeb9c3a43df561bfaeac17cec806087a5ca82ecd927e840a3d46"
+content-hash = "6f5f15d1410867cc3b4b49b9f8624a14725a218cd6dfd3ba90718613b2807464"

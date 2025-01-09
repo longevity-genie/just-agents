@@ -63,6 +63,11 @@ class BaseAgent(
         default=None,
         exclude=True,
         description="Path to text file with list of api keys, one key per line")
+    
+    key_list_env: Optional[str] = Field(
+        default=None,
+        exclude=True,
+        description="Environment variable name containing comma-separated API keys")
 
     max_tool_calls: int = Field(
         ge=1,
@@ -121,9 +126,12 @@ class BaseAgent(
             if not self.llm_options.get("tool_choice", None):
                 self.llm_options["tool_choice"] = "auto"
 
-        # Set up API key rotation if a key list file is provided
+        # Set up API key rotation based on file or environment variable
         if self.key_list_path is not None:
-            self._key_getter = RotateKeys(self.key_list_path)
+            self._key_getter = RotateKeys.from_path(self.key_list_path)
+        elif self.key_list_env is not None:
+            self._key_getter = RotateKeys.from_env(self.key_list_env)
+            
         # Warn if both direct API key and key rotation are configured
         if (self._key_getter is not None) and (self.llm_options.get("api_key", None) is not None):
             print("Warning api_key will be rewritten by key_getter. Both are present in llm_options.")
