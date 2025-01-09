@@ -4,12 +4,96 @@ from functools import singledispatchmethod
 from just_agents.interfaces.memory import IMemory
 from just_agents.types import Role, MessageDict, SupportedMessages
 from litellm.types.utils import Function
-from abc import ABC
+from abc import ABC, abstractmethod
+
+from typing import Optional
+from rich.console import Console
+from rich.text import Text
+from rich.panel import Panel
+
+class IMessageFormatter(ABC):
+    @abstractmethod
+    def pretty_print_message(self, msg: MessageDict) -> Panel:
+        pass
+
+    @abstractmethod
+    def pretty_print_all_messages(self):
+        pass
+
+class MessageFormatter(IMessageFormatter):
+
+    messages: List[MessageDict] = Field(default_factory=list, validation_alias='conversation')
+
+
+    def pretty_print_message(self, msg: MessageDict) -> Panel:
+        role = msg.get('role', 'unknown').capitalize()
+    
+        # If the role is an enum, extract its value
+        if isinstance(role, str) and '<Role.' in role:
+            role = role.split('.')[-1].replace('>', '').capitalize()
+
+        # Define role-specific colors
+        role_colors = {
+            'User': 'green',
+            'Assistant': 'blue',
+            'System': 'yellow',
+            'Function': 'magenta',
+            'Tool': 'magenta',
+        }
+        border_colors = {
+            'User': 'bright_green',
+            'Assistant': 'bright_blue',
+            'System': 'bright_yellow',
+            'Function': 'bright_magenta',
+            'Tool': 'bright_magenta',
+        }
+        
+        # Get colors for the role (default to cyan/bright_yellow if role not found)
+        role_color = role_colors.get(role, 'cyan')
+        border_color = border_colors.get(role, 'bright_yellow')
+
+        # Create a title with bold text for the role
+        role_title = Text(f"[{role}]", style=f"bold {role_color}")
+
+        # Process tool call details if present
+        if 'tool_calls' in msg:
+            for tool_call in msg['tool_calls']:
+                tool_name = tool_call.get('function', {}).get('name', 'unknown tool')
+                arguments = tool_call.get('function', {}).get('arguments', '{}')
+                return Panel(
+                    f"Tool Call to [bold magenta]{tool_name}[/bold magenta]:\n{arguments}",
+                    title=role_title,
+                    border_style=role_color,
+                )
+        elif 'tool_call_id' in msg:
+            tool_name = msg.get('name', 'unknown tool')
+            tool_result = msg.get('content', 'no content')
+            return Panel(
+                f"Response from [bold magenta]{tool_name}[/bold magenta]:\n{tool_result}",
+                title=role_title,
+                border_style=border_color,
+            )
+        else:
+            # Standard message
+            return Panel(
+                f"{msg.get('content', '')}",
+                title=role_title,
+                border_style=border_color,
+            )
+
+    def pretty_print_all_messages(self):
+        if not self.messages:
+            return
+            
+        console = Console()
+        for msg in self.messages:
+            panel = self.pretty_print_message(msg)
+            console.print(panel)
 
 OnMessageCallable = Callable[[MessageDict], None]
 OnFunctionCallable = Callable[[Function], None]
 
-class IBaseMemory(BaseModel, IMemory[Role, MessageDict], ABC):
+class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC):
     """
     Abstract Base Class to fulfill Pydantic schema requirements for concrete-attributes.
     """
@@ -27,7 +111,7 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], ABC):
     def deepcopy(self) -> 'IBaseMemory':
         return self.model_copy(deep=True)
 
-class BaseMemory(IBaseMemory):
+class BaseMemory(IBaseMemory, MessageFormatter):
     """
     The Memory class provides storage and handling of messages for a language model session.
     It supports adding, removing, and handling different types of messages and

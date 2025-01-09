@@ -4,6 +4,7 @@ from typing import Optional, Dict, Any, ClassVar, Sequence, Union, Set, Type
 from pathlib import Path
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from collections.abc import MutableMapping, MutableSequence
+from pydantic import ConfigDict
 
 
 class JustYaml:
@@ -157,7 +158,7 @@ yaml.add_representer(str, JustYaml.str_presenter)
 # to use with safe_dump:
 yaml.representer.SafeRepresenter.add_representer(str, JustYaml.str_presenter)
 
-class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_assignment=True, populate_by_name=True):
+class JustSerializable(BaseModel):
     """
     Pydantic2 wrapper class that implements semi-automated YAML and JSON serialization and deserialization
 
@@ -167,6 +168,12 @@ class JustSerializable(BaseModel, extra="allow", use_enum_values=True, validate_
         DEFAULT_SECTION_NAME (str): Default section name to use when none is provided.
 
     """
+    model_config = ConfigDict(
+        extra="allow",
+        use_enum_values=True,
+        validate_assignment=True,
+        populate_by_name=True
+    )
     DEFAULT_CONFIG_PATH : ClassVar[Path] = Path('./config/default_config.yaml')
     DEFAULT_PARENT_SECTION : ClassVar[Optional[str]] = None
     DEFAULT_SECTION_NAME : ClassVar[Optional[str]] = "Agent" #'RenameMe'

@@ -26,6 +26,18 @@ class JustAgentProfile(JustSerializable):
         description="A List[Callable] of tools s available to the agent and their descriptions")
     """A List[Callable] of tools s available to the agent and their descriptions"""
 
+    def _add_tool(self, fun: callable):
+        """
+        Adds a tool to the agent's tools dictionary.
+        """
+        tool = JustTool.from_callable(fun)
+        if self.tools is None:
+            self.tools = {
+                tool.name: tool
+            }
+        else:
+            self.tools[tool.name] = tool
+
     
     @model_validator(mode='after')
     def validate_model(self) -> 'JustAgentProfile':

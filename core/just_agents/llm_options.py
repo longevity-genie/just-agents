@@ -1,6 +1,6 @@
 from typing import Any, Dict, List, Optional
 from pydantic import Field, HttpUrl, BaseModel
-
+from pydantic import ConfigDict
 LLMOptions = Dict[str, Any]
 
 class ModelOptions(BaseModel):
@@ -38,7 +38,9 @@ class ModelOptions(BaseModel):
         description="Frequency penalty, values from -2.0 to 2.0"
     )
 
-class LLMOptionsBase(ModelOptions, extra="allow"):
+class LLMOptionsBase(ModelOptions):
+
+    model_config = ConfigDict(extra="allow")
     api_key: Optional[str] = Field(None, examples=["sk-proj-...."])
     api_base : Optional[HttpUrl] = Field(default=None,
         examples=[

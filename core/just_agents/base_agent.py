@@ -28,6 +28,7 @@ class BaseAgent(
     Note: it is based on pydantic and the only required field is llm_options.
     However, it is also recommended to set system_prompt.
     """
+    
 
     # Core configuration for the LLM
     llm_options: LLMOptions = Field(
@@ -137,7 +138,7 @@ class BaseAgent(
             print("Warning api_key will be rewritten by key_getter. Both are present in llm_options.")
 
         # Initialize the agent with its system prompt
-        self.instruct(self.system_prompt)
+        self.instruct(self.system_prompt) # TODO: THIS CAUSES HUGE ISSUES WHEN YOU INHERIT FROM THIS CLASS FIX!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 
     def _prepare_options(self, options: LLMOptions):
         opt = options.copy()
@@ -291,3 +292,52 @@ class BaseAgent(
         """Checks if the current model supports the response_format parameter"""
         #TODO: implement provider specific check
         return "response_format" in self.model_supported_parameters
+    
+
+
+class ChatAgent(BaseAgent):
+    """
+    An agent that has role/goal/task attributes and can call other agents
+    """
+
+    role: Optional[str] = Field(default=None, description="Defines the agent's persona or identity")
+    goal: Optional[str] = Field (default=None, description="Specifies the agent's broader objective.")
+    task: Optional[str] = Field (default=None, description="Describes the specific task the agent is responsible for.")
+
+    delegation_prompt: Optional[str] = Field(default="You can delegate your task by calling the delegate function to the following agents:", description="Defines the prompt for the delegation")
+    delegates: Optional[list[str, BaseAgent]] = Field(default_factory=dict, description="Defines the list of agents that this agent can delegate to with descriptions")
+   
+
+    def _update_system_promptform_prompt(self):
+        # Create a prompt incorporating role, goal, task
+        prompt = (
+            f"You are a {self.role}.\n"
+            f"Your goal is to {self.goal}.\n"
+            f"Your task is to {self.task}.\n"
+            "Respond appropriately."
+        )
+        return prompt
+
+    def model_post_init(self, __context: Any) -> None:
+        # Call parent's post_init to maintain core functionality
+        super().model_post_init(__context)
+        if self.system_prompt == self.DEFAULT_GENERIC_PROMPT:
+            self.system_prompt = ""
+
+        if self.role is not None:
+            self.system_prompt = self.system_prompt + "\n" + self.role
+        if self.goal is not None:
+            self.system_prompt = self.system_prompt + "\n" + self.goal
+        if self.task is not None:
+            self.system_prompt = self.system_prompt + "\n" + self.task
+        if len(self.delegates) > 0:
+            self.system_prompt = self.system_prompt + "\n" + self.delegation_prompt
+            self.system_prompt = self.system_prompt + "\n" + "\n".join([f"{agent.shortname}: {agent.description}" for agent in self.delegates.values()])
+        self.clear_memory()
+
+    @property
+    def delegates_dict(self) -> dict[str, BaseAgent]:
+        """Returns a dictionary mapping agent shortnames to their corresponding BaseAgent instances"""
+        return {agent.shortname: agent for agent in self.delegates.values()}
+
+

@@ -167,3 +167,5 @@ cython_debug/
 .micromamba/
 
 *.egg-info
+
+config/agent_profiles.yaml #to deal with testing bug

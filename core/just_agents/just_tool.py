@@ -5,6 +5,7 @@ from pydantic import BaseModel, Field, PrivateAttr
 from just_agents.just_bus import JustEventBus
 from importlib import import_module
 import inspect
+from pydantic import ConfigDict
 
 FunctionParamFields=Literal["kind","default","type_annotation"]
 FunctionParams = List[Dict[str, Dict[FunctionParamFields,Optional[str]]]]
@@ -17,7 +18,10 @@ class JustToolsBus(JustEventBus):
     """
     pass
 
-class LiteLLMDescription(BaseModel, populate_by_name=True):
+class LiteLLMDescription(BaseModel):
+
+    model_config = ConfigDict(populate_by_name=True)
+    
     name: Optional[str] = Field(..., alias='function', description="The name of the function")
     description: Optional[str] = Field(None, description="The docstring of the function.")
     parameters: Optional[Dict[str,Any]]= Field(None, description="Parameters of the function.")
