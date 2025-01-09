@@ -24,7 +24,7 @@ pip install just-agents-web
 ## Quick Start
 
 ```python
-from just_agents_web import create_app
+from just_agents.web import create_app
 from just_agents.simple.chat_agent import ChatAgent
 
 agent = ChatAgent(...)

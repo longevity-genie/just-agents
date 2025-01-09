@@ -55,7 +55,7 @@ class IAbstractStreamingProtocol(ABC):
 
         # Append a blank line to separate events
         lines.append("")
-        return "\n".join(lines)
+        return "\n".join(lines) + "\n"
 
     @staticmethod
     def sse_parse(sse_text: str) -> Dict[str, Any]:

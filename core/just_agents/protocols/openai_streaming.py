@@ -1,5 +1,5 @@
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
-
+import json
 import time
 
 class OpenaiStreamingProtocol(IAbstractStreamingProtocol):
@@ -15,7 +15,9 @@ class OpenaiStreamingProtocol(IAbstractStreamingProtocol):
             "choices": [{"delta": {"content": delta}}],
         }
         return self.sse_wrap(chunk)
+    #    return f"data: {json.dumps(chunk)}\n\n"
 
 
     def done(self):
         return self.sse_wrap(self.stop)
+    #    return "\ndata: [DONE]\n\n"

@@ -1,18 +1,24 @@
-import time
-from pathlib import Path
-from typing import Optional, List, Dict, Any, Union
-from fastapi import FastAPI
-from just_agents.base_agent import BaseAgent
-from just_agents.interfaces.agent import IAgent
-from starlette.responses import StreamingResponse
-from dotenv import load_dotenv
-from fastapi.middleware.cors import CORSMiddleware
-from pycomfort.logging import log_function
-import yaml
 import os
-from pycomfort.logging import log_function
-from eliot import log_call, log_message
 import json
+import time
+import asyncio
+
+from pathlib import Path
+from typing import Optional, List, Dict, Any, Union, AsyncGenerator
+
+from just_agents.base_agent import BaseAgent
+from just_agents.web.streaming import async_wrap
+from just_agents.web.models import (
+    ChatCompletionRequest, TextContent, ChatCompletionChoiceChunk, ChatCompletionChunkResponse,
+    ChatCompletionResponse, ChatCompletionChoice, ChatCompletionUsage, ResponseMessage, ErrorResponse
+)
+from dotenv import load_dotenv
+from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, HTTPException
+from fastapi.responses import JSONResponse, StreamingResponse
+from eliot import log_call, log_message
+
 
 
 class AgentRestAPI(FastAPI):
@@ -91,72 +97,75 @@ class AgentRestAPI(FastAPI):
         )
         # Register routes
         self.get("/")(self.default)
-        self.post("/v1/chat/completions")(self.chat_completions)
+        self.post("/v1/chat/completions", description="OpenAI compatible chat completions")(self.chat_completions)
 
 
-
-
-    def _clean_messages(self, request: dict):
-        for message in request["messages"]:
-            if message["role"] == "user":
-                content = message["content"]
+    def _clean_messages(self, request: ChatCompletionRequest):
+        for message in request.messages:
+            if message.role == "user":
+                content = message.content
                 if type(content) is list:
                     if len(content) > 0:
-                        if type(content[0]) is dict:
-                            if content[0].get("type", "") == "text":
-                                if type(content[0].get("text", None)) is str:
-                                    message["content"] = content[0]["text"]
+                        if isinstance(content[0],TextContent):
+                            message.content = content[0].text
 
-    def _remove_system_prompt(self, request: dict):
-        if request["messages"][0]["role"] == "system":
-            request["messages"] = request["messages"][1:]
+    def _remove_system_prompt(self, request: ChatCompletionRequest):
+        if request.messages[0].role == "system":
+            request.messages = request.messages[1:]
     
     def default(self):
         return f"This is default page for the {self.title}"
 
-    @log_call(action_type="chat_completions", include_result=False)
-    def chat_completions(self, request: dict):
+
+
+#    @log_call(action_type="chat_completions", include_result=False)
+    async def chat_completions(self, request: ChatCompletionRequest) -> Union[ChatCompletionResponse, Any, ErrorResponse]:
         try:
             agent = self.agent
             self._clean_messages(request)
             self._remove_system_prompt(request)
-            
-            if not request["messages"]:
-                log_message(
-                    message_type="validation_error",
-                    error="No messages provided in request"
-                )
-                return {
-                    "error": {
-                        "message": "No messages provided in request",
-                        "type": "invalid_request_error",
-                        "param": "messages",
-                        "code": "invalid_request_error"
-                    }
-                }, 400
 
-            # Validate required fields
-            if "model" not in request:
-                log_message(
-                    message_type="validation_error",
-                    error="model is required"
-                )
-                return {
-                    "error": {
-                        "message": "model is required",
-                        "type": "invalid_request_error",
-                        "param": "model",
-                        "code": "invalid_request_error"
-                    }
-                }, 400
+            #Done by FastAPI+pydantic under the hood! Just supply schema...
 
-            is_streaming = request.get("stream", False)
-            stream_generator = agent.stream(request["messages"])
+            # if not request.messages:
+            #     log_message(
+            #         message_type="validation_error",
+            #         error="No messages provided in request"
+            #     )
+            #     return {
+            #         "error": {
+            #             "message": "No messages provided in request",
+            #             "type": "invalid_request_error",
+            #             "param": "messages",
+            #             "code": "invalid_request_error"
+            #         }
+            #     }, 400
+            #
+            # # Validate required fields
+            # if "model" not in request:
+            #     log_message(
+            #         message_type="validation_error",
+            #         error="model is required"
+            #     )
+            #     return {
+            #         "error": {
+            #             "message": "model is required",
+            #             "type": "invalid_request_error",
+            #             "param": "model",
+            #             "code": "invalid_request_error"
+            #         }
+            #     }, 400
+
+            is_streaming = request.stream
+            messages = [message.model_dump(mode='json') for message in request.messages] # todo: support pydantic model!!!
+            stream_generator = agent.stream(
+                messages
+            )
 
             if is_streaming:
                 return StreamingResponse(
-                    stream_generator,
-                    media_type="text/event-stream",
+                    async_wrap(stream_generator),
+                    media_type="application/x-ndjson",
                     headers={
                         "Cache-Control": "no-cache",
                         "Connection": "keep-alive",
@@ -167,53 +176,56 @@ class AgentRestAPI(FastAPI):
                 # Collect all chunks into final response
                 response_content = ""
                 for chunk in stream_generator:
+
                     if chunk == "[DONE]":
                         break
                     try:
                         # Parse the SSE data
-                        data = json.loads(chunk.decode().split("data: ")[1])
-                        if "choices" in data and len(data["choices"]) > 0:
-                            delta = data["choices"][0].get("delta", {})
+                        data = IAbstractStreamingProtocol.sse_parse(chunk)
+                        json_data = data.get("data", "{}")
+                        print(json_data)
+                        if "choices" in json_data and len(json_data["choices"]) > 0:
+                            delta = json_data["choices"][0].get("delta", {})
                             if "content" in delta:
                                 response_content += delta["content"]
                     except Exception:
                         continue
 
-                return {
-                    "id": f"chatcmpl-{time.time()}",
-                    "object": "chat.completion",
-                    "created": int(time.time()),
-                    "model": request.get("model", "unknown"),
-                    "choices": [{
-                        "index": 0,
-                        "message": {
-                            "role": "assistant",
-                            "content": response_content
-                        },
-                        "finish_reason": "stop"
-                    }],
-                    "usage": {
-                        "prompt_tokens": 0,
-                        "completion_tokens": 0,
-                        "total_tokens": 0
-                    }
-                }
+                return ChatCompletionResponse(
+                        id=f"chatcmpl-{time.time()}",
+                        object="chat.completion",
+                        created=int(time.time()),
+                        model=request.model,
+                        choices=[ChatCompletionChoice(
+                            index=0,
+                            message=ResponseMessage(
+                                role= "assistant",
+                                content= response_content
+                            ),
+                            finish_reason="stop"
+                        )],
+                        usage=ChatCompletionUsage(
+                            prompt_tokens=0,
+                            completion_tokens=0,
+                            total_tokens=0
+                       ))
 
         except Exception as e:
-            log_message(
-                message_type="chat_completion_error",
-                error=str(e),
-                error_type=type(e).__name__,
-                request_details={
-                    "model": request.get("model"),
-                    "message_count": len(request.get("messages", [])),
-                    "streaming": request.get("stream", False)
-                }
+            # log_message(
+            #     message_type="chat_completion_error",
+            #     error=str(e),
+            #     error_type=type(e).__name__,
+            #     request_details={
+            #         "model": request.model,
+            #         "message_count": len(request.messages),
+            #         "streaming": request.stream
+            #     }
+            # )
+
+            error_response = ErrorResponse(
+                error=ErrorResponse.ErrorDetails(
+                    message=str(e)
+                )
             )
-            return {
-                "error": {
-                    "message": str(e),
-                    "type": "server_error",
-                    "code": "internal_server_error"
-                }
-            }, 500
+            return error_response
+

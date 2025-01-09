@@ -6,7 +6,7 @@ LLMOptions = Dict[str, Any]
 class ModelOptions(BaseModel):
     model: str = Field(
         ...,
-        examples=["gpt-4o-mini"],
+        examples=["groq/llama-3.3-70b-versatile","gpt-4o-mini"],
         description="LLM model name"
     )
     temperature: Optional[float] = Field(
