@@ -47,3 +47,4 @@ def sqlite_query(database: str, sql: str) -> str:
         conn.close()
 
     return text
+

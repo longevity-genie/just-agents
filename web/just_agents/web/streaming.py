@@ -1,12 +1,11 @@
 import asyncio
 import time
 
-from typing import Optional, List, Dict, Any, Union, AsyncGenerator, Generator
+from typing import Optional, Any, AsyncGenerator, Generator
 
-from just_agents.base_agent import BaseAgent
 from just_agents.web.models import (
-    ChatCompletionRequest, TextContent, ChatCompletionChoiceChunk, ChatCompletionChunkResponse,
-    ChatCompletionResponse, ChatCompletionChoice, ChatCompletionUsage, ResponseMessage, ErrorResponse
+    ChatCompletionChoiceChunk, ChatCompletionChunkResponse,
+    ChatCompletionResponse, ResponseMessage
 )
 
 async def async_wrap(response: Generator) -> AsyncGenerator[Any, None]:

@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 from just_agents.interfaces.agent import IAgent
 from just_agents.simple.utils import build_agent
 from just_agents.web.rest_api import *
-from just_agents.web.run import *
+from just_agents.web.run_agent import *
 
 from pycomfort.logging import to_nice_stdout
 
@@ -19,4 +19,4 @@ You can use it with a
 if __name__ == "__main__":
     to_nice_stdout()
     cofig_path = web_examples_dir / "agent.yaml"
-    run_server(config=cofig_path)
+    run_agent_server(config=cofig_path)

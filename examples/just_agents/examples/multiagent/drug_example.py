@@ -1,0 +1,127 @@
+from dotenv import load_dotenv
+from just_agents.base_agent import BaseAgent
+from just_agents import llm_options
+from pathlib import Path
+import json
+
+# Load environment variables (for API keys)
+load_dotenv(override=True)
+
+def format_responses_markdown(topic: str, model_responses: dict, include_individual_responses: bool = True) -> str:
+    """
+    Format multiple model responses into a markdown document with a consensus summary.
+    
+    Args:
+        topic: The main topic or question being discussed
+        model_responses: Dictionary of model names and their responses
+        include_individual_responses: Whether to include individual model responses in output
+    """
+    markdown = f"# {topic}\n\n"
+    
+    if include_individual_responses:
+        for model, response in model_responses.items():
+            markdown += f"## Analysis from {model}\n\n"
+            markdown += f"{response}\n\n"
+    
+    markdown += "## Consensus Summary\n\n"
+    
+    # Create consensus summary using Claude
+    summary_agent = BaseAgent(
+        llm_options=llm_options.ANTHROPIC_CLAUDE_3_5_SONNET,
+        system_prompt="""You are an expert summarizer. Your task is to:
+        1. Analyze multiple model outputs on the same topic
+        2. Identify key points of agreement and disagreement
+        3. Synthesize a clear, comprehensive consensus summary
+        4. Format the output in clear markdown with appropriate headers and bullet points
+        5. Highlight any important caveats or limitations
+        Please be thorough but concise in your summary."""
+    )
+    
+    summary_prompt = f"Please provide a consensus summary of these model outputs about '{topic}':\n\n"
+    for model, response in model_responses.items():
+        summary_prompt += f"{model}:\n{response}\n\n"
+    
+    consensus_summary = summary_agent.query(summary_prompt)
+    markdown += consensus_summary
+    
+    return markdown
+
+def save_markdown_summary(output_dir: Path, filename: str, markdown_content: str):
+    """Save markdown content to a file"""
+    output_dir.mkdir(exist_ok=True)
+    output_file = output_dir / f"{filename}.md"
+    output_file.write_text(markdown_content)
+    return output_file
+
+def ensure_drugs_directory() -> Path:
+    """Create and return the drugs directory path"""
+    drugs_dir = Path("drugs")
+    drugs_dir.mkdir(exist_ok=True)
+    return drugs_dir
+
+def query_drug_info():
+    # List of drugs to query
+    drugs = ["rapamycin", "quercetin", "metformin", "curcumin"]
+    
+    # Initialize agents with different models
+    agents = {
+        "GPT-4": BaseAgent(
+            llm_options=llm_options.OPENAI_GPT4o,
+            system_prompt="""You are a knowledgeable pharmaceutical expert. 
+            When asked about a drug, provide information about:
+            1. Its mechanism of action
+            2. Common uses
+            3. Potential longevity/anti-aging effects
+            4. Known side effects
+            Please be concise but thorough in your responses."""
+        ),
+        "Claude-3": BaseAgent(
+            llm_options=llm_options.ANTHROPIC_CLAUDE_3_5_SONNET,
+            system_prompt="""You are a knowledgeable pharmaceutical expert. 
+            When asked about a drug, provide information about:
+            1. Its mechanism of action
+            2. Common uses
+            3. Potential longevity/anti-aging effects
+            4. Known side effects
+            Please be concise but thorough in your responses."""
+        ),
+        "LLAMA-3": BaseAgent(
+            llm_options=llm_options.LLAMA3_3,  # You'll need to ensure this constant exists in llm_options
+            system_prompt="""You are a knowledgeable pharmaceutical expert. 
+            When asked about a drug, provide information about:
+            1. Its mechanism of action
+            2. Common uses
+            3. Potential longevity/anti-aging effects
+            4. Known side effects
+            Please be concise but thorough in your responses."""
+        )
+    }
+    
+    # Create drugs directory
+    drugs_dir = ensure_drugs_directory()
+    
+    # Query information for each drug
+    for drug in drugs:
+        print(f"\nQuerying information about {drug}...")
+        model_responses = {}
+        
+        for model_name, agent in agents.items():
+            prompt = f"What do you know about {drug} and its effects on longevity and health?"
+            response = agent.query(prompt)
+            model_responses[model_name] = response
+        
+        # Format and save markdown file
+        markdown_content = format_responses_markdown(drug, model_responses)
+        output_file = drugs_dir / f"{drug}.md"
+        output_file.write_text(markdown_content)
+        
+        print(f"Saved information about {drug} to {output_file}")
+        print(f"\n{'='*50}\n")
+    
+    return drugs_dir
+
+if __name__ == "__main__":
+    output_dir = query_drug_info()
+    # this code was generated by cursor withing 5 mins by adding just-agents to the context
+    print(f"\nAll drug information has been saved to {output_dir}")
+

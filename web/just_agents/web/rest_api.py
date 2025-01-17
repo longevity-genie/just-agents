@@ -1,3 +1,6 @@
+import base64
+import hashlib
+import mimetypes
 import os
 import json
 import time
@@ -40,7 +43,8 @@ class AgentRestAPI(FastAPI):
         redoc_url: str = "/redoc",
         terms_of_service: Optional[str] = None,
         contact: Optional[Dict[str, Union[str, Any]]] = None,
-        license_info: Optional[Dict[str, Union[str, Any]]] = None
+        license_info: Optional[Dict[str, Union[str, Any]]] = None,
+        remove_system_prompt: Optional[bool] = None
     ) -> None:
         """Initialize the AgentRestAPI with FastAPI parameters.
         
@@ -74,6 +78,10 @@ class AgentRestAPI(FastAPI):
         )
 
         load_dotenv(override=True)
+        if remove_system_prompt is None:
+            self.remove_system_prompt = os.getenv('REMOVE_SYSTEM_PROMPT', False)
+        else:
+            self.remove_system_prompt = remove_system_prompt
 
         self._agent_related_config(agent_config, agent_section, agent_parent_section)
         self._routes_config()
@@ -116,6 +124,29 @@ class AgentRestAPI(FastAPI):
     def default(self):
         return f"This is default page for the {self.title}"
 
+    def sha256sum(self, content_str: str):
+        hash = hashlib.sha256()
+        hash.update(content_str.encode('utf-8'))
+        return hash.hexdigest()
+
+    def save_files(self, request: dict):
+        for file in request.get("file_params", []):
+            file_name = file.get("name")
+            file_content_base64 = file.get("content")
+            file_checksum = file.get("checksum")
+            file_mime = file.get("mime")
+
+            if self.sha256sum(file_content_base64) != file_checksum:
+                raise Exception("File checksum does not match")
+
+            extension = mimetypes.guess_extension(file_mime)
+            file_content = base64.urlsafe_b64decode(file_content_base64.encode('utf-8'))
+            full_file_name = file_name + extension
+
+            file_path = Path('/tmp', full_file_name)
+            with open(file_path, "wb") as f:
+                f.write(file_content)
+
 
 
 #    @log_call(action_type="chat_completions", include_result=False)
@@ -123,7 +154,13 @@ class AgentRestAPI(FastAPI):
         try:
             agent = self.agent
             self._clean_messages(request)
-            self._remove_system_prompt(request)
+            if self.remove_system_prompt:
+                self._remove_system_prompt(request)
+
+            if "file_params" in request:
+                params = request.file_params
+                if params != []:
+                    self.save_files(request.model_dump())
 
             #Done by FastAPI+pydantic under the hood! Just supply schema...
 

@@ -23,12 +23,17 @@ pip install just-agents-web
 
 ## Quick Start
 
-```python
-from just_agents.web import create_app
-from just_agents.simple.chat_agent import ChatAgent
+The project subpublish run-agent script, so you can run any agent yaml by running:
 
-agent = ChatAgent(...)
-app = create_app(agent)
+```bash
+run-agent path/to/agent.yaml
 ```
 
-For detailed documentation and examples, visit our [main repository](https://github.com/longevity-genie/just-agents).
+You can also do it with few lines of python code:
+```python
+from just_agents.web.run_agent import run_agent_server
+
+run_agent_server(Path("agent_profiles.yaml"))
+```
+
+We also provide AgentRestAPI class that you can extend and add your methods to agent endpoint.

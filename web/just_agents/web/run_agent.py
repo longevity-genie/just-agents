@@ -8,14 +8,16 @@ from eliot import start_action, start_task
 
 app = typer.Typer()
 
-def run_server(
+def run_agent_server(
     config: Path,
     host: str = "0.0.0.0",
     port: int = 8088,
     workers: int = 1,
     title: str = "Just-Agent endpoint",
     section: Optional[str] = None,
-    parent_section: Optional[str] = None
+    parent_section: Optional[str] = None,
+    debug: bool = True,
+    remove_system_prompt: bool = False
 ) -> None:
     """
     Run the FastAPI server with the given configuration.
@@ -35,7 +37,8 @@ def run_server(
         title=title,
         agent_section=section,
         agent_parent_section=parent_section,
-        debug=True
+        debug=debug,
+        remove_system_prompt=remove_system_prompt
     )
     
     uvicorn.run(
@@ -53,18 +56,22 @@ def run_server_command(
     workers: int = typer.Option(1, help="Number of worker processes"),
     title: str = typer.Option("Just-Agent endpoint", help="Title for the API endpoint"),
     section: Optional[str] = typer.Option(None, help="Optional section name in the config file"),
-    parent_section: Optional[str] = typer.Option(None, help="Optional parent section name in the config file")
+    parent_section: Optional[str] = typer.Option(None, help="Optional parent section name in the config file"),
+    debug: bool = typer.Option(True, help="Debug mode"),
+    remove_system_prompt: bool = typer.Option(False, help="Remove system prompt")
 ) -> None:
     """Run the FastAPI server with the given configuration."""
-    with start_task(action_type="run_server"):
-        run_server(
+    with start_task(action_type="run_agent_server"):
+        run_agent_server(
             config=config,
             host=host,
             port=port,
             workers=workers,
             title=title,
             section=section,
-            parent_section=parent_section
+            parent_section=parent_section,
+            debug=debug,
+            remove_system_prompt=remove_system_prompt
         )
 
 if __name__ == "__main__":

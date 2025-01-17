@@ -1,11 +1,8 @@
-import pprint
-from typing import Optional, Union
+from typing import Union
 import requests
-from typing import List, Dict, Any
 
 from semanticscholar import SemanticScholar
 from semanticscholar.PaginatedResults import PaginatedResults
-from semanticscholar.Paper import Paper
 
 def get_semantic_paper(query: str,
                        year: str = None,
