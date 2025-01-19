@@ -6,6 +6,8 @@ Welcome to just-agents documentation!
    :caption: Contents:
 
    readme
+   api
+   examples
 
 Indices and tables
 ==================
