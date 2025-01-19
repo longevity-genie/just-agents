@@ -87,35 +87,60 @@ cp .env.example .env
 ### ChatAgent
 
 The `ChatAgent` class is the core of our library. 
-It represents an agent with a specific role, goal, and task. Here's a simple example of two agents talking to each other.
+It represents an agent with a specific role, goal, and task. Here's an example of a moderated debate between political figures:
 
 ```python
-from dotenv import load_dotenv
+from just_agents.base_agent import ChatAgent
+from just_agents.llm_options import LLAMA3_3
 
-from just_agents.simple.chat_agent import ChatAgent
-from just_agents.simple.llm_options import LLAMA3_2_VISION
-load_dotenv(override=True)
+# Initialize agents with different roles
+Harris = ChatAgent(
+    llm_options=LLAMA3_3, 
+    role="You are Kamala Harris in a presidential debate",
+    goal="Win the debate with clear, concise responses",
+    task="Respond briefly and effectively to debate questions"
+)
 
-customer: ChatAgent = ChatAgent(llm_options = LLAMA3_2_VISION, role = "customer at a shop",
-                                goal = "Your goal is to order what you want, while speaking concisely and clearly",
-                                task="Find the best headphones!")
-storekeeper: ChatAgent = ChatAgent(llm_options = LLAMA3_2_VISION,
-                                    role = "helpful storekeeper",
-                                    goal="earn profit by selling what customers need",
-                                    task="sell to the customer")
+Trump = ChatAgent(
+    llm_options=LLAMA3_3,
+    role="You are Donald Trump in a presidential debate",
+    goal="Win the debate with your signature style",
+    task="Respond briefly and effectively to debate questions"
+)
 
+Moderator = ChatAgent(
+    llm_options={
+        "model": "groq/mixtral-8x7b-32768",
+        "api_base": "https://api.groq.com/openai/v1",
+        "temperature": 0.0,
+        "tools": []
+    },
+    role="You are a neutral debate moderator",
+    goal="Ensure a fair and focused debate",
+    task="Generate clear, specific questions about key political issues"
+)
 
-exchanges: int = 3 # how many times the agents will exchange messages
-customer.memory.add_on_message(lambda m: logger.info(f"Customer: {m}") if m.role == "user" else logger.info(f"Storekeeper: {m}"))
+exchanges = 2
 
-customer_reply = "Hi."
+# Run the debate
 for _ in range(exchanges):
-    storekeeper_reply = storekeeper.query(customer_reply)
-    customer_reply = customer.query(storekeeper_reply)
+    question = Moderator.query("Generate a concise debate question about a current political issue.")
+    print(f"\nMODERATOR: {question}\n")
+
+    trump_reply = Trump.query(question)
+    print(f"TRUMP: {trump_reply}\n")
+
+    harris_reply = Harris.query(f"Question: {question}\nTrump's response: {trump_reply}")
+    print(f"HARRIS: {harris_reply}\n")
+
+# Get debate summary
+debate = str(Harris.memory.messages)
+summary = Moderator.query(f'Summarise the following debate in less than 30 words: {debate}')
+print(f"SUMMARY:\n {summary}")
 ```
 
-This example demonstrates how two agents (a customer and a storekeeper) can interact with each other, each with their own role, 
-goal, and task. The agents exchange messages for a specified number of times, simulating a conversation in a shop.
+This example demonstrates how multiple agents can interact in a structured debate format, each with their own role, 
+goal, and task. The moderator agent guides the conversation while two political figures engage in a debate.
 
 All prompts that we use are stored in yaml files that you can easily overload.
 
@@ -155,15 +180,40 @@ reason about the problem and use the provided tool to solve it.
 
 ## 📦 Package Structure
 - `just_agents`: Core library
-- `just_agents_coding`: Sandbox containers and code execution
+- `just_agents_coding`: Sandbox containers and code execution agents
 - `just_agents_examples`: Usage examples
 - `just_agents_tools`: Reusable agent tools
+- `just_agents_web`: OpenAI-compatible REST API endpoints
 
 ## 🔒 Sandbox Execution
 
-The `just_agents_sandbox` package provides secure containers for code execution:
+The `just_agents_coding` package provides secure containers for code execution:
 - 📦 Sandbox container
 - 🧬 Biosandbox container
 - 🌐 Websandbox container
 
 Mount `/input` and `/output` directories to easily manage data flow and monitor generated code.
+
+## 🌐 Web Deployment Features
+
+### Quick API Deployment
+With a single command `run-agent`, you can instantly serve any just-agents agent as an OpenAI-compatible REST API endpoint. This means:
+- 🔌 Instant OpenAI-compatible endpoint
+- 🔄 Works with any OpenAI client library
+- 🛠️ Simple configuration through YAML files
+- 🚀 Ready for production use
+
+### Full Chat UI Deployment
+Using the `deploy-agent` command, you can deploy a complete chat interface with all necessary infrastructure:
+- 💬 Modern Hugging Face-style chat UI
+- 🔄 LiteLLM proxy for model management
+- 💾 MongoDB for conversation history
+- ⚡ Redis for response caching
+- 🐳 Complete Docker environment
+
+### Benefits
+1. **Quick Time-to-Production**: Deploy agents from development to production in minutes
+2. **Standard Compatibility**: OpenAI-compatible API ensures easy integration with existing tools
+3. **Scalability**: Docker-based deployment provides consistent environments
+4. **Security**: Proper isolation of services and configuration
+5. **Flexibility**: Easy customization through YAML configurations

@@ -1,48 +1,61 @@
 from typing import Any
-from just_agents.llm_options import LLAMA3_2_VISION
-from just_agents.simple.chat_agent import ChatAgent
+from just_agents.base_agent import ChatAgent
+from just_agents.llm_options import LLAMA3_3
 
 """
-This example shows how to use agents with different LLM models to simulate a debate between Kamala Harris and Donald Trump
+This example shows how to use agents with different LLM models to simulate a moderated debate between Kamala Harris and Donald Trump
 """
 
 if __name__ == "__main__":
 
-    kamala_options = LLAMA3_2_VISION
-    trump_options: dict[str, Any] = {
+    kamala_options = LLAMA3_3
+    trump_options = LLAMA3_3
+
+    # Create a moderator with the same model as Kamala for consistency
+    moderator_options: dict[str, Any] = {
         "model": "groq/mixtral-8x7b-32768",
         "api_base": "https://api.groq.com/openai/v1",
         "temperature": 0.0,
         "tools": []
     }
 
-    '''
-    #uncomment if you want to use chat-gpt instead
-    openai_api_key = getpass.getpass("OPENAI_API_KEY: ")
+    Harris: ChatAgent = ChatAgent(
+        llm_options=kamala_options, 
+        role="You are Kamala Harris in a presidential debate",
+        goal="Win the debate with clear, concise responses",
+        task="Respond briefly and effectively to debate questions"
+    )
 
-    # Set environment variables
-    os.environ["OPENAI_API_KEY"] = openai_api_key
-    trump_options = OPENAI_GPT4oMINI
-    '''
+    Trump: ChatAgent = ChatAgent(
+        llm_options=trump_options,
+        role="You are Donald Trump in a presidential debate",
+        goal="Win the debate with your signature style",
+        task="Respond briefly and effectively to debate questions"
+    )
 
-    Harris: ChatAgent = ChatAgent(llm_options = kamala_options, role = "You are Kamala Harris at the election debate and you act accordingly",
-                                    goal = "Your goal is to make democrats win the USA elections whatever it takes",
-                                    task="Defeat Donald TRUMP! Use Kamala Harris style of communication")
-    Trump: ChatAgent = ChatAgent(llm_options = trump_options,
-                                    role = "You are Donald Trump at the election debate",
-                                    goal="earn profit by being the president of USA",
-                                    task="Make America great again!  Use Trump style of communication")
+    Moderator: ChatAgent = ChatAgent(
+        llm_options=moderator_options,
+        role="You are a neutral debate moderator",
+        goal="Ensure a fair and focused debate",
+        task="Generate clear, specific questions about key political issues"
+    )
 
-    exchanges = 3
+    exchanges = 2
 
-
-    Harris_reply = "Hi."
+    # Start with moderator generating the first question
     for _ in range(exchanges):
-        Trump_reply = Trump.query(Harris_reply)
-        print(f"TRUMP: {Trump_reply}\n")
-        Harris_reply = Harris.query(Trump_reply)
-        print(f"HARRIS: {Harris_reply}\n")
+        # Moderator generates question
+        question = Moderator.query("Generate a concise debate question about a current political issue.")
+        print(f"\nMODERATOR: {question}\n")
 
-    debate=str(Harris.memory.messages)
-    summary = Trump.query(f'Summarise the following debatein less than 30 words: {debate}')
+        # Trump answers first
+        trump_reply = Trump.query(question)
+        print(f"TRUMP: {trump_reply}\n")
+
+        # Harris responds
+        harris_reply = Harris.query(f"Question: {question}\nTrump's response: {trump_reply}")
+        print(f"HARRIS: {harris_reply}\n")
+
+    debate = str(Harris.memory.messages)
+    summary = Moderator.query(f'Summarise the following debate in less than 30 words: {debate}')
     print(f"SUMMARY:\n {summary}")

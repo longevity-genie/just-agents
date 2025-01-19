@@ -3,11 +3,11 @@
 A lightweight, straightforward core library for LLM agents - no over-engineering, just simplicity!
 
 ## 🎯 Core Features
-- 🪶 Lightweight base agent implementations
-- 📝 Simple string-based agent interactions
-- 🔧 YAML-based prompt templating
-- 🤖 LLM model integration through litellm
-- 🔄 Chain of Thought reasoning capabilities
+- 🪶 Lightweight and simple implementation
+- 📝 Easy-to-understand agent interactions
+- 🔧 Customizable prompts using YAML files
+- 🤖 Support for various LLM models through litellm
+- 🔄 Chain of Thought reasoning with function calls
 
 ## 🏗️ Core Components
 
@@ -18,32 +18,64 @@ A thin wrapper around litellm for basic LLM interactions. Provides:
 - Memory handling
 
 ### ChatAgent
-The fundamental building block for agent interactions:
-```python
-from just_agents.simple.chat_agent import ChatAgent
-from just_agents.simple.llm_options import LLAMA3_2_VISION
+The fundamental building block for agent interactions. Here's an example of using multiple chat agents:
 
-agent = ChatAgent(
-    llm_options=LLAMA3_2_VISION,
-    role="assistant",
-    goal="help the user",
-    task="answer questions"
+```python
+from just_agents.base_agent import ChatAgent
+from just_agents.llm_options import LLAMA3_3
+
+# Initialize agents with different roles
+harris = ChatAgent(
+    llm_options=LLAMA3_3, 
+    role="You are Kamala Harris in a presidential debate",
+    goal="Win the debate with clear, concise responses",
+    task="Respond briefly and effectively to debate questions"
+)
+
+trump = ChatAgent(
+    llm_options=LLAMA3_3,
+    role="You are Donald Trump in a presidential debate",
+    goal="Win the debate with your signature style",
+    task="Respond briefly and effectively to debate questions"
+)
+
+moderator = ChatAgent(
+    llm_options={
+        "model": "groq/mixtral-8x7b-32768",
+        "api_base": "https://api.groq.com/openai/v1",
+        "temperature": 0.0,
+        "tools": []
+    },
+    role="You are a neutral debate moderator",
+    goal="Ensure a fair and focused debate",
+    task="Generate clear, specific questions about key political issues"
 )
 ```
 
 ### ChainOfThoughtAgent
 Extended agent with reasoning capabilities and function calling:
+
 ```python
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
+from just_agents import llm_options
 
+def count_letters(character: str, word: str) -> str:
+    """ Returns the number of character occurrences in the word. """
+    count = word.count(character)
+    return str(count)
+
+# Initialize agent with tools and LLM options
 agent = ChainOfThoughtAgent(
-    tools=[your_function],
-    llm_options=LLAMA3_2_VISION
+    tools=[count_letters],
+    llm_options=llm_options.LLAMA3_3
 )
+
+# Get result and reasoning chain
+result, chain = agent.think("Count the number of occurrences of the letter 'L' in 'HELLO'.")
 ```
 
 ## 📚 Usage
-This core package is typically used as a dependency by other just-agents packages. For full usage examples and documentation, please refer to the [main repository](https://github.com/longevity-genie/just-agents).
+This core package provides the fundamental building blocks for LLM agents. For full usage examples and documentation, please refer to the [main repository](https://github.com/longevity-genie/just-agents).
 
 ## 🔧 Installation
 ```bash

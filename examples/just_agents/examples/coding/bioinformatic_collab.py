@@ -2,7 +2,6 @@ from dotenv import load_dotenv
 from pathlib import Path
 from just_agents.examples.coding.cot_dev import ChainOfThoughtDevAgent
 
-#from just_agents.simple.utils import build_agent
 
 load_dotenv(override=True)
 

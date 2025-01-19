@@ -40,3 +40,4 @@ uvicorn = ">=0.34.0"
 
 [tool.poetry.scripts]
 run-agent = "just_agents.web.run_agent:app"
+deploy-agent = "just_agents.web.deploy_agent:app"

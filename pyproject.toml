@@ -39,6 +39,7 @@ python-dotenv = "*"
 
 [tool.poetry.scripts]
 run-agent = "just_agents.web.run_agent:app"
+deploy-agent = "just_agents.web.deploy_agent:app"
 
 [build-system]
 requires = ["poetry-core"]

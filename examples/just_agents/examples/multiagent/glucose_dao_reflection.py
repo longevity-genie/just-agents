@@ -1,9 +1,9 @@
 from dotenv import load_dotenv
 from pathlib import Path
 
-from just_agents.simple.chat_agent import ChatAgent
 from just_agents import llm_options
 #from just_agents_tools.search import get_semantic_paper
+from just_agents.base_agent import ChatAgent
 import typer
 
 app = typer.Typer(no_args_is_help=True)
