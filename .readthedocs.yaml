@@ -5,6 +5,17 @@ build:
   os: ubuntu-22.04
   tools:
     python: "3.11"
+  commands:
+    - cp pyproject.toml pyproject.toml.bak
+    - |
+      sed -i \
+        -e "s|{ path = \"core\", develop = true }|\"0.4.9\"|g" \
+        -e "s|{ path = \"tools\", develop = true }|\"0.4.9\"|g" \
+        -e "s|{ path = \"coding\", develop = true }|\"0.4.9\"|g" \
+        -e "s|{ path = \"web\", develop = true }|\"0.4.9\"|g" \
+        -e "s|{ path = \"router\", develop = true }|\"0.4.9\"|g" \
+        -e "s|{ path = \"examples\", develop = true }|\"0.4.9\"|g" \
+        pyproject.toml
 
 sphinx:
   configuration: docs/conf.py
