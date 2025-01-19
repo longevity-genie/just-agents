@@ -6,6 +6,8 @@ build:
   tools:
     python: "3.11"
   commands:
+    - pip install poetry
+    # First modify all pyproject.toml files to use exact versions
     - cp pyproject.toml pyproject.toml.bak
     - |
       sed -i \
@@ -16,12 +18,25 @@ build:
         -e "s|{ path = \"router\", develop = true }|\"0.4.9\"|g" \
         -e "s|{ path = \"examples\", develop = true }|\"0.4.9\"|g" \
         pyproject.toml
+    # Build packages in order following build.sh approach
+    # First build core
+    - cd core && poetry build && cd ..
+    - pip install core/dist/*.whl
+    # Build and install other packages
+    - cd tools && poetry build && cd .. && pip install tools/dist/*.whl
+    - cd coding && poetry build && cd .. && pip install coding/dist/*.whl
+    - cd web && poetry build && cd .. && pip install web/dist/*.whl
+    - cd router && poetry build && cd .. && pip install router/dist/*.whl
+    - cd examples && poetry build && cd .. && pip install examples/dist/*.whl
+    # Build the meta-package
+    - touch ./just_agents/__init__.py
+    - poetry build
+    - pip install dist/*.whl
+    - rm ./just_agents/__init__.py
 
 sphinx:
   configuration: docs/conf.py
 
 python:
   install:
-    - method: pip
-      path: .
     - requirements: docs/requirements.txt

@@ -5,6 +5,8 @@ from typing import Callable, Any
 from just_agents.base_agent import BaseAgent
 from just_agents.llm_options import LLMOptions, LLAMA3_3, LLAMA3_2_VISION, OPENAI_GPT4oMINI
 from just_agents.just_tool import JustToolsBus
+
+
 @pytest.fixture(scope="module", autouse=True)
 def load_env():
     load_dotenv(override=True)

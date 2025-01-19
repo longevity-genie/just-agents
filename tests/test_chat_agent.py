@@ -53,7 +53,9 @@ def test_quering(open_genes_db):
                     goal=f"help users by using SQL syntax to form comands to work with the {open_genes_db} sqlite database",
                     task="formulate appropriate comands to operate in the given database.",
                     tools=[sqlite_query],
-                    llm_options=LLAMA3_3)
+                    llm_options=LLAMA3_3,
+                    key_list_env="GROQ_API_KEY" # LOAD GROQ_API_KEY FROM ENVIRONMENT VARIABLES
+                    )
 
     
     response = agent.query("Show me all tables in the database")

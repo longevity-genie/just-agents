@@ -11,7 +11,8 @@ extensions = [
     'sphinx.ext.viewcode',
     'myst_parser',
     'sphinx.ext.intersphinx',
-    'sphinx_autodoc_typehints'
+    'sphinx_autodoc_typehints',
+    'sphinx.ext.autoapi'
 ]
 
 # Add after the existing extensions
@@ -20,8 +21,7 @@ autodoc_mock_imports = [
     'pydantic',
     'requests',
     'numpydoc',
-    'rich',
-    'just_agents'
+    'rich'
 ]
 
 # Theme settings
@@ -53,3 +53,9 @@ myst_enable_extensions = [
     "colon_fence",
     "deflist"
 ]
+
+# AutoAPI settings
+autoapi_type = 'python'
+autoapi_dirs = ['../']
+autoapi_options = ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']
+autoapi_python_use_implicit_namespaces = True

@@ -3,8 +3,6 @@ import litellm
 import pytest
 from dotenv import load_dotenv
 
-
-
 def get_current_weather(location: str):
     """
     Gets the current weather in a given location
@@ -58,7 +56,7 @@ def test_oai_works(load_env):
     OPENAI_GPT4oMINI,_ = load_env
     execute_completion(OPENAI_GPT4oMINI)
 
-@pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7621")
+#@pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7621")
 def test_grok_bug(load_env):
     _, LLAMA3_3 = load_env
     execute_completion(LLAMA3_3)
