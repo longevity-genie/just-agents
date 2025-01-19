@@ -10,7 +10,8 @@ extensions = [
     'sphinx.ext.napoleon',
     'sphinx.ext.viewcode',
     'myst_parser',
-    'sphinx.ext.intersphinx'
+    'sphinx.ext.intersphinx',
+    'sphinx_autodoc_typehints'
 ]
 
 # Add after the existing extensions
@@ -46,3 +47,9 @@ master_doc = 'index'
 intersphinx_mapping = {
     'python': ('https://docs.python.org/3', None),
 }
+
+# Enable markdown parsing with MyST
+myst_enable_extensions = [
+    "colon_fence",
+    "deflist"
+]

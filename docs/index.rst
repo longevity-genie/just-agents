@@ -6,6 +6,7 @@ Welcome to just-agents documentation!
    :caption: Contents:
 
    readme
+   subprojects
    api
    examples
 
