@@ -1,7 +1,7 @@
 from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
 from pydantic import Field, PrivateAttr, BaseModel
 
-from litellm import ModelResponse, CustomStreamWrapper, completion, acompletion, stream_chunk_builder
+from litellm import ModelResponse, CustomStreamWrapper, GenericStreamingChunk, completion, acompletion, stream_chunk_builder
 from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
 
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
@@ -67,7 +67,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         assert "function_call" not in message
         return message
 
-    def delta_from_response(self, response: StreamingChatCompletionChunk) -> MessageDict:
+    def delta_from_response(self, response: GenericStreamingChunk) -> MessageDict: #TODO: fix typehint/model choice
         message = response.choices[0].delta.model_dump(
             mode="json",
             exclude_none=True,
@@ -96,5 +96,5 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         return stream_chunk_builder(chunks=chunks)
 
     def get_supported_params(self, model_name: str) -> Optional[list]:
-        return get_supported_openai_params(model)  # type: ignore
+        return get_supported_openai_params(model_name)  # type: ignore
 
