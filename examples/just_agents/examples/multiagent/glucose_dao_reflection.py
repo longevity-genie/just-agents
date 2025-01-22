@@ -26,16 +26,18 @@ def planning_example():
     # Initialize conversation file
     conversation_file = output_dir / "glucose_dao_conversation.txt"
     conversation_file.write_text("") # Clear/create file
+
+    planner_options = llm_options.DEEPSEEK_R1
     
-    planner: ChatAgent = ChatAgent(llm_options = llm_options.OPENAI_GPT4oMINI, role = "You are a helpful adviser that helps people to create their NGOs and DAOs",
+    planner: ChatAgent = ChatAgent(llm_options = planner_options , role = "You are a helpful adviser that helps people to create their NGOs and DAOs",
                                    goal = "Your goal is to help the user to make the best possible action plan to create her NGO or DAO.",
-                                   task="Create the best actionable plan possible while being realististic knowing limitations of the time and resources of the founder and current state of the art, take into account the feedback and suggestions, improve it until it is perfect.",)
+                                   task="Create the best actionable plan possible while being realististic knowing limitations of the time and resources of the founder and current state of the art, take into account the feedback and suggestions, improve it until it is perfect.")
     reviewer: ChatAgent = ChatAgent(llm_options = llm_options.OPENAI_GPT4oMINI,
                                       role = "you represent the interests of the DAO or nonprofit creator and provide feedback and suggestions for the plan which is generated for you",
                                       goal="provide the best feedback ever and ask for specific improvements",
                                       task="evaluate the plan and provide feedback and suggestions for the plan")
 
-    exchanges: int = 3
+    exchanges: int = 2
     prompt = """
     I am a diabetic person with self-taught data-science, bioinformatics and machine learning skills and I want to create a nonprofit organization or DAO (let it be Glucose DAO) that will collect data from continuous glucose monitors (CGM) and use it to develop machine learning models for diabetes management.
     Current state of the art if the following:

@@ -1018,7 +1018,7 @@ develop = true
 
 [package.dependencies]
 Deprecated = ">=1.2.15"
-litellm = ">=1.58.4"
+litellm = ">=1.59.3"
 numpydoc = "*"
 pydantic = ">=2.0.0,<3.0.0"
 python-dotenv = ">=1.0.1"

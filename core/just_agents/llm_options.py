@@ -151,6 +151,11 @@ DEEPSEEK_CHAT: LLMOptions = {
     "tools": []
 }
 
+DEEPSEEK_R1: LLMOptions = {
+    "model": "deepseek/deepseek-reasoner",
+    "temperature": 0.0
+}
+
 def local_vllm_model(model: str = "models/granite-7b-lab.Q4_K_M.gguf", host: str="http://localhost:8000") -> LLMOptions:
     return {
         "model": f"hosted_vllm/{model}",
