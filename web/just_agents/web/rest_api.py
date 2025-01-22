@@ -10,13 +10,13 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any, Union, AsyncGenerator
 
 from just_agents.base_agent import BaseAgent
-from just_agents.web.streaming import async_wrap
+from just_agents.web.streaming import response_from_stream#, has_system_prompt, remove_system_messages, messages_content_to_text
 from just_agents.web.models import (
-    ChatCompletionRequest, TextContent, ChatCompletionChoiceChunk, ChatCompletionChunkResponse,
+    Role, ChatCompletionRequest, ChatCompletionChoiceChunk, ChatCompletionChunkResponse,
     ChatCompletionResponse, ChatCompletionChoice, ChatCompletionUsage, ResponseMessage, ErrorResponse
 )
 from dotenv import load_dotenv
-from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
+
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, HTTPException
 from fastapi.responses import JSONResponse, StreamingResponse
@@ -91,6 +91,7 @@ class AgentRestAPI(FastAPI):
             # Load from environment variable or use default
             agent_config = os.getenv('AGENT_CONFIG_PATH', 'agent_profiles.yaml')
         self.agent: BaseAgent = BaseAgent.from_yaml(file_path=agent_config, section_name=agent_section, parent_section=agent_parent_section)
+        self.agent.enforce_agent_prompt = self.remove_system_prompt
 
       
 
@@ -108,19 +109,6 @@ class AgentRestAPI(FastAPI):
         self.post("/v1/chat/completions", description="OpenAI compatible chat completions")(self.chat_completions)
 
 
-    def _clean_messages(self, request: ChatCompletionRequest):
-        for message in request.messages:
-            if message.role == "user":
-                content = message.content
-                if type(content) is list:
-                    if len(content) > 0:
-                        if isinstance(content[0],TextContent):
-                            message.content = content[0].text
-
-    def _remove_system_prompt(self, request: ChatCompletionRequest):
-        if request.messages[0].role == "system":
-            request.messages = request.messages[1:]
-    
     def default(self):
         return f"This is default page for the {self.title}"
 
@@ -153,55 +141,25 @@ class AgentRestAPI(FastAPI):
     async def chat_completions(self, request: ChatCompletionRequest) -> Union[ChatCompletionResponse, Any, ErrorResponse]:
         try:
             agent = self.agent
-            self._clean_messages(request)
-            if self.remove_system_prompt:
-                self._remove_system_prompt(request)
+            # request = messages_content_to_text(request)
+
+            # if self.remove_system_prompt:
+            #     request = remove_system_messages(request)
 
             if "file_params" in request:
                 params = request.file_params
                 if params != []:
                     self.save_files(request.model_dump())
 
-            #Done by FastAPI+pydantic under the hood! Just supply schema...
-
-            # if not request.messages:
-            #     log_message(
-            #         message_type="validation_error",
-            #         error="No messages provided in request"
-            #     )
-            #     return {
-            #         "error": {
-            #             "message": "No messages provided in request",
-            #             "type": "invalid_request_error",
-            #             "param": "messages",
-            #             "code": "invalid_request_error"
-            #         }
-            #     }, 400
-            #
-            # # Validate required fields
-            # if "model" not in request:
-            #     log_message(
-            #         message_type="validation_error",
-            #         error="model is required"
-            #     )
-            #     return {
-            #         "error": {
-            #             "message": "model is required",
-            #             "type": "invalid_request_error",
-            #             "param": "model",
-            #             "code": "invalid_request_error"
-            #         }
-            #     }, 400
-
             is_streaming = request.stream
-            messages = [message.model_dump(mode='json') for message in request.messages] # todo: support pydantic model!!!
+            # messages = [message.model_dump(mode='json') for message in request.messages]
             stream_generator = agent.stream(
-                messages
+                request.messages
             )
 
             if is_streaming:
                 return StreamingResponse(
-                    async_wrap(stream_generator),
+                    stream_generator,
                     media_type="application/x-ndjson",
                     headers={
                         "Cache-Control": "no-cache",
@@ -211,22 +169,7 @@ class AgentRestAPI(FastAPI):
                 )
             else:
                 # Collect all chunks into final response
-                response_content = ""
-                for chunk in stream_generator:
-
-                    if chunk == "[DONE]":
-                        break
-                    try:
-                        # Parse the SSE data
-                        data = IAbstractStreamingProtocol.sse_parse(chunk)
-                        json_data = data.get("data", "{}")
-                        print(json_data)
-                        if "choices" in json_data and len(json_data["choices"]) > 0:
-                            delta = json_data["choices"][0].get("delta", {})
-                            if "content" in delta:
-                                response_content += delta["content"]
-                    except Exception:
-                        continue
+                response_content = response_from_stream(stream_generator)
 
                 return ChatCompletionResponse(
                         id=f"chatcmpl-{time.time()}",
@@ -236,7 +179,7 @@ class AgentRestAPI(FastAPI):
                         choices=[ChatCompletionChoice(
                             index=0,
                             message=ResponseMessage(
-                                role= "assistant",
+                                role= Role.assistant,
                                 content= response_content
                             ),
                             finish_reason="stop"
