@@ -1,8 +1,8 @@
 from pydantic import BaseModel, Field, PrivateAttr
 from typing import Optional, Callable, List, Dict
 from functools import singledispatchmethod
-from just_agents.interfaces.memory import IMemory, IMessageFormatter
-from just_agents.types import Role, MessageDict, SupportedMessages, Message
+from just_agents.interfaces.memory import IMemory
+from just_agents.types import Role, MessageDict, SupportedMessages
 from litellm.types.utils import Function
 from abc import ABC, abstractmethod
 
@@ -11,8 +11,17 @@ from rich.console import Console
 from rich.text import Text
 from rich.panel import Panel
 
+class IMessageFormatter(ABC):
+    @abstractmethod
+    def pretty_print_message(self, msg: MessageDict) -> Panel:
+        pass
+
+    @abstractmethod
+    def pretty_print_all_messages(self):
+        pass
 
 class MessageFormatter(IMessageFormatter):
+
     messages: List[MessageDict] = Field(default_factory=list, validation_alias='conversation')
 
 
@@ -20,7 +29,7 @@ class MessageFormatter(IMessageFormatter):
         role = msg.get('role', 'unknown').capitalize()
     
         # If the role is an enum, extract its value
-        if isinstance(role, str) and '<Role.' in role: #TODO: this should not be firing with use_enum_values=True,
+        if isinstance(role, str) and '<Role.' in role:
             role = role.split('.')[-1].replace('>', '').capitalize()
 
         # Define role-specific colors
@@ -99,117 +108,8 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC)
         Role.system: [],
     })
 
-    # Methods to add messages of specific roles
-    def add_system_message(self, prompt: str) -> None:
-        self.add_message({"role": Role.system, "content": prompt})
-        self.messages.sort(key=lambda msg: msg.get("role","user") != Role.system)
-
-    def add_user_message(self, prompt: str) -> None:
-        self.add_message({"role": Role.user, "content": prompt})
-
-    def get_message_by_role(self, role: Role) -> List[MessageDict]:
-        """
-        Retrieves all messages that match the given role.
-
-        :param role: The role to filter messages by.
-        :return: A list of messages matching the selector.
-        """
-        return [message for message in self.messages if message.get("role","user") == role.value]
-
-    @property
-    def prompt_messages(self) -> list:
-        return self.get_message_by_role(Role.system)
-
-    def clear_system_mesages(self) -> None:
-        for sys_prompt in self.prompt_messages:
-            self.messages.remove(sys_prompt)
-        if self.prompt_messages:
-            raise ValueError("Failed to clear system prompts")
-
     def deepcopy(self) -> 'IBaseMemory':
         return self.model_copy(deep=True)
-
-    # Role-specific message handlers
-    def add_on_tool_call(self, fun: OnFunctionCallable) -> None:
-        """
-        Adds a handler to track function calls.
-        """
-
-        def tool_handler(message: MessageDict) -> None:
-            tool_calls = message.get('tool_calls', [])
-            for call in tool_calls:
-                function_name = call.get('function')
-                if function_name:
-                    fun(function_name)
-                else:
-                    raise ValueError("Function name is None")
-
-        self.add_on_message_handler(Role.assistant, tool_handler)
-
-    def add_on_tool_message(self, handler: OnMessageCallable) -> None:
-        """
-        Adds a handler to be called for tool messages.
-
-        :param handler: The callable to be executed when a tool message is added.
-        """
-        self.add_on_message_handler(Role.tool, handler)
-
-    def add_on_user_message(self, handler: OnMessageCallable) -> None:
-        """
-        Adds a handler to be called for user messages.
-
-        :param handler: The callable to be executed when a user message is added.
-        """
-        self.add_on_message_handler(Role.user, handler)
-
-    def add_on_assistant_message(self, handler: OnMessageCallable) -> None:
-        """
-        Adds a handler to be called for assistant messages.
-
-        :param handler: The callable to be executed when an assistant message is added.
-        """
-        self.add_on_message_handler(Role.assistant, handler)
-
-    def add_on_system_message(self, handler: OnMessageCallable) -> None:
-        """
-        Adds a handler to be called for system messages.
-
-        :param handler: The callable to be executed when a system message is added.
-        """
-        self.add_on_message_handler(Role.system, handler)
-
-    def remove_on_tool_message(self, handler: OnMessageCallable) -> None:
-        """
-        Removes a specific handler for tool messages.
-
-        :param handler: The handler to be removed.
-        """
-        self.remove_on_message_handler(Role.tool, handler)
-
-    def remove_on_user_message(self, handler: OnMessageCallable) -> None:
-        """
-        Removes a specific handler for user messages.
-
-        :param handler: The handler to be removed.
-        """
-        self.remove_on_message_handler(Role.user, handler)
-
-    def remove_on_assistant_message(self, handler: OnMessageCallable) -> None:
-        """
-        Removes a specific handler for assistant messages.
-
-        :param handler: The handler to be removed.
-        """
-        self.remove_on_message_handler(Role.assistant, handler)
-
-    def remove_on_system_message(self, handler: OnMessageCallable) -> None:
-        """
-        Removes a specific handler for system messages.
-
-        :param handler: The handler to be removed.
-        """
-        self._remove_on_message(handler, Role.system)
-
 
 class BaseMemory(IBaseMemory, MessageFormatter):
     """
@@ -228,6 +128,7 @@ class BaseMemory(IBaseMemory, MessageFormatter):
         for handler in self._on_message.get(role, []):
             handler(message)
 
+
     # Overriding add_message with specific implementations
     @singledispatchmethod
     def add_message(self, message: SupportedMessages) -> None:
@@ -237,14 +138,7 @@ class BaseMemory(IBaseMemory, MessageFormatter):
         raise TypeError(f"Unsupported message format: {type(message)}")
 
     @add_message.register
-    def _add_message_container(self, message: Message) -> None:
-        """
-        Converts Message Pydantic model to plain dictionary, enforces text-only format
-        """
-        self.add_message(message.text_format().model_dump(mode="json", exclude_none=True, exclude_defaults=False))
-
-    @add_message.register
-    def _add_message_dict(self, message: dict) -> None:
+    def _add_abstract_message(self, message: dict) -> None:
         """
         Handles AbstractMessage instances.
         """
@@ -265,6 +159,13 @@ class BaseMemory(IBaseMemory, MessageFormatter):
         """
         self.add_messages(messages)
 
+    # Methods to add messages of specific roles
+    def add_system_message(self, prompt: str) -> None:
+        self.add_message({"role": Role.system, "content": prompt})
+
+    def add_user_message(self, prompt: str) -> None:
+        self.add_message({"role": Role.user, "content": prompt})
+
     @property
     def last_message_str(self) -> Optional[str]:
         message_str = None
@@ -273,4 +174,85 @@ class BaseMemory(IBaseMemory, MessageFormatter):
             message_str = last_message["content"] if "content" in last_message else str(last_message)
         return message_str
 
+    def add_on_tool_call(self, fun: OnFunctionCallable) -> None:
+        """
+        Adds a handler to track function calls.
+        """
+
+        def tool_handler(message: MessageDict) -> None:
+            tool_calls = message.get('tool_calls', [])
+            for call in tool_calls:
+                function_name = call.get('function')
+                if function_name:
+                    fun(function_name)
+                else:
+                    raise ValueError("Function name is None")
+
+        self.add_on_message_handler(Role.assistant, tool_handler)
+
+
+    def add_on_tool_message(self, handler: OnMessageCallable) -> None:
+        """
+        Adds a handler to be called for tool messages.
+
+        :param handler: The callable to be executed when a tool message is added.
+        """
+        self.add_on_message_handler(Role.tool, handler)
+
+    def add_on_user_message(self, handler: OnMessageCallable) -> None:
+        """
+        Adds a handler to be called for user messages.
+        
+        :param handler: The callable to be executed when a user message is added.
+        """
+        self.add_on_message_handler(Role.user, handler)
+
+    def add_on_assistant_message(self, handler: OnMessageCallable) -> None:
+        """
+        Adds a handler to be called for assistant messages.
+        
+        :param handler: The callable to be executed when an assistant message is added.
+        """
+        self.add_on_message_handler(Role.assistant, handler)
+
+    def add_on_system_message(self, handler: OnMessageCallable) -> None:
+        """
+        Adds a handler to be called for system messages.
+        
+        :param handler: The callable to be executed when a system message is added.
+        """
+        self.add_on_message_handler(Role.system, handler)
+
+
+    def remove_on_tool_message(self, handler: OnMessageCallable) -> None:
+        """
+        Removes a specific handler for tool messages.
+        
+        :param handler: The handler to be removed.
+        """
+        self.remove_on_message_handler(Role.tool, handler)
+
+    def remove_on_user_message(self, handler: OnMessageCallable) -> None:
+        """
+        Removes a specific handler for user messages.
+        
+        :param handler: The handler to be removed.
+        """
+        self.remove_on_message_handler(Role.user, handler)
+
+    def remove_on_assistant_message(self, handler: OnMessageCallable) -> None:
+        """
+        Removes a specific handler for assistant messages.
+        
+        :param handler: The handler to be removed.
+        """
+        self.remove_on_message_handler(Role.assistant, handler)
+
+    def remove_on_system_message(self, handler: OnMessageCallable) -> None:
+        """
+        Removes a specific handler for system messages.
+        
+        :param handler: The handler to be removed.
+        """
+        self._remove_on_message(handler, Role.system)
 

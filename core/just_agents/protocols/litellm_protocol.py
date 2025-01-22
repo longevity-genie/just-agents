@@ -1,28 +1,64 @@
-from litellm import ModelResponse, CustomStreamWrapper, GenericStreamingChunk, completion, acompletion, stream_chunk_builder
-from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
-from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator, Dict
-from pydantic import Field, PrivateAttr, BaseModel
+import json
+import pprint
 
-from just_agents.types import Role, MessageDict, ToolCall
+from litellm import ModelResponse, CustomStreamWrapper, GenericStreamingChunk, completion, acompletion, stream_chunk_builder
+from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
+from pydantic import HttpUrl, Field, AliasPath, PrivateAttr, BaseModel, Json, field_validator
+
+from just_agents.types import MessageDict, Role
 
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
+from litellm.types.utils import StreamingChoices, Delta
+#from openai.types import CompletionUsage
+#from openai.types.chat import ChatCompletionSystemMessageParam, ChatCompletionUserMessageParam, ChatCompletionAssistantMessageParam, ChatCompletionToolMessageParam,ChatCompletionFunctionMessageParam
+#from openai.types.chat.chat_completion import ChatCompletion, Choice, ChatCompletionMessage
 
+# Content types
+class TextContent(BaseModel):
+    type: str = Field("text", examples=["text"])
+    text: str = Field(..., examples=["What are in these images? Is there any difference between them?"])
 
-class LiteLLMFunctionCall(ToolCall, IFunctionCall[MessageDict]):
+class ImageContent(BaseModel):
+    type: str = Field("image_url", examples=["image_url"])
+    image_url: HttpUrl = Field(..., examples=["https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"])
+
+# Message class - Simple string content or a list of text or image content for vision model
+class Message(BaseModel):
+    role: Role = Field(..., examples=[Role.assistant])
+    content: Union[
+        str,  # Simple string content
+        List[Union[TextContent, ImageContent]]
+    ] = Field(
+        ...,
+        description="Content can be a simple string, or a list of content items including text or image URLs."
+    )
+
+class LiteLLMFunctionCall(BaseModel, IFunctionCall[MessageDict], extra="allow"):
+    id: str = Field(...)
+    index: Optional[int] = Field(None)
+    name: str = Field(..., validation_alias=AliasPath('function', 'name'))
+    arguments: Json[dict] = Field(..., validation_alias=AliasPath('function', 'arguments'))
+    type: Optional[str] = Field('function')
+
+    @classmethod
+    @field_validator('arguments', mode='before')
+    def stringify_arguments(cls, value):
+        # Convert dict to JSON string if necessary
+        if isinstance(value, dict):
+            return json.dumps(value)
+        return value  # Assume it's already a string
+
     def execute_function(self, call_by_name: ToolByNameCallback):
-        function_args = self.arguments or {}
-        if isinstance(function_args, str):
-            function_response = function_args #error on validation
-        else:
-            try:
-                function_to_call = call_by_name(self.name)
-                function_response = str(function_to_call(**function_args))
-            except Exception as e:
-                function_response = str(e)
-        message = {"role": Role.tool.value, "content": function_response, "name": self.name, "tool_call_id": self.id}
+        try:
+            function_to_call = call_by_name(self.name)
+            function_args = self.arguments
+            function_response = str(function_to_call(**function_args))
+        except Exception as e:
+            function_response = str(e)
+        message = {"role": "tool", "content": function_response, "name": self.name, "tool_call_id": self.id}
         return message
 
     @staticmethod
@@ -31,7 +67,7 @@ class LiteLLMFunctionCall(ToolCall, IFunctionCall[MessageDict]):
         for call_params in calls:
             tool_calls.append({"type": "function",
                                "id": call_params.id, "function": {"name": call_params.name, "arguments": str(call_params.arguments)}})
-        return {"role": Role.assistant.value, "content": None, "tool_calls": tool_calls}
+        return {"role": "assistant", "content": None, "tool_calls": tool_calls}
 
 
 class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, CustomStreamWrapper]):
@@ -51,7 +87,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
             -> Coroutine[Any, Any, Union[ModelResponse, CustomStreamWrapper, AsyncGenerator]]:
         return acompletion(*args, **kwargs)
     
-    # TODO: use https://docs.litellm.ai/docs/providers/custom_llm_server as mock for tests
+    # TODO: what about https://docs.litellm.ai/docs/providers/custom_llm_server ?
 
     def message_from_response(self, response: ModelResponse) -> MessageDict:
         message = response.choices[0].message.model_dump(
@@ -106,12 +142,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         return message
 
     def response_from_deltas(self, chunks: List[Any]) -> ModelResponse:
-    # TODO: seems fixed, delete commented snd reenumerate_tool_call_chunks in next release
-
-    #    if "llama" in chunks[-1]["model"] and chunks[-1].choices[0].finish_reason=="tool_calls":
-    #       return self.reenumerate_tool_call_chunks(chunks) # bug fix
+        if "llama" in chunks[-1]["model"] and chunks[-1].choices[0].finish_reason=="tool_calls":
+           return self.reenumerate_tool_call_chunks(chunks) # bug fix
         return stream_chunk_builder(chunks=chunks)
-
-    def get_supported_params(self, model_name: str) -> Optional[list]:
-        return get_supported_openai_params(model)  # type: ignore
 

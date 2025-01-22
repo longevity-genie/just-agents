@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
-from typing import Callable, Coroutine, Union, AsyncGenerator, List, Sequence, ClassVar, Type, TypeVar, Generic, Any, Optional
+from typing import Callable, Coroutine, Union, AsyncGenerator, List, Sequence, ClassVar, Type, TypeVar, Generic, Any
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 from just_agents.interfaces.function_call import IFunctionCall
 
@@ -47,11 +47,6 @@ class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelRespons
     @abstractmethod
     def response_from_deltas(self, deltas: List[AbstractMessage]) -> BaseModelResponse:
         raise NotImplementedError("You need to implement message_from_deltas first!")
-
-    @abstractmethod
-    def get_supported_params(self, model_name: str) -> Optional[list]:
-        raise NotImplementedError("You need to implement get_supported_params first!")
-
 
     def get_chunk(self, index:int, delta:str, options:dict) -> AbstractMessage:
         return self._output_streaming.get_chunk(index, delta, options)

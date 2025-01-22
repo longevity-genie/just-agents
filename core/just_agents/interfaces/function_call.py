@@ -2,11 +2,12 @@ from abc import ABC, abstractmethod
 from typing import  Callable, Sequence, Any, TypeVar, Generic
 
 ToolByNameCallback=Callable[[str],Callable]
-AbstractMessage = TypeVar("AbstractMessage")
+AbstractMessage = TypeVar("AbstractMessage") #bind to Pydantic model?
 
 class IFunctionCall(ABC, Generic[AbstractMessage]):
     id: str
-    type: str
+    name: str
+    arguments: Any
 
     @abstractmethod
     def execute_function(self, call_by_name: ToolByNameCallback) -> AbstractMessage:

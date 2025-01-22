@@ -11,7 +11,7 @@ from just_agents.base_memory import IBaseMemory, BaseMemory
 from just_agents.just_profile import JustAgentProfile
 from just_agents.rotate_keys import RotateKeys
 from just_agents.protocols.protocol_factory import StreamingMode, ProtocolAdapterFactory
-
+from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
 
 
 class BaseAgent(
@@ -79,10 +79,6 @@ class BaseAgent(
         default=True,
         description="Drop params from the request, useful for some models that do not support them")
 
-    enforce_agent_prompt: bool = Field(
-        default=True,
-        description="When set, replaces query contains 'system' messages with agent prompt")
-
     # Protected handlers implementation
     _on_query : List[QueryListener] = PrivateAttr(default_factory=list)
     _on_response : List[ResponseListener] = PrivateAttr(default_factory=list)
@@ -95,7 +91,11 @@ class BaseAgent(
     _tool_fuse_broken: bool = PrivateAttr(False) #Fuse to prevent tool loops
 
     def instruct(self, prompt: str): #backward compatibility
-        self.memory.add_system_message(prompt)
+        self.memory.add_message({"role": Role.system, "content": prompt})
+
+    def clear_memory(self) -> None:
+        self.memory.clear_messages()
+        self.instruct(self.system_prompt)
 
     def deepcopy_memory(self) -> IBaseMemory:
         return self.memory.deepcopy()
@@ -136,6 +136,9 @@ class BaseAgent(
         # Warn if both direct API key and key rotation are configured
         if (self._key_getter is not None) and (self.llm_options.get("api_key", None) is not None):
             print("Warning api_key will be rewritten by key_getter. Both are present in llm_options.")
+
+        # Initialize the agent with its system prompt
+        self.instruct(self.system_prompt) # TODO: THIS CAUSES HUGE ISSUES WHEN YOU INHERIT FROM THIS CLASS FIX!!!!!!!!!!!!!!!!!!!!!!!!!!!1
 
     def _prepare_options(self, options: LLMOptions):
         opt = options.copy()
@@ -193,10 +196,6 @@ class BaseAgent(
         return messages
     
     def query_with_current_memory(self, **kwargs): #former proceed() aka llm_think()
-        # Initialize the agent with its system prompt
-        if not self.memory.prompt_messages:
-            self.instruct(self.system_prompt)
-
         for step in range(self.max_tool_calls):
             # individual llm call, unpacking the message, processing handlers
             response = self._execute_completion(stream=False, **kwargs)
@@ -220,8 +219,6 @@ class BaseAgent(
         self._tool_fuse_broken = False
 
     def streaming_query_with_current_memory(self, reconstruct_chunks = False, **kwargs):
-        if not self.memory.prompt_messages:
-            self.instruct(self.system_prompt)
 
         for step in range(self.max_tool_calls):
             self._partial_streaming_chunks.clear()
@@ -268,8 +265,6 @@ class BaseAgent(
         """
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
-        if self.enforce_agent_prompt:
-            self.memory.clear_system_mesages()
         self.query_with_current_memory(**kwargs)
         result = self.memory.last_message_str
         if result is None:
@@ -280,8 +275,6 @@ class BaseAgent(
     def stream(self, query_input: SupportedMessages, reconstruct_chunks = False, **kwargs) -> Generator[Union[BaseModelResponse, SupportedMessages],None,None]:
         self.handle_on_query(query_input)
         self.add_to_memory(query_input)
-        if self.enforce_agent_prompt:
-            self.memory.clear_system_mesages()
         return self.streaming_query_with_current_memory(reconstruct_chunks=reconstruct_chunks, **kwargs)
 
 
@@ -291,7 +284,7 @@ class BaseAgent(
         model = self.llm_options.get("model")
         if not model:
             return []
-        return self._protocol.get_supported_params(model)
+        return get_supported_openai_params(model)  # type: ignore
     
     
     @property
@@ -328,4 +321,5 @@ class ChatAgent(BaseAgent):
             self.system_prompt = self.system_prompt + "\n" + self.task
         if self.format is not None:
             self.system_prompt = self.system_prompt + "\n" + self.format
-
+        self.memory.clear_messages()
+        self.instruct(self.system_prompt)

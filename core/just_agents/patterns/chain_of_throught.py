@@ -65,11 +65,13 @@ class ChainOfThoughtAgent(BaseAgent, IThinkingAgent[SupportedMessages, Supported
     append_response_format: bool = Field(True,
                                          description="Whether to append default COT prompt of this agent to the provided")
 
-    def instruct(self, prompt: str):
-        # override how system prompt is applied:
-        super().instruct(prompt)
+    def model_post_init(self, __context: Any) -> None:
+        # Call parent class's post_init first (from JustAgentProfile)
+        super().model_post_init(__context)
         if self.append_response_format:
-            super().instruct(self.response_format) # don't modify self system prompt to avoid saving it into profile
+            system_prompt  = self.system_prompt + "\n\n" + self.response_format
+            self.memory.clear_messages()
+            self.instruct(system_prompt) # don't modify self system prompt to avoid saving it into profile
 
     def thought_query(self, query: SupportedMessages, **kwargs) -> Thought:
         # Parses the LLM response into a structured Thought object
