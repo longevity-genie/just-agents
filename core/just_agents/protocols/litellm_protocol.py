@@ -1,15 +1,16 @@
-from litellm import ModelResponse, CustomStreamWrapper, GenericStreamingChunk, completion, acompletion, stream_chunk_builder
-from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
-from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator, Dict
+from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
 from pydantic import Field, PrivateAttr, BaseModel
 
-from just_agents.types import Role, MessageDict, ToolCall
+from litellm import ModelResponse, CustomStreamWrapper, completion, acompletion, stream_chunk_builder
+from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
 
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
+from just_agents.protocols.openai_classes import Role, ToolCall
 
+from just_agents.types import MessageDict
 
 class LiteLLMFunctionCall(ToolCall, IFunctionCall[MessageDict]):
     def execute_function(self, call_by_name: ToolByNameCallback):
@@ -66,7 +67,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         assert "function_call" not in message
         return message
 
-    def delta_from_response(self, response: GenericStreamingChunk) -> MessageDict:
+    def delta_from_response(self, response: StreamingChatCompletionChunk) -> MessageDict:
         message = response.choices[0].delta.model_dump(
             mode="json",
             exclude_none=True,
@@ -90,26 +91,8 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
                 LiteLLMFunctionCall(**tool_call)
                 for tool_call in tool_calls
             ]
-    @staticmethod
-    def reenumerate_tool_call_chunks(chunks : List[Any]):
-        tool_calls = []
-        message = None
-        for chunk in chunks:
-            if (
-                    len(chunk["choices"]) > 0
-                    and "tool_calls" in chunk["choices"][0]["delta"]
-                    and chunk["choices"][0]["delta"]["tool_calls"]
-            ):
-                message = stream_chunk_builder(chunks=[chunk,chunks[-1]])
-                tool_calls.append(message.choices[0].message.tool_calls[0])
-        message.choices[0].message.tool_calls = tool_calls
-        return message
 
     def response_from_deltas(self, chunks: List[Any]) -> ModelResponse:
-    # TODO: seems fixed, delete commented snd reenumerate_tool_call_chunks in next release
-
-    #    if "llama" in chunks[-1]["model"] and chunks[-1].choices[0].finish_reason=="tool_calls":
-    #       return self.reenumerate_tool_call_chunks(chunks) # bug fix
         return stream_chunk_builder(chunks=chunks)
 
     def get_supported_params(self, model_name: str) -> Optional[list]:

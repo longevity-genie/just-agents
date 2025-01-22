@@ -1,10 +1,11 @@
 from pydantic import BaseModel, Field, PrivateAttr
-from typing import Optional, Callable, List, Dict
+from typing import Callable, List, Dict
 from functools import singledispatchmethod
 from just_agents.interfaces.memory import IMemory, IMessageFormatter
-from just_agents.types import Role, MessageDict, SupportedMessages, Message
-from litellm.types.utils import Function
-from abc import ABC, abstractmethod
+from just_agents.protocols.openai_classes import Message, Role, ToolCall
+from just_agents.types import MessageDict, SupportedMessages
+
+from abc import ABC
 
 from typing import Optional
 from rich.console import Console
@@ -14,7 +15,6 @@ from rich.panel import Panel
 
 class MessageFormatter(IMessageFormatter):
     messages: List[MessageDict] = Field(default_factory=list, validation_alias='conversation')
-
 
     def pretty_print_message(self, msg: MessageDict) -> Panel:
         role = msg.get('role', 'unknown').capitalize()
@@ -82,7 +82,7 @@ class MessageFormatter(IMessageFormatter):
             console.print(panel)
 
 OnMessageCallable = Callable[[MessageDict], None]
-OnFunctionCallable = Callable[[Function], None]
+OnToolCallable = Callable[[ToolCall], None]
 
 class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC):
     """
@@ -130,7 +130,7 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC)
         return self.model_copy(deep=True)
 
     # Role-specific message handlers
-    def add_on_tool_call(self, fun: OnFunctionCallable) -> None:
+    def add_on_tool_call(self, fun: OnToolCallable) -> None:
         """
         Adds a handler to track function calls.
         """

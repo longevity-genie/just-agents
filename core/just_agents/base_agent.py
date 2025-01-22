@@ -1,6 +1,6 @@
 from pydantic import Field, PrivateAttr
 from typing import Optional, List, Union, Any, Generator
-from just_agents.types import MessageDict, Role, SupportedMessages
+from just_agents.types import MessageDict, SupportedMessages
 
 from just_agents.llm_options import LLMOptions
 from just_agents.interfaces.function_call import IFunctionCall

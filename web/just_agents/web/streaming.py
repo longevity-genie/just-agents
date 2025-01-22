@@ -4,7 +4,7 @@ from uuid import uuid4
 
 from typing import Optional, Any, AsyncGenerator, Generator
 from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol, DEFAULT_OPENAI_STOP
-from just_agents.protocols.litellm_protocol import Role
+from just_agents.protocols.openai_classes import Role
 from just_agents.web.models import (
     ChatCompletionRequest, ChatCompletionChoice, ChatCompletionUsage,
     ChatCompletionChoiceChunk, ChatCompletionChunkResponse,
