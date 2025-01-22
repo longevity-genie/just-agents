@@ -1,26 +1,17 @@
-from enum import Enum
-from typing import TypeVar, Any, List, Union, Dict
+from typing import  Any, List, Union, Dict
+from just_agents.protocols.openai_classes import Message
 
 ######### Common ###########
-MessageDict = Dict[str, Any]
-MessageDictOrStr = Union[str, MessageDict]
-SupportedMessages = Union[MessageDictOrStr, List[MessageDictOrStr]]
-Output = TypeVar('Output')
 
-class Role(str, Enum):
-    system = "system"
-    user = "user"
-    assistant = "assistant"
-    tool = "tool"
-    # make it similar to Literal["system", "user", "assistant", tool] while retaining enum convenience
+MessageDict = Dict[str, Any] # Plain python dictionary with str keys matching LLM chat completion message structure
 
-    def __new__(cls, value, *args, **kwargs):
-        obj = str.__new__(cls, value)
-        obj._value_ = value
-        return obj
+MessageVariant = Union[      # Variant type to handle different message representations
+    str,                     # Raw string, 'user' role implied
+    MessageDict,             # Plain python dictionary message representation
+    Message                  # Support seamless API request Pydantic Message class as argument
+]
 
-    def __str__(self):
-        return str(self.value)
-    
-
-
+SupportedMessages = Union[
+    MessageVariant,          # A single [message]
+    List[MessageVariant]     # Or a list of messages
+]

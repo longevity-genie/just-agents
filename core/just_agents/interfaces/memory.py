@@ -3,6 +3,7 @@ from typing import TypeVar, Generic, List, Callable, Optional, Dict
 
 Memorable = TypeVar("Memorable")
 MemoryKey = TypeVar("MemoryKey")
+from rich.panel import Panel
 HandlerType = Callable[[Memorable], None]
 
 class IMemory(ABC, Generic[MemoryKey, Memorable]):
@@ -61,8 +62,18 @@ class IMemory(ABC, Generic[MemoryKey, Memorable]):
         for selector in self._on_message:
             self._on_message[selector].clear()
 
+
     @abstractmethod
     def deepcopy(self) -> 'IMemory':
         """Return a deep copy"""
         raise NotImplementedError
 
+
+class IMessageFormatter(ABC):
+    @abstractmethod
+    def pretty_print_message(self, msg: Memorable) -> Panel:
+        pass
+
+    @abstractmethod
+    def pretty_print_all_messages(self):
+        pass

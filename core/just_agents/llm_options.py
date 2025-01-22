@@ -1,9 +1,15 @@
 from typing import Any, Dict, List, Optional
 from pydantic import Field, HttpUrl, BaseModel
 from pydantic import ConfigDict
+
 LLMOptions = Dict[str, Any]
 
 class ModelOptions(BaseModel):
+    model_config = ConfigDict(
+        extra="allow",
+        use_enum_values=True,
+        validate_assignment=True,
+    )
     model: str = Field(
         ...,
         examples=["groq/llama-3.3-70b-versatile","gpt-4o-mini"],
@@ -38,9 +44,7 @@ class ModelOptions(BaseModel):
         description="Frequency penalty, values from -2.0 to 2.0"
     )
 
-class LLMOptionsBase(ModelOptions):
-
-    model_config = ConfigDict(extra="allow")
+class LLMOptionsExt(ModelOptions):
     api_key: Optional[str] = Field(None, examples=["sk-proj-...."])
     api_base : Optional[HttpUrl] = Field(default=None,
         examples=[
