@@ -1,5 +1,5 @@
 from typing import  Any, List, Union, Dict
-from just_agents.protocols.openai_classes import Message
+from just_agents.data_classes import Message
 
 ######### Common ###########
 

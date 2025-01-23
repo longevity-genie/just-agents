@@ -3,10 +3,11 @@ from typing import List, Union, Optional
 from pydantic import HttpUrl, Field, BaseModel, ConfigDict, AliasPath, field_validator
 from pydantic_core import from_json
 
-""" Common OpenAI data structures conventions """
+""" Common OpenAI-compatible data structures """
 
 # Content types and enums
 class Role(str, Enum):
+    """OpenAI compatible Role enum class with string representation"""
     system = "system"
     user = "user"
     assistant = "assistant"
@@ -29,8 +30,9 @@ class ImageContent(BaseModel):
     type: str = Field("image_url", examples=["image_url"])
     image_url: HttpUrl = Field(..., examples=["https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"])
 
-# Message class - Simple string content or a list of text or image content for vision model
+#
 class Message(BaseModel):
+    """OpenAI compatible Message class - Simple string content or a list of text or image content for vision model"""
     model_config = ConfigDict(
         use_enum_values=True,
         validate_assignment=True,
@@ -71,8 +73,9 @@ class Message(BaseModel):
         message.content = self.get_text(delimiter, preserve_trailing)
         return message
 
-# Tool call class
+
 class ToolCall(BaseModel):
+    """ OpenAI compatible Tool call class """
     model_config = ConfigDict(extra="allow")
     id: str = Field(..., description="The ID of the tool call.")
     index: Optional[int] = Field(None)
@@ -100,3 +103,5 @@ class ToolCall(BaseModel):
             return parsed
         except ValueError as e:
             return str(e)
+
+

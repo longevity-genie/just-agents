@@ -1,6 +1,6 @@
 from typing import List, Union, Optional, Literal
 from pydantic import BaseModel, Field
-from just_agents.protocols.openai_classes import Role, Message, ToolCall
+from just_agents.data_classes import Message, ToolCall, Role
 from just_agents.llm_options import ModelOptions
 
 ### OpenAI API compatible models ###
