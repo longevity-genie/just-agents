@@ -42,7 +42,7 @@ def load_env():
     }
     return OPENAI_GPT4oMINI, LLAMA3_3
 
-def execute_completion(opts:dict):
+def execute_completion(opts: dict):
     partial_streaming_chunks = []
     response_gen = litellm.completion(**opts)
     for i, part in enumerate(response_gen):

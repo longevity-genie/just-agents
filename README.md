@@ -91,7 +91,7 @@ It represents an agent with a specific role, goal, and task. Here's an example o
 
 ```python
 from just_agents.base_agent import ChatAgent
-from just_agents.llm_options import LLAMA3_3
+from just_agents.llm_options import LLAMA3_3, LLAMA3_3_specdec:
 
 # Initialize agents with different roles
 Harris = ChatAgent(
@@ -102,7 +102,7 @@ Harris = ChatAgent(
 )
 
 Trump = ChatAgent(
-    llm_options=LLAMA3_3,
+    llm_options=LLAMA3_3_specdec,
     role="You are Donald Trump in a presidential debate",
     goal="Win the debate with your signature style",
     task="Respond briefly and effectively to debate questions"

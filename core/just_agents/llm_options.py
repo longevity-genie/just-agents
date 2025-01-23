@@ -108,12 +108,20 @@ OPENAI_O1_PREVIEW: LLMOptions = {
     "temperature": 0.0
 }
 
-PERPLEXITY_LLAMA_3_1_SONAR_LARGE_128K_ONLINE: LLMOptions= {
-    "model": "perplexity/llama-3.1-sonar-large-128k-online",
+PERPLEXITY_SONAR_PRO: LLMOptions= {
+    "model": "perplexity/sonar-pro",
     "temperature": 0.0,
     "return_citations": True,
     "return_related_questions": True
 }
+
+PERPLEXITY_SONAR: LLMOptions= {
+    "model": "perplexity/sonar",
+    "temperature": 0.0,
+    "return_citations": True,
+    "return_related_questions": True
+}
+
 
 OPEN_ROUTER_Qwen_2_72B_Instruct: LLMOptions = {
     "model": "openrouter/qwen/qwen-2-72b-instruct",

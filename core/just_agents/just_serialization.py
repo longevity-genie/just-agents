@@ -1,11 +1,18 @@
 import yaml
 import importlib
-from typing import Optional, Dict, Any, ClassVar, Sequence, Union, Set, Type
+from typing import Optional, Dict, Any, ClassVar, Sequence, Union, Set, Type, TypeVar
 from pathlib import Path
 from pydantic import BaseModel, Field, field_validator, ValidationError
 from collections.abc import MutableMapping, MutableSequence
 from pydantic import ConfigDict
+import sys
 
+# Create a TypeVar for the class
+if sys.version_info >= (3, 11):
+    from typing import Self
+    SelfType = Self
+else:
+    SelfType = TypeVar('SelfType', bound='JustSerializable')
 
 class JustYaml:
     """
@@ -314,8 +321,7 @@ class JustSerializable(BaseModel):
     def from_yaml(cls, section_name: str,
                   parent_section: str = None,
                   file_path: Path = None,
-
-    ) -> 'JustSerializable':
+    ) -> SelfType:
         """
         Creates an instance from a YAML file path, section name, and parent section name.
 

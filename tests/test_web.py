@@ -19,10 +19,8 @@ def test_web_agent_profile(load_env, tmp_path):
     test_dir = Path(__file__).parent.absolute()
     config_path = test_dir / "agent.yaml"
     models_dir = test_dir / "models.d"
-    models_jsons = models_dir / "*.json"
     agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="example_web_agent", parent_section="")
     agent.write_model_config_to_json(models_dir=models_dir)
-#    agent.examples=[WebAgent.BLUE_SKY]
     agent.save_to_yaml()
 
 
