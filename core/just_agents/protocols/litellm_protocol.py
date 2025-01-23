@@ -8,7 +8,7 @@ from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallba
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
-from just_agents.protocols.openai_classes import Role, ToolCall
+from just_agents.data_classes import Role, ToolCall
 
 from just_agents.types import MessageDict
 

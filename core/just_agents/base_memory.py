@@ -2,7 +2,7 @@ from pydantic import BaseModel, Field, PrivateAttr
 from typing import Callable, List, Dict
 from functools import singledispatchmethod
 from just_agents.interfaces.memory import IMemory, IMessageFormatter
-from just_agents.protocols.openai_classes import Message, Role, ToolCall
+from just_agents.data_classes import Message, Role, ToolCall
 from just_agents.types import MessageDict, SupportedMessages
 
 from abc import ABC

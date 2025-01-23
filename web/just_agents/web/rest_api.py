@@ -9,8 +9,9 @@ import asyncio
 from pathlib import Path
 from typing import Optional, List, Dict, Any, Union, AsyncGenerator
 
-from just_agents.base_agent import BaseAgent
-from just_agents.web.streaming import response_from_stream#, has_system_prompt, remove_system_messages, messages_content_to_text
+from just_agents.web.web_agent import WebAgent
+from just_agents.web.streaming import response_from_stream
+
 from just_agents.web.models import (
     Role, ChatCompletionRequest, ChatCompletionChoiceChunk, ChatCompletionChunkResponse,
     ChatCompletionResponse, ChatCompletionChoice, ChatCompletionUsage, ResponseMessage, ErrorResponse
@@ -90,7 +91,7 @@ class AgentRestAPI(FastAPI):
         if agent_config is None:
             # Load from environment variable or use default
             agent_config = os.getenv('AGENT_CONFIG_PATH', 'agent_profiles.yaml')
-        self.agent: BaseAgent = BaseAgent.from_yaml(file_path=agent_config, section_name=agent_section, parent_section=agent_parent_section)
+        self.agent: WebAgent = WebAgent.from_yaml(file_path=agent_config, section_name=agent_section, parent_section=agent_parent_section)
         self.agent.enforce_agent_prompt = self.remove_system_prompt
 
       
@@ -141,18 +142,12 @@ class AgentRestAPI(FastAPI):
     async def chat_completions(self, request: ChatCompletionRequest) -> Union[ChatCompletionResponse, Any, ErrorResponse]:
         try:
             agent = self.agent
-            # request = messages_content_to_text(request)
-
-            # if self.remove_system_prompt:
-            #     request = remove_system_messages(request)
-
             if "file_params" in request:
                 params = request.file_params
                 if params != []:
                     self.save_files(request.model_dump())
 
             is_streaming = request.stream
-            # messages = [message.model_dump(mode='json') for message in request.messages]
             stream_generator = agent.stream(
                 request.messages
             )

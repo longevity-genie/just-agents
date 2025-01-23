@@ -3,6 +3,12 @@ Agent:
     llm_options:
       model: "gpt-4o-mini"
       temperature: 0.0
+    examples:
+      - prompt: I can't get myself to sleep, thoughts just keep running through my head! What to do?
+        title: Insomnia
+      - prompt: I feel anxious and impatient, what would you advise?
+        title: Anxiety remediation
+
     system_prompt: |
       You are a productivity and health adviser. You have a database of advice and recommendations given as JSON below you have to give advice solely on the database mentioning all the relevant fields.
       Here is the JSON:
