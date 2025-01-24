@@ -29,9 +29,16 @@ class WebAgent(BaseAgent):
     enforce_agent_prompt: bool = Field(
         default=False,
         description="Queries containing 'system' messages fall back to completion")
-    
+
+    continue_conversation: bool = Field(
+        default=False,
+        description="Concatenate memory messages and query messages ")
+
+    remember_query: bool = Field(
+        default=False,
+        description="Add new query messages to memory")
+
     address: str = Field(DEFAULT_ADDRESS, description="Http address of the REST endpoint hosting the agent")
-    
     port: int = Field(8088 ,ge=1000, lt=65535, description="Port of the REST endpoint hosting the agent")
 
 

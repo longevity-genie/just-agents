@@ -81,7 +81,15 @@ class BaseAgent(
 
     enforce_agent_prompt: bool = Field(
         default=True,
-        description="When set, replaces query contains 'system' messages with agent prompt")
+        description="When set, replaces query containing 'system' messages with agent prompt")
+
+    continue_conversation: bool = Field(
+        default=True,
+        description="Concatenate memory messages and query messages ")
+
+    remember_query: bool = Field(
+        default=True,
+        description="Add new query messages to memory")
 
     # Protected handlers implementation
     _on_query : List[QueryListener] = PrivateAttr(default_factory=list)
@@ -93,20 +101,29 @@ class BaseAgent(
         default_factory=list)  # Buffers streaming responses
     _key_getter: Optional[RotateKeys] = PrivateAttr(None)  # Manages API key rotation
     _tool_fuse_broken: bool = PrivateAttr(False) #Fuse to prevent tool loops
+    _conversation_memory_instance_holder: Optional[IBaseMemory] = PrivateAttr(None) #Pointer to ephemeral memory
 
-    def instruct(self, prompt: str): #backward compatibility
-        self.memory.add_system_message(prompt)
+    def instruct(self, prompt: str, memory: IBaseMemory = None): #backward compatibility
+        if not memory:
+            memory = self.memory
+        memory.add_system_message(prompt)
 
-    def deepcopy_memory(self) -> IBaseMemory:
-        return self.memory.deepcopy()
+    def deepcopy_memory(self, memory: IBaseMemory = None) -> IBaseMemory:
+        if not memory:
+            memory = self.memory
+        return memory.deepcopy()
 
-    def add_to_memory(self, messages: SupportedMessages) -> None:
-        self.memory.add_message(messages)
+    def add_to_memory(self, messages: SupportedMessages, memory: IBaseMemory = None) -> None:
+        if not memory:
+            memory = self.memory
+        memory.add_message(messages)
 
-    def get_last_message(self) -> Optional[MessageDict]:
-        msg = self.memory.last_message
-        if msg is None:
-            raise ValueError("No messages in memory")
+    def get_last_message(self, memory: IBaseMemory = None) -> Optional[MessageDict]:
+        if not memory:
+            memory = self.memory
+        msg = memory.last_message
+        # if msg is None:
+        #    raise ValueError("No messages in memory")
         return msg
 
     def model_post_init(self, __context: Any) -> None:
@@ -118,7 +135,10 @@ class BaseAgent(
         if not self._protocol:
             self._protocol = ProtocolAdapterFactory.get_protocol_adapter(
                 self.streaming_method,  # e.g., OpenAI, Azure, etc.
-                execute_functions=lambda calls: self._process_function_calls(calls),
+                execute_functions=lambda calls: self._process_function_calls(
+                    calls,
+                    self._conversation_memory_instance_holder
+                ),
             )
 
         # If tools (functions) are defined, configure LLM to use them
@@ -137,6 +157,14 @@ class BaseAgent(
         if (self._key_getter is not None) and (self.llm_options.get("api_key", None) is not None):
             print("Warning api_key will be rewritten by key_getter. Both are present in llm_options.")
 
+    def _fork_memory(self, copy_values: bool) -> IBaseMemory:
+        new_memory : IBaseMemory
+        if copy_values:
+            new_memory = self.memory.model_copy() #Shallow copy
+        else:
+            new_memory = type(self.memory)()  # Call the default constructor of same class
+        return new_memory
+
     def _prepare_options(self, options: LLMOptions):
         opt = options.copy()
         if self.tools is not None and not self._tool_fuse_broken:  # populate llm_options based on available tools
@@ -146,6 +174,7 @@ class BaseAgent(
     
     def _execute_completion(
             self,
+            messages: SupportedMessages,
             stream: bool,
             **kwargs
     ) -> BaseModelResponse:
@@ -164,7 +193,7 @@ class BaseAgent(
             for _ in range(max_tries):
                 opt["api_key"] = self._key_getter()
                 try:
-                    return self._protocol.completion(messages=self.memory.messages, stream=stream, **opt)
+                    return self._protocol.completion(messages=messages, stream=stream, **opt)
                 except Exception as e:
                     last_exception = e
                     if self.completion_remove_key_on_error:
@@ -182,27 +211,84 @@ class BaseAgent(
             return self._protocol.completion(messages=self.memory.messages, stream=stream, **opt)
 
 
-
-    def _process_function_calls(self, function_calls: List[IFunctionCall[SupportedMessages]]) -> SupportedMessages:
+    def _process_function_calls(
+            self,
+            function_calls: List[IFunctionCall[SupportedMessages]],
+            memory: IBaseMemory = None
+    ) -> SupportedMessages:
+        if not memory:
+            memory = self.memory
         messages: SupportedMessages = []
         for call in function_calls:
             msg = call.execute_function(lambda function_name: self.tools[function_name].get_callable())
             self.handle_on_response(msg)
-            self.add_to_memory(msg)
+            self.add_to_memory(msg, memory)
             messages.append(msg)
         return messages
-    
-    def query_with_current_memory(self, **kwargs): #former proceed() aka llm_think()
-        # Initialize the agent with its system prompt
-        if not self.memory.prompt_messages:
-            self.instruct(self.system_prompt)
+
+    def _preprocess_input(
+            self,
+            query_input: SupportedMessages,
+            enforce_agent_prompt: Optional[bool] = None,
+            continue_conversation: Optional[bool] = None,
+            **kwargs
+    ) -> IBaseMemory:
+        if enforce_agent_prompt is None:
+            enforce_agent_prompt = self.enforce_agent_prompt
+        if continue_conversation is None:
+            continue_conversation = self.continue_conversation
+
+        self.handle_on_query(query_input) # handle the input query
+        memory_instance = self._fork_memory(copy_values=True) # We need to respect handlers!
+        self._conversation_memory_instance_holder = memory_instance #Used only in callback lambda, rethink later
+        if not continue_conversation:
+            memory_instance.clear_messages() #Clear copied messages list instead
+        self.add_to_memory(query_input, memory_instance) #Now add query to ephemeral memory
+        if enforce_agent_prompt:
+            memory_instance.clear_system_mesages() #Clear only prompt messages
+        if not memory_instance.prompt_messages:
+            self.instruct(self.system_prompt, memory_instance) #Ensure system prompt
+
+        self.handle_on_query(memory_instance.messages)  # handle the modified query
+        return memory_instance
+
+    def _postprocess_query(
+            self,
+            memory_instance: IBaseMemory,
+            remember_query: Optional[bool] = None,
+            **kwargs
+    ) -> IBaseMemory:
+        self._tool_fuse_broken = False  # defuse
+        self._conversation_memory_instance_holder=None
+        if remember_query is None:
+            remember_query = self.remember_query
+        if remember_query: #replace with shallow copy of the fork if remember is set
+            self.memory.messages = memory_instance.messages.copy()
+        return memory_instance
+
+    def query(
+            self,
+            query_input: SupportedMessages,
+            enforce_agent_prompt: Optional[bool] = None,
+            continue_conversation: Optional[bool] = None,
+            remember_query: Optional[bool] = None,
+            **kwargs
+    ) -> str:
+        """
+        Query the agent and return the last message
+        """
+        memory = self._preprocess_input(
+            query_input,
+            enforce_agent_prompt=enforce_agent_prompt,
+            continue_conversation=continue_conversation,
+        )
 
         for step in range(self.max_tool_calls):
             # individual llm call, unpacking the message, processing handlers
-            response = self._execute_completion(stream=False, **kwargs)
+            response = self._execute_completion(memory.messages ,stream=False, **kwargs)
             msg: SupportedMessage = self._protocol.message_from_response(response) # type: ignore
             self.handle_on_response(msg)
-            self.add_to_memory(msg)
+            self.add_to_memory(msg, memory)
 
             if not self.tools or self._tool_fuse_broken:
                break         # If there are no tool calls or tools available, exit the loop
@@ -210,29 +296,48 @@ class BaseAgent(
             tool_calls = self._protocol.tool_calls_from_message(msg)
             # Process each tool call if they exist and re-execute query
             self._process_function_calls(
-                tool_calls)  # NOTE: no kwargs here as tool calls might need different parameters
+                tool_calls,
+                memory
+            )  # NOTE: no kwargs here as tool calls might need different parameters
 
             if not tool_calls:
                 break
             elif step == self.max_tool_calls - 2: #special case where we ran out of tool calls or stuck in a loop
                 self._tool_fuse_broken = True #one last attempt at graceful response
 
-        self._tool_fuse_broken = False
+        return self._postprocess_query(
+            memory,
+            remember_query=remember_query,
+        ).last_message_str
 
-    def streaming_query_with_current_memory(self, reconstruct_chunks = False, **kwargs):
-        if not self.memory.prompt_messages:
-            self.instruct(self.system_prompt)
+
+    
+
+    def stream(
+            self,
+            query_input: SupportedMessages,
+            enforce_agent_prompt: Optional[bool] = None,
+            continue_conversation: Optional[bool] = None,
+            remember_query: Optional[bool] = None,
+            reconstruct_chunks : bool = False,
+            **kwargs
+    ) -> Generator[Union[BaseModelResponse, SupportedMessages],None,None]:
+        memory = self._preprocess_input(
+            query_input,
+            enforce_agent_prompt=enforce_agent_prompt,
+            continue_conversation=continue_conversation,
+        )
 
         for step in range(self.max_tool_calls):
             self._partial_streaming_chunks.clear()
-            response = self._execute_completion(stream=True, **kwargs)
+            response = self._execute_completion(memory.messages, stream=True, **kwargs)
             yielded = False
             tool_calls = []
             for i, part in enumerate(response):
                 self._partial_streaming_chunks.append(part)
-                msg : SupportedMessages = self._protocol.delta_from_response(part)
+                msg: SupportedMessages = self._protocol.delta_from_response(part)
                 delta = self._protocol.content_from_delta(msg)
-                if delta: #stream content as is
+                if delta:  # stream content as is
                     yielded = True
                     if reconstruct_chunks:
                         yield self._protocol.get_chunk(i, delta, options={'model': part["model"]})
@@ -244,46 +349,30 @@ class BaseAgent(
                 self._partial_streaming_chunks.clear()
                 msg: SupportedMessages = self._protocol.message_from_response(assembly)  # type: ignore
                 self.handle_on_response(msg)
-                self.add_to_memory(msg)
+                self.add_to_memory(msg, memory)
 
                 tool_calls = self._protocol.tool_calls_from_message(msg)
                 if not tool_calls and not yielded:
-                    yield self._protocol.sse_wrap(assembly.model_dump(mode='json')) #not delta and not tool, pass as is
+                    yield self._protocol.sse_wrap(
+                        assembly.model_dump(mode='json'))  # not delta and not tool, pass as is
 
             if not self.tools or self._tool_fuse_broken or not tool_calls:
                 self._tool_fuse_broken = False
                 break  # If there are no tool calls or tools available, exit the loop
             else:
-                self._process_function_calls(tool_calls)  # NOTE: no kwargs here as tool calls might need different parameters
+                self._process_function_calls(
+                    tool_calls,
+                    memory
+                )
 
             if step == self.max_tool_calls - 2:  # special case where we ran out of tool calls or stuck in a loop
                 self._tool_fuse_broken = True  # one last attempt at graceful response without tools
 
-        self._tool_fuse_broken = False #defuse
+        self._postprocess_query(
+            memory,
+            remember_query=remember_query,
+        )
         yield self._protocol.done()
-
-    def query(self, query_input: SupportedMessages, **kwargs) -> str:
-        """
-        Query the agent and return the last message
-        """
-        self.handle_on_query(query_input)
-        self.add_to_memory(query_input)
-        if self.enforce_agent_prompt:
-            self.memory.clear_system_mesages()
-        self.query_with_current_memory(**kwargs)
-        result = self.memory.last_message_str
-        if result is None:
-            raise ValueError("No response generated")
-        return result
-    
-
-    def stream(self, query_input: SupportedMessages, reconstruct_chunks = False, **kwargs) -> Generator[Union[BaseModelResponse, SupportedMessages],None,None]:
-        self.handle_on_query(query_input)
-        self.add_to_memory(query_input)
-        if self.enforce_agent_prompt:
-            self.memory.clear_system_mesages()
-        return self.streaming_query_with_current_memory(reconstruct_chunks=reconstruct_chunks, **kwargs)
-
 
     @property
     def model_supported_parameters(self) -> list[str]:

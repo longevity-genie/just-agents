@@ -2,6 +2,7 @@ import json
 from dotenv import load_dotenv
 import pytest
 from typing import Callable, Any
+
 from just_agents.base_agent import BaseAgent
 from just_agents.llm_options import LLMOptions, LLAMA3_3, LLAMA3_2_VISION, OPENAI_GPT4oMINI
 from just_agents.just_tool import JustToolsBus
@@ -33,20 +34,20 @@ def get_current_weather(location: str):
     else:
         return json.dumps({"location": location, "temperature": "unknown"})
 
-def agent_query(prompt: str, options: LLMOptions):
+def agent_query(prompt: str, options: LLMOptions, **kwargs):
     session: BaseAgent = BaseAgent(
         llm_options=options,
         tools=[get_current_weather]
     )
-    return session.query(prompt)
+    return session.query(prompt, **kwargs)
 
-def agent_call(prompt: str, options: LLMOptions, reconstruct_chunks: bool):
+def agent_call(prompt: str, options: LLMOptions, reconstruct_chunks: bool, **kwargs):
     session: BaseAgent = BaseAgent(
         llm_options=options,
         tools=[get_current_weather]
     )
     chunks = []
-    gen = session.stream(prompt, reconstruct_chunks=reconstruct_chunks)
+    gen = session.stream(prompt, reconstruct_chunks=reconstruct_chunks, **kwargs)
     for sse_event in gen:
         event = session._protocol.sse_parse(sse_event)
         assert isinstance(event, dict)
@@ -65,6 +66,10 @@ def agent_call(prompt: str, options: LLMOptions, reconstruct_chunks: bool):
 
 def test_stream():
     result = agent_call("Why is the sky blue?", OPENAI_GPT4oMINI, False)
+    assert "wavelength" in result
+
+def test_stream_amnesia():
+    result = agent_call("Why is the sky blue?", OPENAI_GPT4oMINI, False, continue_conversation=False, remember_query=False)
     assert "wavelength" in result
 
 def test_stream_grok():
@@ -99,6 +104,9 @@ def validate_tool_call(call : Callable[[Any,...],str],*args,**kwargs):
 
 def test_query_tool():
     validate_tool_call(agent_query, OPENAI_GPT4oMINI)
+
+def test_query_tool_amnesia():
+    validate_tool_call(agent_query, OPENAI_GPT4oMINI, continue_conversation=False, remember_query=False)
 
 def test_stream_tool():
     validate_tool_call(agent_call, OPENAI_GPT4oMINI, False)
