@@ -10,7 +10,7 @@ from pathlib import Path
 from typing import Optional, List, Dict, Any, Union
 
 from just_agents.web.web_agent import WebAgent
-from just_agents.web.streaming import response_from_stream
+from just_agents.web.streaming import response_from_stream, get_completion_response
 
 from just_agents.web.models import (
     Role, ChatCompletionRequest, ChatCompletionResponse, ChatCompletionChoice, ChatCompletionUsage, ResponseMessage, ErrorResponse
@@ -219,25 +219,15 @@ class AgentRestAPI(FastAPI):
                 else:
                     # Collect all chunks into final response
                     response_content = response_from_stream(stream_generator)
-
-                    return ChatCompletionResponse(
-                            id=f"chatcmpl-{time.time()}",
-                            object="chat.completion",
-                            created=int(time.time()),
-                            model=request.model,
-                            choices=[ChatCompletionChoice(
-                                index=0,
-                                message=ResponseMessage(
-                                    role= Role.assistant,
-                                    content= response_content
-                                ),
-                                finish_reason="stop"
-                            )],
-                            usage=ChatCompletionUsage(
-                                prompt_tokens=0,
-                                completion_tokens=0,
-                                total_tokens=0
-                           ))
+                    return get_completion_response(
+                        model=request.model,
+                        text=response_content,
+                        usage = ChatCompletionUsage(
+                            prompt_tokens=0,
+                            completion_tokens=0,
+                            total_tokens=0
+                        )
+                    )
 
             except Exception as e:
                 action.log(

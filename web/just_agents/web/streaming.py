@@ -53,7 +53,7 @@ def get_completion_response(
     response = ChatCompletionResponse(
         id = "chatcmpl-"+str(uuid4()),
         object = "chat.completion",
-        created=time.time(),
+        created=int(time.time()),
         model = model,
         choices = [choice],
         usage=usage

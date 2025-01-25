@@ -18,7 +18,6 @@ class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelRespons
     """
     function_convention: ClassVar[Type[IFunctionCall[Any]]]
     _output_streaming: IAbstractStreamingProtocol
-    execute_function_hook: ExecuteToolCallback[AbstractMessage]
 
     @abstractmethod
     def completion(self, *args, **kwargs) -> BaseModelResponse:

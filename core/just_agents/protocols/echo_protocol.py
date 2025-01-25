@@ -1,7 +1,7 @@
 import random
 from pydantic import BaseModel, Field, PrivateAttr
 from typing import Any, List, Union, Dict, Sequence, Coroutine, AsyncGenerator, Generator, ClassVar, Type, Callable, Optional
-from openai.types.chat.chat_completion import ChatCompletion, Choice, ChatCompletionMessage
+
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback, AbstractMessage
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
@@ -40,34 +40,6 @@ class NoopFunctionCall(BaseModel, IFunctionCall[AbstractMessage]):
         """
         return {"role": "assistant", "content": "Noop calls reconstructed."}
 
-# class ChatCompletionChoice(Choice):
-#     finish_reason: Optional[Literal["stop", "length", "tool_calls", "content_filter", "function_call"]] = None
-# #    text: Optional[str] = Field(default=None, alias="message.content")
-#     message : Optional[ResponseMessage]
-#
-# class ChatCompletionChoiceChunk(ChatCompletionChoice):
-#     delta: ResponseMessage = Field(default=None)
-#     message: Optional[ResponseMessage] = Field(default=None, exclude=True) #hax
-#
-class ChatCompletionUsage(CompletionUsage):
-    prompt_tokens: int = Field(default=0)
-    completion_tokens: int = Field(default=0)
-    total_tokens: int = Field(default=0)
-#
-
-# class Context(BaseModel):
-#     mode : str
-#     context : Any
-#
-class ChatCompletionResponse(ChatCompletion):
-    id: str
-    object: Literal["chat.completion", "chat.completion.chunk"]
-    created: Union[int,float]
-    model: str
-    choices: List[ChatCompletionChoice]
-    usage: Optional[ChatCompletionUsage] = Field(default=None)
-
-
 
 class EchoModelResponse(BaseModel):
     """
@@ -93,7 +65,6 @@ class EchoProtocolAdapter(BaseModel, IProtocolAdapter[EchoModelResponse, Abstrac
     serving as a stub for testing without actual model calls.
     """
     function_convention: ClassVar[Type[IFunctionCall[Any]]] = NoopFunctionCall
-    execute_function_hook: ExecuteToolCallback[AbstractMessage] = Field(..., description="Callback to execute tool functions.")
     _output_streaming: IAbstractStreamingProtocol = PrivateAttr(default_factory=OpenaiStreamingProtocol)
 
     def _completion(self, prompt: str) -> EchoModelResponse:

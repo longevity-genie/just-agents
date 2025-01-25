@@ -101,7 +101,6 @@ class BaseAgent(
         default_factory=list)  # Buffers streaming responses
     _key_getter: Optional[RotateKeys] = PrivateAttr(None)  # Manages API key rotation
     _tool_fuse_broken: bool = PrivateAttr(False) #Fuse to prevent tool loops
-    _conversation_memory_instance_holder: Optional[IBaseMemory] = PrivateAttr(None) #Pointer to ephemeral memory
 
     def instruct(self, prompt: str, memory: IBaseMemory = None): #backward compatibility
         if not memory:
@@ -135,10 +134,6 @@ class BaseAgent(
         if not self._protocol:
             self._protocol = ProtocolAdapterFactory.get_protocol_adapter(
                 self.streaming_method,  # e.g., OpenAI, Azure, etc.
-                execute_functions=lambda calls: self._process_function_calls(
-                    calls,
-                    self._conversation_memory_instance_holder
-                ),
             )
 
         # If tools (functions) are defined, configure LLM to use them
@@ -233,14 +228,14 @@ class BaseAgent(
             continue_conversation: Optional[bool] = None,
             **kwargs
     ) -> IBaseMemory:
+
         if enforce_agent_prompt is None:
             enforce_agent_prompt = self.enforce_agent_prompt
         if continue_conversation is None:
             continue_conversation = self.continue_conversation
 
         self.handle_on_query(query_input) # handle the input query
-        memory_instance = self._fork_memory(copy_values=True) # We need to respect handlers!
-        self._conversation_memory_instance_holder = memory_instance #Used only in callback lambda, rethink later
+        memory_instance = self._fork_memory(copy_values=True) #Handlers from main memory need to fire even if messages are discarded
         if not continue_conversation:
             memory_instance.clear_messages() #Clear copied messages list instead
         self.add_to_memory(query_input, memory_instance) #Now add query to ephemeral memory
@@ -310,9 +305,6 @@ class BaseAgent(
             remember_query=remember_query,
         ).last_message_str
 
-
-    
-
     def stream(
             self,
             query_input: SupportedMessages,
@@ -364,7 +356,6 @@ class BaseAgent(
                     tool_calls,
                     memory
                 )
-
             if step == self.max_tool_calls - 2:  # special case where we ran out of tool calls or stuck in a loop
                 self._tool_fuse_broken = True  # one last attempt at graceful response without tools
 
