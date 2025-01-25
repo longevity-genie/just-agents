@@ -38,8 +38,6 @@ class LiteLLMFunctionCall(ToolCall, IFunctionCall[MessageDict]):
 class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, CustomStreamWrapper]):
     #Class that describes function convention
     function_convention: ClassVar[Type[IFunctionCall[MessageDict]]] = LiteLLMFunctionCall
-    #hooks to agent class
-    execute_function_hook:  ExecuteToolCallback[MessageDict] = Field(...)
     _output_streaming: IAbstractStreamingProtocol = PrivateAttr(default_factory=OpenaiStreamingProtocol)
 
     def model_post_init(self, __context: Any) -> None:
