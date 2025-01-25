@@ -6,21 +6,44 @@ from pydantic_core import from_json
 """ Common OpenAI-compatible data structures """
 
 # Content types and enums
-class Role(str, Enum):
-    """OpenAI compatible Role enum class with string representation"""
-    system = "system"
-    user = "user"
-    assistant = "assistant"
-    tool = "tool"
-
-    # make it similar to Literal["system", "user", "assistant", tool] while retaining enum convenience
+class EnumLiteral(str, Enum):
+    """
+    A general base class for string-based enums that behave like literals.
+    Ensures compatibility with str comparisons and retains enum benefits.
+    """
     def __new__(cls, value, *args, **kwargs):
         obj = str.__new__(cls, value)
         obj._value_ = value
         return obj
 
-    def __str__(self): #handles use_enum_values==False cases in str context without .value
-        return str(self.value)
+    def __str__(self):
+        # String representation directly returns the value
+        return self.value
+
+    def __eq__(self, other):
+        # Allow direct comparison with strings
+        if isinstance(other, str):
+            return self.value == other
+        return super().__eq__(other)
+
+    def __hash__(self):
+        # Use the hash of the value to behave like a string in hashable contexts
+        return hash(self.value)
+
+class Role(EnumLiteral):
+    """OpenAI compatible role enum class with string representation"""
+    system = "system"
+    user = "user"
+    assistant = "assistant"
+    tool = "tool"
+
+class FinishReason(EnumLiteral):
+    """OpenAI compatible finish_reason enum class with string representation"""
+    stop = "stop"
+    length = "length"
+    tool_calls = "tool_calls"
+    content_filter = "content_filter"
+    function_call = "function_call"
 
 class TextContent(BaseModel):
     type: str = Field("text", examples=["text"])

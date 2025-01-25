@@ -24,6 +24,7 @@ just-agents-coding = { path = "coding", develop = true }
 just-agents-web = { path = "web", develop = true }
 just-agents-router = { path = "router", develop = true }
 just-agents-examples = { path = "examples", develop = true }
+aiofiles = "^24.1.0"
 
 [tool.poetry.group.publish.dependencies]
 just-agents-core = "0.5.0"

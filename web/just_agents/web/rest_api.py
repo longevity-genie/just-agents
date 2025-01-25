@@ -3,26 +3,23 @@ import hashlib
 import mimetypes
 import os
 import time
-from pydantic import BaseModel
-import yaml
 
 from pathlib import Path
+from pydantic import BaseModel
 from typing import Optional, List, Dict, Any, Union
 
 from just_agents.web.web_agent import WebAgent
-from just_agents.web.streaming import response_from_stream, get_completion_response
+from just_agents.web.streaming import response_from_stream, get_completion_response, async_wrap
 
 from just_agents.web.models import (
-    Role, ChatCompletionRequest, ChatCompletionResponse, ChatCompletionChoice, ChatCompletionUsage, ResponseMessage, ErrorResponse
+     ChatCompletionRequest, ChatCompletionResponse, ChatCompletionUsage, ErrorResponse
 )
-from rich.pretty import pprint
 from dotenv import load_dotenv
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
-from eliot import log_message, start_task
-
+from eliot import start_task
 
 class Model(BaseModel):
     id: str
@@ -36,8 +33,6 @@ class Model(BaseModel):
 class ModelList(BaseModel):
     object: str = "list"
     data: List[Model]
-
-
 
 class AgentRestAPI(FastAPI):
 
@@ -166,7 +161,6 @@ class AgentRestAPI(FastAPI):
                 f.write(file_content)
 
 
-
 #    @log_call(action_type="chat_completions", include_result=False)
     async def chat_completions(self, request: ChatCompletionRequest) -> Union[ChatCompletionResponse, Any, ErrorResponse]:
         with start_task(action_type="chat_completions") as action:
@@ -208,7 +202,7 @@ class AgentRestAPI(FastAPI):
 
                 if is_streaming:
                     return StreamingResponse(
-                        stream_generator,
+                        async_wrap(stream_generator),
                         media_type="application/x-ndjson",
                         headers={
                             "Cache-Control": "no-cache",
@@ -260,6 +254,5 @@ class AgentRestAPI(FastAPI):
             ))
         print(models)
 
-        
         return ModelList(data=models, object="list")
 
