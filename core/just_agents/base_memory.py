@@ -117,13 +117,15 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC)
         return [message for message in self.messages if message.get("role","user") == role.value]
 
     @property
-    def prompt_messages(self) -> list:
+    def prompt_messages(self) -> List[MessageDict]:
         return self.get_message_by_role(Role.system)
 
-    def clear_system_mesages(self) -> None:
+    def clear_system_messages(self, clear_non_empty: bool = True) -> None:
         for sys_prompt in self.prompt_messages:
+            if not clear_non_empty and Message(**sys_prompt).get_text():
+                continue
             self.messages.remove(sys_prompt)
-        if self.prompt_messages:
+        if clear_non_empty and self.prompt_messages:
             raise ValueError("Failed to clear system prompts")
 
     def deepcopy(self) -> 'IBaseMemory':

@@ -1,5 +1,7 @@
 from pydantic import Field, PrivateAttr
 from typing import Optional, List, Union, Any, Generator
+
+from just_agents.data_classes import FinishReason, ToolCall
 from just_agents.types import MessageDict, SupportedMessages
 
 from just_agents.llm_options import LLMOptions
@@ -239,8 +241,7 @@ class BaseAgent(
         if not continue_conversation:
             memory_instance.clear_messages() #Clear copied messages list instead
         self.add_to_memory(query_input, memory_instance) #Now add query to ephemeral memory
-        if enforce_agent_prompt:
-            memory_instance.clear_system_mesages() #Clear only prompt messages
+        memory_instance.clear_system_messages(clear_non_empty=enforce_agent_prompt) #Clear prompt messages
         if not memory_instance.prompt_messages:
             self.instruct(self.system_prompt, memory_instance) #Ensure system prompt
 
@@ -329,12 +330,20 @@ class BaseAgent(
                 self._partial_streaming_chunks.append(part)
                 msg: SupportedMessages = self._protocol.delta_from_response(part)
                 delta = self._protocol.content_from_delta(msg)
+                finish_reason: FinishReason = self._protocol.finish_reason_from_response(part)
                 if delta:  # stream content as is
                     yielded = True
                     if reconstruct_chunks:
                         yield self._protocol.get_chunk(i, delta, options={'model': part["model"]})
                     else:
                         yield self._protocol.sse_wrap(part.model_dump(mode='json'))
+                elif finish_reason == FinishReason.function_call:
+                    raise NotImplementedError("Function calls are deprecated, use Tool calls instead")
+                elif finish_reason == FinishReason.tool_calls:
+                    pass #processed separately
+                else:
+                    yielded = True
+                    yield self._protocol.sse_wrap(part.model_dump(mode='json'))
 
             if len(self._partial_streaming_chunks) > 0:
                 assembly = self._protocol.response_from_deltas(self._partial_streaming_chunks)

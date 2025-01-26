@@ -8,9 +8,10 @@ from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallba
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
 from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
-from just_agents.data_classes import Role, ToolCall
+from just_agents.data_classes import Role, ToolCall, FinishReason
 
 from just_agents.types import MessageDict
+
 
 class LiteLLMFunctionCall(ToolCall, IFunctionCall[MessageDict]):
     def execute_function(self, call_by_name: ToolByNameCallback):
@@ -51,6 +52,9 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         return acompletion(*args, **kwargs)
     
     # TODO: use https://docs.litellm.ai/docs/providers/custom_llm_server as mock for tests
+
+    def finish_reason_from_response(self, response: Union[ModelResponse,GenericStreamingChunk]) -> Optional[FinishReason]:
+        return response.choices[0].finish_reason
 
     def message_from_response(self, response: ModelResponse) -> MessageDict:
         message = response.choices[0].message.model_dump(

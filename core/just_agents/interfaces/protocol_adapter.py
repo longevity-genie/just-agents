@@ -28,6 +28,10 @@ class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelRespons
         raise NotImplementedError("You need to implement async_completion first!")
 
     @abstractmethod
+    def finish_reason_from_response(self, response: Union[BaseModelResponse, BaseModelStreamWrapper]) -> Any:
+        raise NotImplementedError("You need to implement finish_reason_from_response first!")
+
+    @abstractmethod
     def message_from_response(self, response: BaseModelResponse) -> AbstractMessage:
         raise NotImplementedError("You need to implement message_from_response first!")
 
