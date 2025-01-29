@@ -1,6 +1,8 @@
 agent_profiles:
-  SugarGenie:
+  sugar_genie:
     class_qualname: just_agents.base_agent.BaseAgent
+    display_name: 🍬 A blood Sugar prediction Genie
+    assistant_index: 10
     llm_options:
       api_base: https://api.groq.com/openai/v1
       model: groq/llama-3.3-70b-versatile
@@ -147,10 +149,12 @@ agent_profiles:
 
       ### Personal Motivation
       Livia Zaharia -team member and type 1 diabetic since 2001:
-  Agent:
+  web_agent:
     class_qualname: just_agents.base_agent.BaseAgent
+    assistant_index: 20
     llm_options:
-      model: "gpt-4o-mini"
+      api_base: https://api.groq.com/openai/v1
+      model: groq/llama-3.3-70b-versatile
       temperature: 0.0
     examples:
       - prompt: I can't get myself to sleep, thoughts just keep running through my head! What to do?

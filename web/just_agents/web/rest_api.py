@@ -3,6 +3,7 @@ import hashlib
 import mimetypes
 import os
 import time
+import re
 
 from pathlib import Path
 from pydantic import BaseModel
@@ -42,11 +43,14 @@ class AgentRestAPI(FastAPI):
         agent_config: Optional[Path | str] = None,
         agent_section: Optional[str] = None,
         agent_parent_section: Optional[str] = None,
+        agent_host: Optional[str] = None,
+        agent_port: Optional[str] = None,
         debug: bool = False,
         title: str = "Just-Agent endpoint",
         description: str = "OpenAI-compatible API endpoint for Just-Agents",
-        version: str = "1.0.0",
+        version: str = "1.1.0",
         openapi_url: str = "/openapi.json",
+        models_dir: Optional[str] = None,
         openapi_tags: Optional[List[Dict[str, Any]]] = None,
         servers: Optional[List[Dict[str, Union[str, Any]]]] = None,
         docs_url: str = "/docs",
@@ -54,7 +58,8 @@ class AgentRestAPI(FastAPI):
         terms_of_service: Optional[str] = None,
         contact: Optional[Dict[str, Union[str, Any]]] = None,
         license_info: Optional[Dict[str, Union[str, Any]]] = None,
-        remove_system_prompt: Optional[bool] = None
+        remove_system_prompt: Optional[bool] = None,
+        remove_dd_configs: Optional[bool] = None
     ) -> None:
         """Initialize the AgentRestAPI with FastAPI parameters.
         
@@ -89,9 +94,29 @@ class AgentRestAPI(FastAPI):
 
         load_dotenv(override=True)
         if remove_system_prompt is None:
-            self.remove_system_prompt = os.getenv('REMOVE_SYSTEM_PROMPT', True)
+            self.remove_system_prompt = os.getenv('REMOVE_SYSTEM_PROMPT', False)
         else:
             self.remove_system_prompt = remove_system_prompt
+
+        if remove_dd_configs is None:
+            self.remove_dd_configs = os.getenv('REMOVE_DD_CONFIGS', True)
+        else:
+            self.remove_dd_configs = remove_dd_configs
+
+        if models_dir is None:
+            self.models_dir = os.getenv('MODELS_DIR', "models.d")
+        else:
+            self.models_dir = models_dir
+
+        if agent_port is None:
+            self.agent_port = int(os.getenv("AGENT_PORT", 8088))
+        else:
+            self.agent_port = agent_port
+
+        if agent_host is None:
+            self.agent_host = os.getenv("AGENT_HOST", "http://127.0.0.1")
+        else:
+            self.agent_host = agent_host
 
         self.agents = {}  # Dictionary to store multiple agents
         self._agent_related_config(agent_config, agent_section, agent_parent_section)
@@ -111,9 +136,19 @@ class AgentRestAPI(FastAPI):
         else:
             # Load all agents using from_yaml_dict
             self.agents = WebAgent.from_yaml_dict(agent_config, agent_parent_section)
+
+            # Remove unlisted config files if flag is set
+            if self.remove_dd_configs:
+                for config_file in Path(self.models_dir).glob("[0123456789][0123456789]_*.json"):
+                    if not re.match(r"0+_.*\.json", config_file.name):  # Keep 00_ files
+                        config_file.unlink()
+
             # Set enforce_agent_prompt for all agents
             for agent in self.agents.values():
+                agent.address = self.agent_host or "127.0.0.1"
+                agent.port=self.agent_port or 8088
                 agent.enforce_agent_prompt = self.remove_system_prompt
+                agent.write_model_config_to_json(models_dir=Path(self.models_dir))
             
             # Set the first agent as default if any were loaded
             if self.agents:

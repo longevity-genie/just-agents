@@ -3,6 +3,7 @@ from pydantic import Field, model_validator
 from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict, Union, Type
 
 from just_agents.just_serialization import JustSerializable
+from just_agents.data_classes import ModelPromptExample
 from just_agents.just_tool import JustTool, JustTools
 
 
@@ -172,6 +173,9 @@ class JustAgentFullProfile(JustAgentProfile):
 
     DEFAULT_DESCRIPTION: ClassVar[str] = "Generic all-purpose AI agent"
 
+    display_name: Optional[str] = Field(
+        None,
+        description="A fancy one-line name of the agent, replaces shortname in UIs, may include spaces, emoji and other stuff")
 
     description: str = Field(
         DEFAULT_DESCRIPTION,
@@ -222,6 +226,11 @@ class JustAgentFullProfile(JustAgentProfile):
         None,
         description="A List[str] of of external knowledge sources the agent is capable of accessing, e.g., databases, APIs, etc.")
     """List of external knowledge sources the agent is capable of accessing, e.g., databases, APIs, etc."""
+
+    examples: Optional[List[ModelPromptExample]] = Field(
+        None,
+        description="List of model prompt examples"
+    )
 
     def __str__(self) -> str:
         """

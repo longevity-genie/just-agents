@@ -128,3 +128,34 @@ class ToolCall(BaseModel):
             return str(e)
 
 
+class ModelPromptExample(BaseModel):
+    """
+    Provides a single prompt example to demonstrate how the model may be used.
+    """
+    title: str = Field(
+        ..., description="Title or short label for the example prompt.",
+        examples=["Why is the sky blue?"]
+    )
+    prompt: str = Field(
+        ..., description="The actual prompt text you would send to the model.",
+        examples=["Explain in 10 words why the sky is blue"]
+    )
+
+    @classmethod
+    def from_message(cls, message: "Message") -> "ModelPromptExample":
+        """
+        Constructs a ModelPromptExample instance from a Message instance.
+        """
+        if message.get_text():
+            return cls(title="User prompt Example", prompt=message.content)
+        raise ValueError("Message content must be a simple string to create a ModelPromptExample.")
+
+    def to_message_dict(self) -> dict:
+        """
+        Converts the ModelPromptExample instance into a dictionary representing a Message.
+        """
+        message = Message(
+            role=Role.user,  # Default role for the example
+            content=self.prompt
+        )
+        return message.model_dump(mode='json')

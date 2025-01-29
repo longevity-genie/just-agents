@@ -3,6 +3,7 @@ from typing import Optional
 from just_agents.web.rest_api import AgentRestAPI
 import uvicorn
 import typer
+import os
 from pycomfort.logging import to_nice_stdout
 from eliot import start_action, start_task
 
@@ -34,7 +35,7 @@ def run_agent_server(
         remove_system_prompt: Whether to remove system prompt
     """
     to_nice_stdout()
-    
+
     if config is None:
         config = Path("agent_profiles.yaml")
     
@@ -66,14 +67,14 @@ def run_server_command(
         None,
         help="Path to the YAML configuration file. Defaults to 'agent_profiles.yaml' in current directory"
     ),
-    host: str = typer.Option("0.0.0.0", help="Host to bind the server to"),
-    port: int = typer.Option(8088, help="Port to run the server on"),
-    workers: int = typer.Option(1, help="Number of worker processes"),
-    title: str = typer.Option("Just-Agent endpoint", help="Title for the API endpoint"),
-    section: Optional[str] = typer.Option(None, help="Optional section name in the config file"),
-    parent_section: Optional[str] = typer.Option(None, help="Optional parent section name in the config file"),
-    debug: bool = typer.Option(True, help="Debug mode"),
-    remove_system_prompt: bool = typer.Option(False, help="Remove system prompt")
+    host: str = typer.Option(os.getenv("APP_HOST", "0.0.0.0"), help="Host to bind the server to"),
+    port: int = typer.Option(int(os.getenv("APP_PORT", 8088)), help="Port to run the server on"),
+    workers: int = typer.Option(int(os.getenv("AGENT_WORKERS", 1)), help="Number of worker processes"),
+    title: str = typer.Option(os.getenv("AGENT_TITLE", "Just-Agent endpoint"), help="Title for the API endpoint"),
+    section: Optional[str] = typer.Option(os.getenv("AGENT_SECTION", None), help="Optional section name in the config file"),
+    parent_section: Optional[str] = typer.Option(os.getenv("AGENT_PARENT_SECTION", None), help="Optional parent section name in the config file"),
+    debug: bool = typer.Option(os.getenv("AGENT_DEBUG", "true").lower() == "true", help="Debug mode"),
+    remove_system_prompt: bool = typer.Option(os.getenv("AGENT_REMOVE_SYSTEM_PROMPT", "false").lower() == "true", help="Remove system prompt")
 ) -> None:
     """Run the FastAPI server with the given configuration."""
     with start_task(action_type="run_agent_server"):

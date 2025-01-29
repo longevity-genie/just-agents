@@ -1,39 +1,6 @@
 from typing import List, Optional
 from pydantic import BaseModel, Field, ConfigDict
-from just_agents.data_classes import Message, Role
-
-class ModelPromptExample(BaseModel):
-    """
-    Provides a single prompt example to demonstrate how the model may be used.
-    """
-    title: str = Field(
-        ..., description="Title or short label for the example prompt.",
-        examples=["Why is the sky blue?"]
-    )
-    prompt: str = Field(
-        ..., description="The actual prompt text you would send to the model.",
-        examples=["Explain in 10 words why the sky is blue"]
-    )
-
-    @classmethod
-    def from_message(cls, message: "Message") -> "ModelPromptExample":
-        """
-        Constructs a ModelPromptExample instance from a Message instance.
-        """
-        if message.get_text():
-            return cls(title="User prompt Example", prompt=message.content)
-        raise ValueError("Message content must be a simple string to create a ModelPromptExample.")
-
-    def to_message_dict(self) -> dict:
-        """
-        Converts the ModelPromptExample instance into a dictionary representing a Message.
-        """
-        message = Message(
-            role=Role.user,  # Default role for the example
-            content=self.prompt
-        )
-        return message.model_dump(mode='json')
-
+from just_agents.data_classes import ModelPromptExample
 
 
 class ModelParameters(BaseModel):
@@ -73,8 +40,8 @@ class ModelEndpoint(BaseModel):
         description="Base URL for the API endpoint.",
         examples=["http://litellm-proxy:4000/v1"]
     )
-    apiKey: str = Field(
-        ...,
+    apiKey: Optional[str] = Field(
+        None,
         description="API key or token used for authentication.",
         examples=["no_key_needed", "sk-XXX"]
     )

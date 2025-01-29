@@ -1,6 +1,8 @@
 from pathlib import Path
 import json
+import os
 from typing import List, ClassVar, Optional, Dict
+from just_agents.just_profile import JustAgentFullProfile
 from just_agents.base_agent import BaseAgent
 from just_agents.web.chat_ui import ModelConfig, ModelParameters, ModelEndpoint, ModelPromptExample
 from pydantic import BaseModel, Field, ConfigDict
@@ -8,24 +10,24 @@ from just_agents.protocols.openai_streaming import DEFAULT_OPENAI_STOP
 import yaml
 from eliot import start_action
 
-class WebAgent(BaseAgent):
+class WebAgent(BaseAgent, JustAgentFullProfile):
     
     DEFAULT_PROMPT_EXAMPLE: ClassVar[ModelPromptExample] = ModelPromptExample(
                 title = "Is aging a disease?",
                 prompt = "Explain why biological aging can be classified as a disease"
             )
     DEFAULT_DESCRIPTION: ClassVar[str] = "Generic all-purpose Web AI agent"
-
+    DEFAULT_DISPLAY_NAME: ClassVar[str] = "🦙 A simple Web AI agent"
     DEFAULT_ADDRESS: ClassVar[str] = "http://172.17.0.1"
 
     description: str = Field(
         DEFAULT_DESCRIPTION,
         description="Short description of what the agent does")
 
-    examples: List[ModelPromptExample] = Field(
-        default_factory=list,
-        description="List of model prompt examples"
-    )
+    display_name: Optional[str] = Field(
+        DEFAULT_DISPLAY_NAME,
+        description="A fancy one-line name of the agent, replaces shortname in UIs, may include spaces, emoji and other stuff")
+
     enforce_agent_prompt: bool = Field(
         default=False,
         description="Queries containing 'system' messages fall back to completion")
@@ -38,11 +40,16 @@ class WebAgent(BaseAgent):
         default=False,
         description="Add new query messages to memory")
 
+    assistant_index: int = Field(
+        default=1,
+        gt=0,
+        description="Value greater than 0 that specifies model position in Chat UI models list, highest is default")
+
     address: str = Field(DEFAULT_ADDRESS, description="Http address of the REST endpoint hosting the agent")
     port: int = Field(8088 ,ge=1000, lt=65535, description="Port of the REST endpoint hosting the agent")
 
 
-    def compose_model_config(self) -> dict:
+    def compose_model_config(self, proxy_address: str = None) -> dict:
         """
         Creates a ModelConfig instance populated with reasonable defaults.
         """
@@ -55,17 +62,20 @@ class WebAgent(BaseAgent):
             stop=self.llm_options.get("stop",[DEFAULT_OPENAI_STOP]),
         )
         # Create a default list of endpoints
+        if proxy_address:
+            baseurl = proxy_address
+        else:
+            baseurl = f"{self.address}:{self.port}/v1"
         endpoints = [
             ModelEndpoint(
                 type="openai",
-                baseURL=f"{self.address}:{self.port}/v1",
-                apiKey="no_key_needed"
+                baseURL=baseurl
             )
         ]
         # Compose the top-level ModelConfig
         model_config = ModelConfig(
-            name=self.class_qualname,
-            displayName=self.shortname,
+            name=self.shortname,
+            displayName=self.display_name or self.shortname,
             description=self.description,
             parameters=params,
             endpoints=endpoints,
@@ -76,12 +86,12 @@ class WebAgent(BaseAgent):
             mode='json',
             exclude_defaults=False,
             exclude_unset=False,
-            exclude_none=False,
+            exclude_none=True,
         )
 
 
     
-    def write_model_config_to_json(self, models_dir: Path, filename: str = "00_model_config.json"):
+    def write_model_config_to_json(self, models_dir: Path, filename: str = None):
         """
         Writes a sample ModelConfig instance to a JSON file in the specified test directory.
 
@@ -96,13 +106,17 @@ class WebAgent(BaseAgent):
         # Create the sample ModelConfig instance
             model_config = self.compose_model_config()
             models_dir.mkdir(parents=True, exist_ok=True)
+            os.chmod(models_dir, 0o777)
 
             # Define the file path
+            if filename is None:
+                filename = f"{self.assistant_index:02d}_{self.shortname}_config.json"
             file_path = models_dir / filename
 
             # Write the JSON file
             with open(file_path, "w", encoding="utf-8") as f:
                 json.dump(model_config, f, ensure_ascii=False, indent=4)
+            os.chmod(models_dir, 0o777)
 
             action.log(message_type="model_config.write", file_path=str(file_path))
 
