@@ -53,11 +53,12 @@ def agent_call(prompt: str, options: LLMOptions, reconstruct_chunks: bool, **kwa
         assert isinstance(event, dict)
         data = event.get("data")
         if isinstance(data, dict):
-            delta = data["choices"][0]["delta"]
+            delta = session._protocol.message_from_response(data)
             chunk = session._protocol.content_from_delta(delta)
         else:
             continue
-        chunks.append(chunk)
+        if chunk:
+            chunks.append(chunk)
 
     full_response = ''.join(chunks)
     last = session.memory.last_message_str

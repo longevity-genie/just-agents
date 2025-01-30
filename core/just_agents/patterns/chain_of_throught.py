@@ -2,6 +2,7 @@ from typing import ClassVar, Literal, Any
 from just_agents.base_agent import BaseAgent
 from pydantic import Field
 from just_agents.types import SupportedMessages
+from just_agents.base_memory import IBaseMemory
 from just_agents.patterns.interfaces.IThinkingAgent import IThinkingAgent, IThought
 
 
@@ -65,11 +66,11 @@ class ChainOfThoughtAgent(BaseAgent, IThinkingAgent[SupportedMessages, Supported
     append_response_format: bool = Field(True,
                                          description="Whether to append default COT prompt of this agent to the provided")
 
-    def instruct(self, prompt: str):
+    def instruct(self, prompt: str, memory: IBaseMemory = None):
         # override how system prompt is applied:
-        super().instruct(prompt)
+        super().instruct(prompt, memory)
         if self.append_response_format:
-            super().instruct(self.response_format) # don't modify self system prompt to avoid saving it into profile
+            super().instruct(self.response_format, memory) # don't modify self system prompt to avoid saving it into profile
 
     def thought_query(self, query: SupportedMessages, **kwargs) -> Thought:
         # Parses the LLM response into a structured Thought object

@@ -229,7 +229,7 @@ class JustAgentFullProfile(JustAgentProfile):
 
     examples: Optional[List[ModelPromptExample]] = Field(
         None,
-        description="List of model prompt examples"
+        description="A List[dict] of model prompt examples, each example is structured as {\"title\":\"Letter counting\", \"prompt\":\"How many letters...\"} "
     )
 
     def __str__(self) -> str:

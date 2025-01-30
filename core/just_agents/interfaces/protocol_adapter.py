@@ -5,14 +5,15 @@ from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
 from just_agents.interfaces.function_call import IFunctionCall
 
 BaseModelResponse = TypeVar('BaseModelResponse', bound=BaseModel)
-BaseModelStreamWrapper = TypeVar('BaseModelStreamWrapper', bound=BaseModel)
+BaseModelStreamResponse = TypeVar('BaseModelStreamResponse', bound=BaseModel)
 AbstractMessage = TypeVar("AbstractMessage")
+ResponseTypes=Union[AbstractMessage,BaseModelResponse, BaseModelStreamResponse]
 
 ModelResponseCallback=Callable[...,BaseModelResponse]
 MessageUnpackCallback=Callable[[BaseModelResponse], AbstractMessage]
 ExecuteToolCallback=Callable[[Sequence[IFunctionCall]],List[AbstractMessage]]
 
-class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelResponse, AbstractMessage, BaseModelStreamWrapper]):
+class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelResponse, AbstractMessage, BaseModelStreamResponse]):
     """
     Class that is required to wrap the model protocol
     """
@@ -28,16 +29,12 @@ class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelRespons
         raise NotImplementedError("You need to implement async_completion first!")
 
     @abstractmethod
-    def finish_reason_from_response(self, response: Union[BaseModelResponse, BaseModelStreamWrapper]) -> Any:
+    def finish_reason_from_response(self, response: ResponseTypes) -> Any:
         raise NotImplementedError("You need to implement finish_reason_from_response first!")
 
     @abstractmethod
-    def message_from_response(self, response: BaseModelResponse) -> AbstractMessage:
+    def message_from_response(self, response: ResponseTypes) -> AbstractMessage:
         raise NotImplementedError("You need to implement message_from_response first!")
-
-    @abstractmethod
-    def delta_from_response(self, response: BaseModelStreamWrapper) -> AbstractMessage:
-        raise NotImplementedError("You need to implement delta_from_response first!")
 
     @abstractmethod
     def content_from_delta(self, delta: AbstractMessage) -> str:

@@ -1,7 +1,10 @@
 from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
-from pydantic import Field, PrivateAttr, BaseModel
 
-from litellm import ModelResponse, CustomStreamWrapper, GenericStreamingChunk, completion, acompletion, stream_chunk_builder
+from pydantic import Field, PrivateAttr, BaseModel
+from functools import singledispatchmethod
+
+from litellm import CustomStreamWrapper, completion, acompletion, stream_chunk_builder
+from litellm.types.utils import Delta, Message, ModelResponse, ModelResponseStream
 from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
 
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
@@ -12,6 +15,7 @@ from just_agents.data_classes import Role, ToolCall, FinishReason
 
 from just_agents.types import MessageDict
 
+SupportedResponse=Union[ModelResponse, ModelResponseStream, MessageDict]
 
 class LiteLLMFunctionCall(ToolCall, IFunctionCall[MessageDict]):
     def execute_function(self, call_by_name: ToolByNameCallback):
@@ -53,10 +57,42 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
     
     # TODO: use https://docs.litellm.ai/docs/providers/custom_llm_server as mock for tests
 
-    def finish_reason_from_response(self, response: Union[ModelResponse,GenericStreamingChunk]) -> Optional[FinishReason]:
-        return response.choices[0].finish_reason
+    def finish_reason_from_response(self, response: SupportedResponse) -> Optional[FinishReason]:
+        if isinstance(response,ModelResponse) or isinstance(response,ModelResponseStream):
+            return response.choices[0].finish_reason
+        elif isinstance(response, dict):
+            if response.get("choices",None):
+                return response["choices"][0].get("finish_reason",None)
+        else:
+            return None
 
-    def message_from_response(self, response: ModelResponse) -> MessageDict:
+
+
+    @singledispatchmethod
+    def message_from_response(self, response: SupportedResponse) -> MessageDict:
+        """
+        Overrides the abstract method and provides dispatching to specific handlers.
+        """
+        raise TypeError(f"Unsupported response format: {type(response)}")
+
+    @message_from_response.register
+    def delta_from_stream(self, response: ModelResponseStream) -> MessageDict:
+        """
+        Streaming model contains no message section, only delta.
+        """
+        return response.choices[0].delta.model_dump(
+            mode="json",
+            exclude_none=True,
+            exclude_unset=True,
+            by_alias=True,
+            exclude={"function_call"} if not response.choices[0].delta.function_call else {}  # failsafe
+        ) or {}
+
+    @message_from_response.register
+    def message_from_model_response(self, response: ModelResponse) -> MessageDict:
+        """
+        ModelResponse has a required message section.
+        """
         message = response.choices[0].message.model_dump(
             mode="json",
             exclude_none=True,
@@ -64,27 +100,37 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
             by_alias=True,
             exclude={"function_call"} if not response.choices[0].message.function_call else {}  # failsafe
         )
-        if "citations" in response:
-            message["citations"] = response.citations #perplexity specific field
-        assert "function_call" not in message
-        return message
+        if "citations" in response: #TODO: investigate why not dmped
+            message["citations"] = response.citations  # perplexity specific field
+        return message or {}
 
-    def delta_from_response(self, response: GenericStreamingChunk) -> MessageDict: #TODO: fix typehint/model choice
-        message = response.choices[0].delta.model_dump(
-            mode="json",
-            exclude_none=True,
-            exclude_unset=True,
-            by_alias=True,
-            exclude={"function_call"} if not response.choices[0].delta.function_call else {}  # failsafe
-        )
-        return message
-    
-    def content_from_delta(self, delta: MessageDict) -> str:
-        return delta.get("content")
+    @message_from_response.register
+    def message_from_dict(self, response: dict) -> MessageDict:
+        """
+        Noting is definite for dict, check everything.
+        """
+        message = {}
+        if response.get("choices", None):
+            choice = response["choices"][0]
+            if isinstance(choice, dict):
+                message = choice.get("message", {}) or choice.get("delta", {})
+        return message or {}
 
-    def tool_calls_from_message(self, message: MessageDict) -> List[LiteLLMFunctionCall]:
+    def content_from_delta(self, delta: Union[MessageDict,Delta]) -> str:
+        if isinstance(delta, Delta):
+            return delta.content or ''
+        elif isinstance(delta, dict):
+            return delta.get("content", '') or ''
+        else:
+            return ''
+
+
+    def tool_calls_from_message(self, message: Union[MessageDict,Message]) -> List[LiteLLMFunctionCall]:
         # If there are no tool calls or tools available, exit the loop
-        tool_calls = message.get("tool_calls")
+        if isinstance(message,Message):
+            tool_calls = [ tool.model_dump() for tool in message.tool_calls]
+        else:
+            tool_calls = message.get("tool_calls")
         if not tool_calls:
             return []
         else:
@@ -94,7 +140,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
                 for tool_call in tool_calls
             ]
 
-    def response_from_deltas(self, chunks: List[Any]) -> ModelResponse:
+    def response_from_deltas(self, chunks: List[ModelResponseStream]) -> ModelResponse:
         return stream_chunk_builder(chunks=chunks)
 
     def get_supported_params(self, model_name: str) -> Optional[list]:

@@ -255,7 +255,6 @@ class BaseAgent(
             **kwargs
     ) -> IBaseMemory:
         self._tool_fuse_broken = False  # defuse
-        self._conversation_memory_instance_holder=None
         if remember_query is None:
             remember_query = self.remember_query
         if remember_query: #replace with shallow copy of the fork if remember is set
@@ -328,7 +327,7 @@ class BaseAgent(
             tool_calls = []
             for i, part in enumerate(response):
                 self._partial_streaming_chunks.append(part)
-                msg: SupportedMessages = self._protocol.delta_from_response(part)
+                msg: SupportedMessages = self._protocol.message_from_response(part)
                 delta = self._protocol.content_from_delta(msg)
                 finish_reason: FinishReason = self._protocol.finish_reason_from_response(part)
                 if delta:  # stream content as is
