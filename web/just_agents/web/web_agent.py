@@ -40,10 +40,10 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
         default=False,
         description="Add new query messages to memory")
 
-    assistant_index: int = Field(
-        default=1,
-        gt=0,
-        description="Value greater than 0 that specifies model position in Chat UI models list, highest is default")
+    assistant_index: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description="Non-negative value that specifies model position in Chat UI models list, highest is default")
 
     address: str = Field(DEFAULT_ADDRESS, description="Http address of the REST endpoint hosting the agent")
     port: int = Field(8088 ,ge=1000, lt=65535, description="Port of the REST endpoint hosting the agent")

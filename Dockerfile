@@ -1,52 +1,65 @@
-# Use Python 3.10 as base image
+# syntax=docker/dockerfile:1
 FROM python:3.10-slim
 
-# Set working directory
-WORKDIR /app
-
-# Install system dependencies
+### 1) Install system dependencies as root
 RUN apt-get update && apt-get install -y \
     git \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-# Install poetry
+### 2) Create a non-root user, with UID/GID passed in at build time
+#    The defaults here (1000:1000) can be overridden by docker build arguments
+ARG UID=1000
+ARG GID=1000
+RUN groupadd -g $GID appgroup \
+ && useradd -u $UID -g appgroup -m -s /bin/bash appuser
+
+
+### 3) Install Poetry (still as root)
 RUN curl -sSL https://install.python-poetry.org | python3 -
 
-# Create writable and mountable directories
-RUN mkdir -p /app/models.d /app/tools && chmod -R 777 /app/models.d /app/tools
+### 4) Create app directory, copy project files in, fix ownership
+WORKDIR /app
+COPY . /app
+RUN mkdir -p /app/models.d /app/tools
 
-# Mark them as volumes to ensure they remain writable even when mounted
-VOLUME ["/app/models.d", "/app/tools"]
+### 5) Copy entrypoint script (if not already copied) and make it executable
+#    (Alternatively, you could have included this in step 4.)
+COPY --chown=appuser:appgroup entrypoint.sh /usr/local/bin/entrypoint.sh
+RUN chmod +x /usr/local/bin/entrypoint.sh
 
-# Copy project files
-COPY . .
+# Make the /app directory owned by appuser (for any pre-copied files)
+RUN chown -R appuser:appgroup /app
 
-# Configure poetry to not create virtual environment
+### 6) Install your main Python dependencies using Poetry (system-wide)
+#    We disable virtualenv creation so Poetry installs into system site-packages.
 RUN /root/.local/bin/poetry config virtualenvs.create false
-
-# Install dependencies
+# Install production dependencies (excluding dev) using Poetry
 RUN /root/.local/bin/poetry install --without dev
 
-# Set environment variables
+# Expose ports and set environment variables
+EXPOSE 8088
+
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
-
-# Set default environment variables (can be overridden in docker-compose)
 ENV APP_HOST="0.0.0.0"
 ENV APP_PORT=8088
-
-EXPOSE 8088
 
 ENV AGENT_HOST="http://localhost"
 ENV AGENT_PORT=8088
 ENV AGENT_WORKERS=1
 ENV AGENT_TITLE="Just-Agent endpoint"
-ENV AGENT_SECTION=""
 ENV AGENT_PARENT_SECTION=""
 ENV AGENT_DEBUG="true"
 ENV AGENT_REMOVE_SYSTEM_PROMPT="false"
 ENV AGENT_CONFIG="agent_profiles.yaml"
+ENV TRAP_CHAT_NAMES="True"
 
-# Default command
-CMD ["python", "-m", "just_agents.web.run_agent"] 
+### 7) Switch to non-root user
+USER appuser
+
+# Ensure that ~/.local/bin is in PATH, so 'pip --user' installs are runnable
+ENV PATH="/home/appuser/.local/bin:${PATH}"
+
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+CMD ["python", "-m", "just_agents.web.run_agent"]
