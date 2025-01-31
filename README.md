@@ -1,7 +1,6 @@
 # just-agents
 [![Python CI](https://github.com/longevity-genie/just-agents/actions/workflows/run_tests.yaml/badge.svg)](https://github.com/longevity-genie/just-agents/actions/workflows/run_tests.yaml)
 [![PyPI version](https://badge.fury.io/py/just-agents-core.svg)](https://badge.fury.io/py/just-agents-core)
-[![Documentation Status](https://readthedocs.org/projects/just-agents/badge/?version=latest)](https://just-agents.readthedocs.io/en/latest/?badge=latest)
 
 A lightweight, straightforward library for LLM agents - no over-engineering, just simplicity!
 
@@ -217,3 +216,18 @@ Using the `deploy-agent` command, you can deploy a complete chat interface with 
 3. **Scalability**: Docker-based deployment provides consistent environments
 4. **Security**: Proper isolation of services and configuration
 5. **Flexibility**: Easy customization through YAML configurations
+
+
+## Acknowledgments
+
+This project is supported by:
+
+[![HEALES](images/heales.jpg)](https://heales.org/)
+
+*HEALES - Healthy Life Extension Society*
+
+and
+
+[![IBIMA](images/IBIMA.jpg)](https://ibima.med.uni-rostock.de/)
+
+[IBIMA - Institute for Biostatistics and Informatics in Medicine and Ageing Research](https://ibima.med.uni-rostock.de/)
