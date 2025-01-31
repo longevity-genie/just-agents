@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-core"
-version = "0.5.0"
+version = "0.5.1"
 description = "Just Agents - Base Package"
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",
