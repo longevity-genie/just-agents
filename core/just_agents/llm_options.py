@@ -82,6 +82,12 @@ LLAMA3_3_specdec: dict[str, Any] = {
     "tools": []
 }
 
+GROQ_DEEPSEEK_R1_DISTILL: LLMOptions = {
+    "model": "groq/deepseek-r1-distill-llama-70b",
+    "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0
+}
+
 
 MISTRAL_8x22B: LLMOptions = {
     "model": "mistral/open-mixtral-8x22b",

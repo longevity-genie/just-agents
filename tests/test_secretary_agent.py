@@ -6,13 +6,15 @@ import just_agents.llm_options
 from just_agents.router.secretary_agent import SecretaryAgent
 from pytest import TempPathFactory, FixtureRequest
 from typing import Tuple, Any
+from pathlib import Path
 
 @pytest.fixture(scope='module')
 def temp_config_path(tmpdir_factory: TempPathFactory) -> str:
     # Create a temporary directory for YAML files
     dotenv.load_dotenv(override=True)
-    tmpdir_factory.mktemp('config')
-    return SecretaryAgent.DEFAULT_CONFIG_PATH
+    temp_dir = tmpdir_factory.mktemp('config')
+    # Return path to a file in the temporary directory
+    return str(temp_dir / 'secretary_config.yaml')
 
 @pytest.fixture
 def secretary_autoload_false(temp_config_path: str) -> Tuple[SecretaryAgent, bool]:
@@ -68,7 +70,8 @@ def test_new_secretary(temp_config_path: str) -> None:
     # Load the secretary from the YAML file created in previous tests
     dotenv.load_dotenv(override=True)
     new_secretary = SecretaryAgent.from_yaml(
-        'SecretaryAgent'
+        'SecretaryAgent',
+        file_path=Path(temp_config_path)  # Convert string to Path
     )
     assert new_secretary.role is not None, "Role is None in the loaded secretary."
     assert new_secretary.description is not None, "Description is None in the loaded secretary."

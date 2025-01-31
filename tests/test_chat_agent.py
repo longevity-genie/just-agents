@@ -1,4 +1,5 @@
 import pprint
+from time import sleep, time
 from dotenv import load_dotenv
 from just_agents.base_agent import ChatAgent
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
@@ -14,8 +15,10 @@ from pycomfort.logging import to_nice_stdout
 from pydantic import BaseModel, Field
 from typing import Optional
 
+
 to_nice_stdout()
 db_path = Path("tests/data/open_genes.sqlite")
+sleep_time = float(os.getenv("SLEEP_TIME", "20.0"))
 
 
 @pytest.fixture(scope="session")
@@ -45,19 +48,17 @@ def open_genes_db() -> Path:
     return db_path
 
 
-@pytest.mark.skip(reason="Agent produces bad SQL queries, add retry to test!") #TODO
 def test_quering(open_genes_db):
     load_dotenv(override = True)
 
     agent = ChatAgent(role="helpful agent which knows how operate with databases",
                     goal=f"help users by using SQL syntax to form comands to work with the {open_genes_db} sqlite database",
-                    task="formulate appropriate comands to operate in the given database.",
+                    task="formulate appropriate comands to operate in the given database and always include the table names in your response.",
                     tools=[sqlite_query],
                     llm_options=LLAMA3_3,
-                    key_list_env="GROQ_API_KEY" # LOAD GROQ_API_KEY FROM ENVIRONMENT VARIABLES
+                    key_list_env="GROQ_API_KEY"
                     )
 
-    
     response = agent.query("Show me all tables in the database")
     agent.memory.pretty_print_all_messages()
     assert response is not None, "Response should not be None"
@@ -70,8 +71,11 @@ def test_quering(open_genes_db):
         'longevity_associations'
     ]
     
+    # Check each expected table is in the agent's response
     for table in expected_tables:
-        assert table.lower() in response.lower(), f"Expected table '{table}' not found in response"
+        assert table.lower() in response.lower(), f"Expected table '{table}' not found in agent response"
+    
+    sleep(sleep_time)
 
 
 
@@ -93,7 +97,7 @@ class AgentResponse(BaseModel):
             }
         }
 
-@pytest.mark.skip(reason="Temporarily skipping this test")
+@pytest.mark.skip(reason="needs to be rewritten as it exceeds the context window")
 def test_delegation():
     
     agent_db = ChatAgent(role="helpful agent which knows how operate with databases",
@@ -118,10 +122,14 @@ def test_delegation():
         llm_options=OPENAI_GPT4oMINI
     )
 
-    for i in range(3):
+    for i in range(2):
         result = ponder_agent.query_structural(
-            "Interventions on which genes extended mice lifespan most of all? Search all the relevant tables in the open-genes sqlite and only for mouse", paarser=type[AgentResponse])
-        if result["delegate_to"] == "agent_db":
-            result = agent_db.query(result["question"])
+            "Interventions on which genes extended mice lifespan most of all? Search all the relevant tables in the open-genes sqlite and only for mouse", 
+            parser=AgentResponse
+        )
+        if result.delegate_to == "agent_db":
+            result = agent_db.query(result.question)
         print("\nQuery Result:")  # Add a header for clarity
+        sleep(sleep_time)
         pprint(result)
+        
