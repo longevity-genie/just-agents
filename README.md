@@ -9,7 +9,6 @@ A lightweight, straightforward library for LLM agents - no over-engineering, jus
 pip install just-agents-core
 ```
 
-WARNING: we are reorganizing the package structure right now so the published package is a bit different than the code in this repository.
 
 ## 🎯 Motivation
 
@@ -35,6 +34,8 @@ Of course, you might comment that we do not have the ecosystem like, for example
 - [Basic Agents Tutorial](https://github.com/longevity-genie/just-agents/blob/main/examples/notebooks/01_just_agents_colab.ipynb)
 - [Database Agent Tutorial](https://github.com/longevity-genie/just-agents/blob/main/examples/notebooks/02_sqlite_example.ipynb)
 - [Coding Agent Tutorial](https://github.com/longevity-genie/just-agents/blob/main/examples/notebooks/03_coding_agent.ipynb)
+
+Note: tutorials are updated less often than the code, so you might need to check the code for the most recent examples
 
 ### Example Code
 Browse our [examples](https://github.com/longevity-genie/just-agents/tree/main/examples) directory for:
@@ -80,13 +81,13 @@ cp .env.example .env
 
 ### Core Components
 1. **BaseAgent**: A thin wrapper around litellm for LLM interactions
+2. **ChatAgent**: An agent that wrapes BaseAgent and add role, goal and task
 3. **ChainOfThoughtAgent**: Extended agent with reasoning capabilities
-
+4. **WebAgent**: An agent designed to be served as an OpenAI-compatible REST API endpoint
 
 ### ChatAgent
 
-The `ChatAgent` class is the core of our library. 
-It represents an agent with a specific role, goal, and task. Here's an example of a moderated debate between political figures:
+The `ChatAgent` class represents an agent with a specific role, goal, and task. Here's an example of a moderated debate between political figures:
 
 ```python
 from just_agents.base_agent import ChatAgent
@@ -143,9 +144,22 @@ goal, and task. The moderator agent guides the conversation while two political 
 
 All prompts that we use are stored in yaml files that you can easily overload.
 
-## Chain of Thought Agent with Function Calls
+### WebAgent
 
-The `ChainOfThoughtAgent` class extends the capabilities of our agents by allowing them to use reasoning steps and call functions. 
+With a single command `run-agent`, you can instantly serveon or several agents as an OpenAI-compatible REST API endpoint:
+
+```bash
+# Basic usage
+run-agent agent_profiles.yaml
+```
+It allows you to expose the agent as if it is a regular LLM model. We also provide run-agent command.
+This is especially useful when you want to use the agent in a web application or in a chat interface.
+
+We recently released [just-chat](https://github.com/antonkulaga/just-chat) that allows seting up a chat interface around your WebAgent with just one command.
+
+## Chain of Thought Agent
+
+The `ChainOfThoughtAgent` class extends the capabilities of our agents by allowing them to use reasoning steps.
 Here's an example:
 
 ```python
