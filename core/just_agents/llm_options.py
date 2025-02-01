@@ -113,11 +113,20 @@ OPENAI_O1_MINI: LLMOptions = {
 }
 
 
-OPENAI_O3_MINI: LLMOptions = {
+OPENAI_O3_MINI_2025_01_31: LLMOptions = {
     "model": "o3-mini-2025-01-31",
     "temperature": 0.0
 }
 
+OPENAI_O3_MINI: LLMOptions = {
+    "model": "o3-mini",
+    "temperature": 0.0
+}
+
+OPENAI_O1: LLMOptions = {
+    "model": "o1",
+    "temperature": 0.0
+}
 
 OPENAI_O1_PREVIEW: LLMOptions = {
     "model": "o1-preview",
@@ -138,27 +147,18 @@ PERPLEXITY_SONAR: LLMOptions= {
     "return_related_questions": True
 }
 
-
-OPEN_ROUTER_Qwen_2_72B_Instruct: LLMOptions = {
-    "model": "openrouter/qwen/qwen-2-72b-instruct",
-    "temperature": 0.0,
-    "tools": []
+GEMINI_2_FLASH_THINKING_EXP: LLMOptions = {
+    "model": "gemini/gemini-2.0-flash-thinking-exp",
+    "temperature": 0.0
 }
 
-OPEN_ROUTER_Qwen_2_72B_Instruct_Vision: LLMOptions = {
-    "model": "openrouter/qwen/qwen-2-vl-72b-instruct",
-    "temperature": 0.0,
-    "tools": []
+GEMINI_2_FLASH_EXP: LLMOptions = {
+    "model": "gemini/gemini-2.0-flash-exp",
+    "temperature": 0.0
 }
 
-OPEN_ROUTER_LLAMA_3_8B_FREE: LLMOptions = {
-    "model": "openrouter/meta-llama/llama-3-8b-instruct:free",
-    "temperature": 0.0,
-    "tools": []
-}
-
-OPEN_ROUTER_GEMINI_1_5_FLASH_EXP_FREE: LLMOptions = {
-    "model": "openrouter/google/gemini-flash-1.5-exp",
+OPEN_ROUTER_Qwen_2_5_CODER_32B_Instruct: LLMOptions = {
+    "model": "openrouter/qwen/qwen-2.5-coder-32b-instruct",
     "temperature": 0.0,
     "tools": []
 }
