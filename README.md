@@ -26,7 +26,7 @@ Of course, you might comment that we do not have the ecosystem like, for example
 - 🪶 Lightweight and simple implementation
 - 📝 Easy-to-understand agent interactions
 - 🔧 Customizable prompts using YAML files
-- 🤖 Support for various LLM models through litellm
+- 🤖 Support for various LLM models through litellm (see [full list here](https://models.litellm.ai/))
 - 🔄 Chain of Thought reasoning with function calls
 
 ## 📚 Documentation & Tutorials

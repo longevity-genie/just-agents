@@ -2,6 +2,9 @@ from typing import Any, Dict, List, Optional
 from pydantic import Field, HttpUrl, BaseModel
 from pydantic import ConfigDict
 
+# here we give only the most popular models, 
+# but you can specify any model you want, check https://models.litellm.ai/ for models and providers that are supported
+
 LLMOptions = Dict[str, Any]
 
 class ModelOptions(BaseModel):
@@ -108,6 +111,13 @@ OPENAI_O1_MINI: LLMOptions = {
     "model": "o1-mini",
     "temperature": 0.0
 }
+
+
+OPENAI_O3_MINI: LLMOptions = {
+    "model": "o3-mini-2025-01-31",
+    "temperature": 0.0
+}
+
 
 OPENAI_O1_PREVIEW: LLMOptions = {
     "model": "o1-preview",
