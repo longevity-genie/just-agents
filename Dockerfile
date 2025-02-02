@@ -1,5 +1,5 @@
 # syntax=docker/dockerfile:1
-FROM python:3.10-slim
+FROM python:3.11-slim
 
 ### 1) Install system dependencies as root
 RUN apt-get update && apt-get install -y \

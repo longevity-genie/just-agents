@@ -12,7 +12,7 @@ extensions = [
     'myst_parser',
     'sphinx.ext.intersphinx',
     'sphinx_autodoc_typehints',
-    'sphinx.ext.autoapi'
+    'sphinx_autoapi'
 ]
 
 # Add after the existing extensions
