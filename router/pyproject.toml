@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-router"
-version = "0.5.1"
+version = "0.5.2"
 description = "Just Agents - Router Components"
 authors = [
     "Newton Winter <isoutthere@gmail.com>",
@@ -17,8 +17,8 @@ packages = [
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<4.0"
-just-agents-core = ">=0.5.1"
+python = ">=3.11,<4.0"
+just-agents-core = ">=0.5.2"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.4"

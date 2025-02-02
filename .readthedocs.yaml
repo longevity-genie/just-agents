@@ -11,12 +11,12 @@ build:
     - cp pyproject.toml pyproject.toml.bak
     - |
       sed -i \
-        -e "s|{ path = \"core\", develop = true }|\"0.5.1\"|g" \
-        -e "s|{ path = \"tools\", develop = true }|\"0.5.1\"|g" \
-        -e "s|{ path = \"coding\", develop = true }|\"0.5.1\"|g" \
-        -e "s|{ path = \"web\", develop = true }|\"0.5.1\"|g" \
-        -e "s|{ path = \"router\", develop = true }|\"0.5.1\"|g" \
-        -e "s|{ path = \"examples\", develop = true }|\"0.5.1\"|g" \
+        -e "s|{ path = \"core\", develop = true }|\"0.5.2\"|g" \
+        -e "s|{ path = \"tools\", develop = true }|\"0.5.2\"|g" \
+        -e "s|{ path = \"coding\", develop = true }|\"0.5.2\"|g" \
+        -e "s|{ path = \"web\", develop = true }|\"0.5.2\"|g" \
+        -e "s|{ path = \"router\", develop = true }|\"0.5.2\"|g" \
+        -e "s|{ path = \"examples\", develop = true }|\"0.5.2\"|g" \
         pyproject.toml
     # Build packages in order following build.sh approach
     # First build core
@@ -33,9 +33,15 @@ build:
     - poetry build
     - pip install dist/*.whl
     - rm ./just_agents/__init__.py
+    # Install documentation dependencies
+    - pip install -r docs/requirements.txt
+    # Build documentation
+    - cd docs && make html && cd ..
 
 sphinx:
   configuration: docs/conf.py
+  builder: html
+  fail_on_warning: true
 
 python:
   install:

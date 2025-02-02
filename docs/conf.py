@@ -56,6 +56,7 @@ myst_enable_extensions = [
 
 # AutoAPI settings
 autoapi_type = 'python'
-autoapi_dirs = ['../']
+autoapi_dirs = ['../just_agents']
+autoapi_add_toctree_entry = True
 autoapi_options = ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']
 autoapi_python_use_implicit_namespaces = True

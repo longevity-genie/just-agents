@@ -4,3 +4,4 @@ myst-parser>=2.0.0
 sphinx-markdown-tables>=0.0.17
 sphinx-autodoc-typehints>=1.25.2
 sphinx-autoapi>=3.0.0
+sphinx-automodapi>=0.15.0

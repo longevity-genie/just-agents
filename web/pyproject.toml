@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-web"
-version = "0.5.1"
+version = "0.5.2"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 
 authors = [
@@ -30,8 +30,8 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<4.0"
-just-agents-core = ">=0.5.1"
+python = ">=3.11,<4.0"
+just-agents-core = ">=0.5.2"
 pycomfort = ">=0.0.17"
 fastapi = ">=0.115.6"
 uvicorn = ">=0.34.0"

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-core"
-version = "0.5.1"
+version = "0.5.2"
 description = "Just Agents - Base Package"
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",
@@ -20,7 +20,6 @@ keywords = ["python", "llm", "science", "review", "agents", "AI", "longevity", "
 classifiers = [
     "Development Status :: 2 - Pre-Alpha",
     "Intended Audience :: Developers",
-    "Programming Language :: Python :: 3.10",
     "Programming Language :: Python :: 3.11",
     "Programming Language :: Python :: 3.12",
     "Operating System :: Unix",
@@ -29,7 +28,7 @@ classifiers = [
 ]
 
 [tool.poetry.dependencies]
-python = ">=3.10,<4.0"
+python = ">=3.11,<4.0"
 litellm = ">=1.60.0"
 pydantic = ">=2.0.0,<3.0.0"
 Deprecated = ">=1.2.15"
