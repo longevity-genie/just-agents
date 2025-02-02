@@ -100,7 +100,7 @@ class JustAgentProfile(JustSerializable):
         if file_path is None:
             file_path = cls.DEFAULT_CONFIG_PATH
 
-        return JustSerializable.from_yaml_auto(section_name, parent_section, file_path, class_hint=JustSerializable)
+        return cls.from_yaml_auto(section_name, parent_section, file_path)
 
     @staticmethod
     def load_legacy_schema(

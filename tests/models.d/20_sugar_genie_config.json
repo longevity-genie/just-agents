@@ -1,0 +1,24 @@
+{
+    "name": "sugar_genie",
+    "displayName": "🍬 A blood Sugar prediction Genie",
+    "description": "Generic all-purpose Web AI agent",
+    "parameters": {
+        "temperature": 0.0,
+        "max_new_tokens": 4096,
+        "stop": [
+            "[DONE]"
+        ]
+    },
+    "endpoints": [
+        {
+            "type": "openai",
+            "baseURL": "http://172.17.0.1:8088/v1"
+        }
+    ],
+    "promptExamples": [
+        {
+            "title": "Glucose level prediction",
+            "prompt": "Why is glucose prediction models are important?"
+        }
+    ]
+}

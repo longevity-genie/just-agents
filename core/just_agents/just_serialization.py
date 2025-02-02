@@ -2,17 +2,19 @@ import yaml
 import importlib
 from typing import Optional, Dict, Any, ClassVar, Sequence, Union, Set, Type, TypeVar
 from pathlib import Path
-from pydantic import BaseModel, Field, field_validator, ValidationError
+
+from pydantic import BaseModel, Field, field_validator
 from collections.abc import MutableMapping, MutableSequence
 from pydantic import ConfigDict
 import sys
 
 # Create a TypeVar for the class
+JustSerializableSubclass = TypeVar('JustSerializableSubclass', bound='JustSerializable')
 if sys.version_info >= (3, 11):
     from typing import Self
     SelfType = Self
 else:
-    SelfType = TypeVar('SelfType', bound='JustSerializable')
+    SelfType = JustSerializableSubclass
 
 class JustYaml:
     """
@@ -275,7 +277,7 @@ class JustSerializable(BaseModel):
         return value
 
     @classmethod
-    def from_json(cls, json_data: Dict[str, Any], qualname_check: bool = True) -> 'JustSerializable':
+    def from_json(cls, json_data: Dict[str, Any], qualname_check: bool = True) -> SelfType:
         """
         Constructor from JSON data. Populates fields that are present in the class,
         and stores any extra fields in 'extras'.
@@ -294,7 +296,7 @@ class JustSerializable(BaseModel):
         instance = cls.model_validate(json_data)
         class_qualname = cls.get_full_class_path()
         if qualname_check and class_qualname != instance.class_qualname:
-            raise ValidationError(f"Field class_qualname mismatch:'{instance.class_qualname}', self:'{class_qualname}'")
+            raise ValueError(f"Field class_qualname mismatch:'{instance.class_qualname}', self:'{class_qualname}'")
         return instance
 
     @staticmethod
@@ -348,14 +350,14 @@ class JustSerializable(BaseModel):
             parent_section,
         )
         section_data = cls.update_config_data(section_data, section_name, parent_section, file_path)
-        return cls.model_validate(section_data)
+        return cls.from_json(json_data=section_data)
 
     @staticmethod
     def from_yaml_auto(section_name: str,
                        parent_section: Optional[str],
                        file_path: Path,
                        class_hint: Optional[Union[Type|str]] = None,
-                       ) -> Any:
+                       ) -> Optional[JustSerializableSubclass]:
         """
         Creates an instance from a YAML file.
 

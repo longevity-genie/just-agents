@@ -1,0 +1,27 @@
+{
+  "name": "precious3GPT_gpt-4o-mini",
+  "displayName": "precious3GPT gpt-4o-mini",
+  "description": "Agent for interacting with model precious3GPT with gpt-4o-mini",
+  "parameters": {
+    "temperature": 0.0,
+    "max_new_tokens": 10000,
+        "stop": ["[DONE]"]
+  },
+  "endpoints": [
+    {
+      "type": "openai",
+      "baseURL": "http://172.17.0.1:8088/v1",
+      "apiKey": "no_key_needed"
+    }
+  ],
+  "promptExamples": [
+        {
+          "title": "Could you please provide me with the expression profile for a 70-year-old man?",
+          "prompt": "Could you please provide me with the expression profile for a 70-year-old man?"
+        },
+        {
+          "title": "Can you provide me with skin proteomics data for a 30-year-old woman taking metformin?",
+          "prompt": "Can you provide me with skin proteomics data for a 30-year-old woman taking metformin?"
+        }
+      ]
+}

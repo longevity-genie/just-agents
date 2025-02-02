@@ -1,5 +1,5 @@
 from pydantic import Field, PrivateAttr
-from typing import Optional, List, Union, Any, Generator
+from typing import Optional, List, Union, Any, Generator, Dict
 
 from just_agents.data_classes import FinishReason, ToolCall
 from just_agents.types import MessageDict, SupportedMessages
@@ -162,11 +162,20 @@ class BaseAgent(
             new_memory = type(self.memory)()  # Call the default constructor of same class
         return new_memory
 
+    @classmethod
+    def from_json(cls, json_data: Dict[str, Any], qualname_check: bool = True) -> 'BaseAgent':
+        instance : BaseAgent = super().from_json(json_data, qualname_check)
+        if not instance.tools and instance.llm_options.get('tools', None):
+            raise ValueError(f"Tools mismatch: agent tools empty, but llm_options has tools section:'{instance.llm_options.get('tools')}'")
+        return instance
+
     def _prepare_options(self, options: LLMOptions):
         opt = options.copy()
         if self.tools is not None and not self._tool_fuse_broken:  # populate llm_options based on available tools
             opt["tools"] = [{"type": "function",
                              "function": self.tools[tool].get_litellm_description()} for tool in self.tools]
+        else:
+            opt.pop("tools", None) #Ensure no tools are passed to adapter
         return opt
     
     def _execute_completion(

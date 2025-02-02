@@ -1,0 +1,31 @@
+{
+      "name": "drugs_gpt-4o-mini",
+      "displayName": "KG-RAG gpt-4o-mini",
+      "description": "Biochatter Drug Interactions KG-RAG for gpt-4o-mini",
+      "parameters": {
+        "temperature": 0.0,
+        "max_new_tokens": 4096,
+            "stop": ["[DONE]"]
+      },
+      "endpoints": [
+        {
+          "type": "openai",
+          "baseURL": "http://172.17.0.1:50501/biochatter_api"
+        }
+      ],
+      "promptExamples": [
+            {
+              "title": "Drug interactions of Rapamycin",
+              "prompt": "What drug interactions of Sirolimus are you aware of? What are these interactions?"
+            },
+            {
+              "title": "Drug interactions of Metformin",
+              "prompt": "What drug interactions of Metformin are you aware of? What are these interactions?"
+            },
+            {
+              "title": "Drug interactions of Ozempic",
+              "prompt": "What drug interactions of Semaglutide are you aware of? What are these interactions?"
+            }
+      ]
+
+}

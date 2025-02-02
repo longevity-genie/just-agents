@@ -1,7 +1,8 @@
+from ossaudiodev import error
 from pathlib import Path
 import json
 import os
-from typing import List, ClassVar, Optional, Dict
+from typing import List, ClassVar, Optional, Dict, Union
 from just_agents.just_profile import JustAgentFullProfile
 from just_agents.base_agent import BaseAgent
 from just_agents.web.chat_ui import ModelConfig, ModelParameters, ModelEndpoint, ModelPromptExample
@@ -91,7 +92,7 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
 
 
     
-    def write_model_config_to_json(self, models_dir: Path, filename: str = None):
+    def write_model_config_to_json(self, models_dir: Union[Path,str], filename: str = None):
         """
         Writes a sample ModelConfig instance to a JSON file in the specified test directory.
 
@@ -104,13 +105,16 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
         """
         with start_action(action_type="model_config.write") as action:
         # Create the sample ModelConfig instance
+            if isinstance(models_dir,str):
+                models_dir = Path(models_dir).resolve().absolute()
             model_config = self.compose_model_config()
             models_dir.mkdir(parents=True, exist_ok=True)
             os.chmod(models_dir, 0o777)
 
             # Define the file path
             if filename is None:
-                filename = f"{self.assistant_index:02d}_{self.shortname}_config.json"
+                index = self.assistant_index or 99
+                filename = f"{index:02d}_{self.shortname}_config.json"
             file_path = models_dir / filename
 
             # Write the JSON file
@@ -158,12 +162,25 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
 
             # Process each section
             for section_name, section_data in sections.items():
-                agent = WebAgent.from_yaml(
+                agent : BaseAgent = WebAgent.from_yaml(
                     section_name,
                     parent_section,
                     yaml_path
                 )
                 agents[section_name] = agent
-                action.log(message_type="agent.load", section_name=section_name, parent_section=parent_section)
+                if agent.llm_options.get("tools",None):
+                    action.log(
+                        message_type="agent.config_error",
+                        llm_options=agent.llm_options,
+                        tools=agent.tools,
+                        error="LLM options section contains tools information! It will be discarded"
+                    )
+                action.log(
+                    message_type="agent.loaded",
+                    section_name=section_name,
+                    parent_section=parent_section,
+                    displayname=agent.display_name,
+                    name=agent.shortname
+                )
 
             return agents

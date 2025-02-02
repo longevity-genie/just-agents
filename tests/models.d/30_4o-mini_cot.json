@@ -1,0 +1,36 @@
+{
+  "name": "chain_of_thought",
+  "displayName": "chain of thought",
+  "description": "Agent with chain of thought",
+  "parameters": {
+    "temperature": 0.0,
+    "max_new_tokens": 10000,
+        "stop": ["[DONE]"]
+  },
+  "endpoints": [
+    {
+      "type": "openai",
+      "baseURL": "http://172.17.0.1:8088/v1",
+      "apiKey": "no_key_needed"
+    }
+  ],
+  "promptExamples": [
+        {
+          "title": "How many latters 'r' in word 'strawberry'?",
+          "prompt": "How many latters 'r' in word 'strawberry'?"
+        },
+        {
+          "title": "You have to go from one bank of the river to the other side on the bout. You could carry only one item with you. You need to transport from one side to another chicken, millet and fox. You could go back and forth as many times as you want. What is your solution?",
+          "prompt": "You have to go from one bank of the river to the other side on the bout. You could carry only one item with you. You need to transport from one side to another chicken, millet and fox. You could go back and forth as many times as you want. What is your solution?"
+        },
+        {
+          "title": "Count the number of occurrences of the letter ’L’ in the word - ’LOLLAPALOOZA’.",
+          "prompt": "Count the number of occurrences of the letter ’L’ in the word - ’LOLLAPALOOZA’."
+        },
+        {
+          "title": "Chessboard problem.",
+          "prompt": "Alice and Bob need to find a strategy to solve such problem. Alice will be invited to the room. There is chess board with coins on each squer. Coins are in random state, some are heads up some are tails up. Experimenter tell Alice number that is in range of squeres on chess board. Considering there are 64 squeres number is from 1 to 64. Alice should turn or not one of the coins on the chess board in such way that Bob could came to this room later and find out this number only by looking on the chess board. What would be the wining strategy?"
+        }
+
+      ]
+}

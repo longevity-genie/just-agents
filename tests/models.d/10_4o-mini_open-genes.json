@@ -1,0 +1,82 @@
+{
+      "name": "open_genes_gpt-4o-mini",
+      "displayName": "Genetics Genie with OpenGenes (gpt-4o-mini)",
+      "description": "Genetics Genie open genes gpt-4o-mini",
+      "parameters": {
+        "temperature": 0.0,
+        "max_new_tokens": 10000,
+            "stop": ["[DONE]"]
+      },
+      "endpoints": [
+        {
+          "type": "openai",
+          "baseURL": "http://172.17.0.1:8088/v1",
+          "apiKey": "no_key_needed"
+        }
+      ],
+      "promptExamples": [
+            {
+              "title": "What processes are improved in GHR knockout mice?",
+              "prompt": "What processes are improved in GHR knockout mice?"
+            },
+            {
+              "title": "What genes need to be downregulated in worms to extend their lifespan?",
+              "prompt": "What genes need to be downregulated in worms to extend their lifespan?"
+            },
+            {
+              "title": "Which genetic intervention led to the greatest increase in lifespan in flies?",
+              "prompt": "Which genetic intervention led to the greatest increase in lifespan in flies?"
+            },{
+              "title": "To what extent did the lifespan increase in mice overexpressing VEGFA?",
+              "prompt": "To what extent did the lifespan increase in mice overexpressing VEGFA?"
+            },{
+              "title": "Are there any liver-specific interventions that increase lifespan in mice?",
+              "prompt": "Are there any liver-specific interventions that increase lifespan in mice?"
+            },{
+              "title": "Which gene-longevity association is confirmed by the greatest number of studies?",
+              "prompt": "Which gene-longevity association is confirmed by the greatest number of studies?"
+            },{
+              "title": "What polymorphisms in FOXO3 are associated with human longevity?",
+              "prompt": "What polymorphisms in FOXO3 are associated with human longevity?"
+            },{
+              "title": "What polymorphisms in FOXO3 are associated with human longevity?",
+              "prompt": "What polymorphisms in FOXO3 are associated with human longevity?"
+            },{
+              "title": "In which ethnic groups was the association of the APOE gene with longevity shown?",
+              "prompt": "In which ethnic groups was the association of the APOE gene with longevity shown?"
+            },{
+              "title": "Is the INS gene polymorphism associated with longevity?",
+              "prompt": "Is the INS gene polymorphism associated with longevity?"
+            },{
+              "title": "What genes are associated with transcriptional alterations?",
+              "prompt": "What genes are associated with transcriptional alterations?"
+            },{
+              "title": "Which hallmarks are associated with the KL gene?",
+              "prompt": "Which hallmarks are associated with the KL gene?"
+            },{
+              "title": "What genes change their expression with aging in humans?",
+              "prompt": "What genes change their expression with aging in humans?"
+            },{
+              "title": "How many genes are associated with longevity in humans?",
+              "prompt": "How many genes are associated with longevity in humans?"
+            },{
+              "title": "What types of studies have been conducted on the IGF1R gene?",
+              "prompt": "What types of studies have been conducted on the IGF1R gene?"
+            },{
+              "title": "What evidence of the link between PTEN and aging do you know?",
+              "prompt": "What evidence of the link between PTEN and aging do you know?"
+            },{
+              "title": "What genes are associated with both longevity and altered expression in aged humans?",
+              "prompt": "What genes are associated with both longevity and altered expression in aged humans?"
+            },{
+              "title": "Is the expression of the ACE2 gene altered with aging in humans?",
+              "prompt": "Is the expression of the ACE2 gene altered with aging in humans?"
+            },{
+              "title": "Interventions on which genes extended mice lifespan most of all?",
+              "prompt": "Interventions on which genes extended mice lifespan most of all?"
+            },{
+              "title": "Which knockdowns were most lifespan extending on model animals?",
+              "prompt": "Which knockdowns were most lifespan extending on model animals?"
+            }
+      ]
+}

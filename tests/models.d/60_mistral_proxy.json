@@ -1,0 +1,35 @@
+{
+  "name": "mistral-large-latest",
+  "displayName": "Genetics Genie Mistral-Large",
+  "description": "Genetics Genie Mistral-Large",
+  "parameters": {
+    "temperature": 0.0,
+    "max_new_tokens": 10000,
+        "stop": ["[DONE]"]
+  },
+  "endpoints": [
+    {
+      "type": "openai",
+      "baseURL": "http://172.17.0.1:8088/v1",
+      "apiKey": "no_key_needed"
+    }
+  ],
+  "promptExamples": [
+        {
+          "title": "How does the MTOR gene influence longevity?",
+          "prompt": "How does the MTOR gene influence longevity?"
+        },
+        {
+          "title": "What is the impact of different alleles of rs10937739?",
+          "prompt": "What is the impact of different alleles of rs10937739?"
+        },
+        {
+          "title": "What genes and genetic variants are involved in Chronic Granulomatous Disease? Which clinical trials are related to this disease?",
+          "prompt": "What genes and genetic variants are involved in Chronic Granulomatous Disease? Which clinical trials are related to this disease?"
+        },
+        {
+          "title": "Which genetic variants are involved in the lipid metabolism pathway and how do they influence longevity?",
+          "prompt": "Which genetic variants are involved in the lipid metabolism pathway and how do they influence longevity?"
+        }
+      ]
+}

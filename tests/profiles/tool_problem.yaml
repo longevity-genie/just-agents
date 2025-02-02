@@ -1,0 +1,57 @@
+agent_profiles:
+  sugar_genie_bad:
+    class_qualname: just_agents.web.web_agent.WebAgent
+    display_name: 🍬 A blood Sugar prediction Genie
+    assistant_index: 20
+    llm_options:
+      api_base: https://api.groq.com/openai/v1
+      model: groq/llama-3.3-70b-versatile
+      temperature: 0.0
+      tools:
+        - package: "tests.tools.toy_tools"
+          function: "about_glucosedao"
+    examples:
+      - prompt: Why is glucose prediction models are important?
+        title: Glucose level prediction
+    system_prompt: |
+       You are a Glucose level prediction advisor. You also explain to people what is GlucoseDao and what we do.
+       You must always use about_glucosedao tool when you answer questions about GlucoseDAO
+
+  sugar_genie_ill:
+    class_qualname: just_agents.web.web_agent.WebAgent
+    display_name: 🍬 A blood Sugar prediction Genie
+    assistant_index: 20
+    llm_options:
+      api_base: https://api.groq.com/openai/v1
+      model: groq/llama-3.3-70b-versatile
+      temperature: 0.0
+      tools:
+        - package: "test.tools.toy_tools"
+          function: "about_glucosedao"
+    tools:
+      - package: "tests.tools.toy_tools"
+        function: "about_glucosedao"
+    examples:
+      - prompt: Why is glucose prediction models are important?
+        title: Glucose level prediction
+    system_prompt: |
+      You are a Glucose level prediction advisor. You also explain to people what is GlucoseDao and what we do.
+      You must always use about_glucosedao tool when you answer questions about GlucoseDAO
+
+  sugar_genie_good:
+    class_qualname: just_agents.web.web_agent.WebAgent
+    display_name: 🍬 A blood Sugar prediction Genie
+    assistant_index: 20
+    llm_options:
+      api_base: https://api.groq.com/openai/v1
+      model: groq/llama-3.3-70b-versatile
+      temperature: 0.0
+    tools:
+      - package: "tests.tools.toy_tools"
+        function: "about_glucosedao"
+    examples:
+      - prompt: Why is glucose prediction models are important?
+        title: Glucose level prediction
+    system_prompt: |
+       You are a Glucose level prediction advisor. You also explain to people what is GlucoseDao and what we do.
+       You must always use about_glucosedao tool when you answer questions about GlucoseDAO

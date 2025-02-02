@@ -1,0 +1,28 @@
+{
+    "name": "example_web_agent",
+    "displayName": "🦙 A simple Web AI agent",
+    "description": "Generic all-purpose Web AI agent",
+    "parameters": {
+        "temperature": 0.0,
+        "max_new_tokens": 4096,
+        "stop": [
+            "[DONE]"
+        ]
+    },
+    "endpoints": [
+        {
+            "type": "openai",
+            "baseURL": "http://172.17.0.1:8088/v1"
+        }
+    ],
+    "promptExamples": [
+        {
+            "title": "Why is the sky blue?",
+            "prompt": "Explain in 10 words why the sky is blue"
+        },
+        {
+            "title": "Live Long and Prosper in French",
+            "prompt": "Translate into French: Live Long and Prosper"
+        }
+    ]
+}

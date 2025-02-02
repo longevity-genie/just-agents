@@ -1,0 +1,27 @@
+{
+      "name": "llama-3.3-70b-versatile",
+      "displayName": "TEST",
+      "description": "OpenAI gpt-4o-mini model served through cache-proxy",
+      "parameters": {
+        "temperature": 0.0,
+        "max_new_tokens": 4096,
+            "stop": ["[DONE]"]
+      },
+      "endpoints": [
+        {
+          "type": "openai",
+          "baseURL": "http://172.17.0.1:8088/v1",
+          "apiKey": "no_key_needed"
+        }
+      ],
+      "promptExamples": [
+            {
+              "title": "Why is the sly blue?",
+              "prompt": "Explain in 10 words hy is the sky blue"
+            },
+            {
+              "title": "Live Long and Prosper in French",
+              "prompt": "Translate into French: Live Long and Prosper"
+            }
+      ]
+}

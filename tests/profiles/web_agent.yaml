@@ -1,0 +1,12 @@
+agent_profiles:
+  example_web_agent:
+    class_qualname: just_agents.web.web_agent.WebAgent
+    examples:
+    - prompt: Explain in 10 words why the sky is blue
+      title: Why is the sky blue?
+    - prompt: 'Translate into French: Live Long and Prosper'
+      title: Live Long and Prosper in French
+    llm_options:
+      model: gpt-4o-mini
+      temperature: 0.0
+    system_prompt: You are a helpful AI assistant.
