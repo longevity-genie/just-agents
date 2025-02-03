@@ -47,7 +47,7 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
         description="Non-negative value that specifies model position in Chat UI models list, highest is default")
 
     address: str = Field(DEFAULT_ADDRESS, description="Http address of the REST endpoint hosting the agent")
-    port: int = Field(8088 ,ge=1000, lt=65535, description="Port of the REST endpoint hosting the agent")
+    port: int = Field(8088, ge=1000, lt=65535, description="Port of the REST endpoint hosting the agent")
 
 
     def compose_model_config(self, proxy_address: str = None) -> dict:
@@ -55,7 +55,7 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
         Creates a ModelConfig instance populated with reasonable defaults.
         """
         # Create a default list of prompt examples
-        prompt_examples = self.examples or [self.BLUE_SKY]
+        prompt_examples = self.examples or [self.DEFAULT_PROMPT_EXAMPLE]
         # Create a default parameters object
         params = ModelParameters(
             temperature=self.llm_options.get("temperature",0.0),
@@ -89,7 +89,6 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
             exclude_unset=False,
             exclude_none=True,
         )
-
 
     
     def write_model_config_to_json(self, models_dir: Union[Path,str], filename: str = None):
@@ -126,13 +125,14 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
 
         return file_path
 
-    @staticmethod
+    @classmethod
     def from_yaml_dict(
+        cls,
         yaml_path: Path | str,
         parent_section: Optional[str] = "agent_profiles"
     ) -> Dict[str, 'WebAgent']:
         """
-        Creates a dictionary of WebAgent instances from a YAML file.
+        Creates a dictionary of WebAgent (or subclass) instances from a YAML file.
         """
         with start_action(action_type="agent.load") as action:
             if isinstance(yaml_path, str):
@@ -145,12 +145,11 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
                 config_data = yaml.safe_load(f) or {}
 
             agents = {}
-            
+
             # Get the correct section data
             if parent_section:
                 sections = config_data.get(parent_section, {})
             else:
-                # If no parent_section specified, try common section names or use root
                 if "agent_profiles" in config_data:
                     sections = config_data["agent_profiles"]
                     parent_section = "agent_profiles"
@@ -162,13 +161,13 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
 
             # Process each section
             for section_name, section_data in sections.items():
-                agent : BaseAgent = WebAgent.from_yaml(
+                agent: BaseAgent = cls.from_yaml(
                     section_name,
                     parent_section,
                     yaml_path
                 )
                 agents[section_name] = agent
-                if agent.llm_options.get("tools",None):
+                if agent.llm_options.get("tools", None):
                     action.log(
                         message_type="agent.config_error",
                         llm_options=agent.llm_options,

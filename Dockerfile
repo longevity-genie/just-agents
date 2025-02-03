@@ -21,7 +21,7 @@ RUN curl -sSL https://install.python-poetry.org | python3 -
 ### 4) Create app directory, copy project files in, fix ownership
 WORKDIR /app
 COPY . /app
-RUN mkdir -p /app/models.d /app/tools
+RUN mkdir -p /app/models.d /app/tools /app/scripts /app/data
 
 ### 5) Copy entrypoint script (if not already copied) and make it executable
 #    (Alternatively, you could have included this in step 4.)

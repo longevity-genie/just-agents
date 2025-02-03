@@ -1,5 +1,13 @@
 # Configuration file for Sphinx documentation builder
 
+# Alias sphinx_autoapi to autoapi to work around caching issues
+import sys
+try:
+    import autoapi
+    sys.modules['sphinx_autoapi'] = autoapi
+except Exception as e:
+    print('DEBUG: Could not import autoapi:', e)
+
 project = 'just-agents'
 copyright = '2024, Longevity Genie Team'
 author = 'Longevity Genie Team'
@@ -12,7 +20,7 @@ extensions = [
     'myst_parser',
     'sphinx.ext.intersphinx',
     'sphinx_autodoc_typehints',
-    'sphinx_autoapi'
+    'autoapi'
 ]
 
 # Add after the existing extensions
@@ -60,3 +68,9 @@ autoapi_dirs = ['../just_agents']
 autoapi_add_toctree_entry = True
 autoapi_options = ['members', 'undoc-members', 'show-inheritance', 'show-module-summary']
 autoapi_python_use_implicit_namespaces = True
+
+import importlib
+try:
+    importlib.import_module('autoapi')
+except Exception as e:
+    print('DEBUG: Error importing autoapi:', e)

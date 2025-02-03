@@ -27,7 +27,9 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from eliot import start_task
 
+# Model definitions for API responses
 class Model(BaseModel):
+    """Represents a model in the API response, following OpenAI's model format"""
     id: str
     created: int
     object: str = "model"
@@ -37,26 +39,31 @@ class Model(BaseModel):
     parent: Optional[str] = None  # The parent model
 
 class ModelList(BaseModel):
+    """Container for list of models in API response"""
     object: str = "list"
     data: List[Model]
 
 class AgentRestAPI(FastAPI):
+    """FastAPI implementation providing OpenAI-compatible endpoints for Just-Agents.
+    This class extends FastAPI to provide endpoints that mimic OpenAI's API structure,
+    allowing Just-Agents to be used as a drop-in replacement for OpenAI's API.
+    """
 
     def __init__(
         self,
         *,
-        agent_config: Optional[Path | str] = None,
-        agent_section: Optional[str] = None,
-        agent_parent_section: Optional[str] = None,
-        agent_host: Optional[str] = None,
-        agent_port: Optional[str] = None,
-        debug: bool = False,
-        title: str = "Just-Agent endpoint",
+        agent_config: Optional[Path | str] = None,  # Path to agent configuration file
+        agent_section: Optional[str] = None,        # Specific section in config to load
+        agent_parent_section: Optional[str] = None, # Parent section for inheritance
+        agent_host: Optional[str] = None,          # Host address for the API
+        agent_port: Optional[str] = None,          # Port number for the API
+        debug: bool = False,                       # Enable debug mode
+        title: str = "Just-Agent endpoint",        # API title for documentation
         description: str = "OpenAI-compatible API endpoint for Just-Agents",
         version: str = "1.1.0",
         openapi_url: str = "/openapi.json",
-        models_dir: Optional[str] = None,
-        env_keys_path: Optional[str] = None,
+        models_dir: Optional[str] = None,          # Directory containing model configs
+        env_keys_path: Optional[str] = None,       # Path to environment keys file
         openapi_tags: Optional[List[Dict[str, Any]]] = None,
         servers: Optional[List[Dict[str, Union[str, Any]]]] = None,
         docs_url: str = "/docs",
@@ -64,9 +71,9 @@ class AgentRestAPI(FastAPI):
         terms_of_service: Optional[str] = None,
         contact: Optional[Dict[str, Union[str, Any]]] = None,
         license_info: Optional[Dict[str, Union[str, Any]]] = None,
-        remove_system_prompt: Optional[bool] = None,
-        remove_dd_configs: Optional[bool] = None,
-        trap_summarization : Optional[bool] = None
+        remove_system_prompt: Optional[bool] = None,  # Whether to remove system prompts
+        remove_dd_configs: Optional[bool] = None,     # Whether to remove DD configs
+        trap_summarization : Optional[bool] = None    # Whether to trap summarization requests
     ) -> None:
         """Initialize the AgentRestAPI with FastAPI parameters.
         
@@ -149,13 +156,14 @@ class AgentRestAPI(FastAPI):
 
             if agent_section:
                 # Load single agent
-                agent = WebAgent.from_yaml(agent_section, agent_parent_section, agent_config)
+                agent: WebAgent = WebAgent.from_yaml(agent_section, agent_parent_section, agent_config)
                 agent.enforce_agent_prompt = self.remove_system_prompt #TODO :remove nasty override, only apply to unset
                 self.agents[agent_section] = agent
                 self.agent = agent  # Keep default agent for backward compatibility
             else:
                 # Load all agents using from_yaml_dict
-                self.agents = WebAgent.from_yaml_dict(agent_config, agent_parent_section)
+                self.agents: Dict[str, WebAgent] = WebAgent.from_yaml_dict(agent_config, agent_parent_section)
+                #TODO consider what to do if we have not a WebAgent but agent that is a subclass of it
 
                 # Remove unlisted config files if flag is set
                 if self.remove_dd_configs:

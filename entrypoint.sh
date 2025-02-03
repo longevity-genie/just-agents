@@ -9,6 +9,15 @@ if [ -f "/app/tools/requirements.txt" ]; then
     pip install --no-cache-dir -r /app/tools/requirements.txt
 fi
 
+# Check and run initialization scripts if they exist
+if [ -f "/app/scripts/init.sh" ]; then
+    echo "Running initialization script /app/scripts/init.sh..."
+    bash /app/scripts/init.sh
+elif [ -f "/app/scripts/init.py" ]; then
+    echo "Running initialization script /app/scripts/init.py..."
+    python /app/scripts/init.py
+fi
+
 echo "Waiting for keys file ${ENV_KEYS_PATH} to be created..."
 while [ ! -f "$ENV_KEYS_PATH" ]; do
   sleep 1
