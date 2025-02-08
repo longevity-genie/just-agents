@@ -20,7 +20,15 @@ RUN groupadd -g $GID appgroup \
 
 
 ### 3) Install Poetry (still as root)
-RUN curl -sSL https://install.python-poetry.org | python3 -
+# Check if conda Python exists and set Python path accordingly
+RUN if [ -f "/opt/conda/bin/python" ]; then \
+    echo "Using conda Python" && \
+    export PATH="/opt/conda/bin:${PATH}" && \
+    curl -sSL https://install.python-poetry.org | /opt/conda/bin/python3 - ; \
+    else \
+    echo "Using system Python" && \
+    curl -sSL https://install.python-poetry.org | python3 - ; \
+    fi
 
 ### 4) Create app directory, copy project files in, fix ownership
 WORKDIR /app
@@ -37,9 +45,20 @@ RUN chown -R appuser:appgroup /app
 
 ### 6) Install your main Python dependencies using Poetry (system-wide)
 #    We disable virtualenv creation so Poetry installs into system site-packages.
-RUN /root/.local/bin/poetry config virtualenvs.create false
-# Install production dependencies (excluding dev) using Poetry
-RUN /root/.local/bin/poetry install --without dev
+RUN if [ -f "/opt/conda/bin/python" ]; then \
+    # Conda-specific configuration
+    export PATH="/opt/conda/bin:${PATH}" && \
+    export PYTHON=$(which python) && \
+    export POETRY_PYTHON=$(which python); \
+else \
+    # Non-conda configuration
+    export POETRY_HOME="/opt/poetry"; \
+fi && \
+/root/.local/bin/poetry config virtualenvs.create false && \
+/root/.local/bin/poetry install --without dev
+
+# Add verification step
+RUN python -c "import torch; print(f'PyTorch version: {torch.__version__}')" || echo "PyTorch not found"
 
 # Expose ports and set environment variables
 EXPOSE 8088
@@ -65,5 +84,15 @@ USER appuser
 # Ensure that ~/.local/bin is in PATH, so 'pip --user' installs are runnable
 ENV PATH="/home/appuser/.local/bin:${PATH}"
 
-ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# Add conda to PATH if it exists
+RUN if [ -f "/opt/conda/bin/python" ]; then \
+    echo "export PATH=/opt/conda/bin:\$PATH" >> /home/appuser/.bashrc ; \
+    fi
+
+#ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+# we will copy but not activate entrypoint script in the container as in docker-compose we will:
+#services:
+#    web-agent:
+#      image: ghcr.io/longevity-genie/just-agents:main-gpu
+#      entrypoint: /usr/local/bin/entrypoint.sh
 CMD ["python", "-m", "just_agents.web.run_agent"]
