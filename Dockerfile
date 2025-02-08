@@ -1,5 +1,9 @@
 # syntax=docker/dockerfile:1
-FROM python:3.11-slim
+
+# Default to the CPU image (python:3.11-slim).
+# To use the GPU image, override BASE_IMAGE at build time.
+ARG BASE_IMAGE=python:3.11-slim
+FROM ${BASE_IMAGE}
 
 ### 1) Install system dependencies as root
 RUN apt-get update && apt-get install -y \

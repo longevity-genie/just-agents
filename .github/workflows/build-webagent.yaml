@@ -2,9 +2,9 @@ name: Build Just-Agents Docker Container
 
 on:
   push:
-    branches: [ "main" ]
+    branches: [ "main", "development" ]
   pull_request:
-    branches: [ "main" ]
+    branches: [ "main", "development" ]
   workflow_dispatch:
 
 env:
@@ -13,6 +13,9 @@ env:
 
 jobs:
   build:
+    strategy:
+      matrix:
+        variant: [cpu, gpu]
     runs-on: ubuntu-latest
     permissions:
       contents: read
@@ -38,10 +41,10 @@ jobs:
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=pr
-            type=semver,pattern={{version}}
-            type=sha
+            type=ref,event=branch${{ matrix.variant == 'gpu' && ',suffix=-gpu' || '' }}${{ github.ref_name == 'development' && ',suffix=-dev' || '' }}
+            type=ref,event=pr${{ matrix.variant == 'gpu' && ',suffix=-gpu' || '' }}${{ github.ref_name == 'development' && ',suffix=-dev' || '' }}
+            type=semver,pattern={{version}}${{ matrix.variant == 'gpu' && ',suffix=-gpu' || '' }}${{ github.ref_name == 'development' && ',suffix=-dev' || '' }}
+            type=sha${{ matrix.variant == 'gpu' && ',suffix=-gpu' || '' }}${{ github.ref_name == 'development' && ',suffix=-dev' || '' }}
 
       - name: Build and push Docker image
         uses: docker/build-push-action@v5
@@ -52,3 +55,5 @@ jobs:
           labels: ${{ steps.meta.outputs.labels }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          build-args: |
+            BASE_IMAGE=${{ matrix.variant == 'gpu' && 'pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime' || 'python:3.11-slim' }}
