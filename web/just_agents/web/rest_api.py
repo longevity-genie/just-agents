@@ -13,6 +13,8 @@ from pathlib import Path
 from docutils.nodes import address
 from pydantic import BaseModel, ValidationError
 from typing import Optional, List, Dict, Any, Union
+
+from just_agents.base_agent import BaseAgent
 from just_agents.web.chat_ui import ModelConfig
 from just_agents.web.web_agent import WebAgent
 from just_agents.web.streaming import response_from_stream, get_completion_response, async_wrap, has_system_prompt
@@ -62,7 +64,6 @@ class AgentRestAPI(FastAPI):
         description: str = "OpenAI-compatible API endpoint for Just-Agents",
         version: str = "1.1.0",
         openapi_url: str = "/openapi.json",
-        models_dir: Optional[str] = None,          # Directory containing model configs
         env_keys_path: Optional[str] = None,       # Path to environment keys file
         openapi_tags: Optional[List[Dict[str, Any]]] = None,
         servers: Optional[List[Dict[str, Union[str, Any]]]] = None,
@@ -72,8 +73,6 @@ class AgentRestAPI(FastAPI):
         contact: Optional[Dict[str, Union[str, Any]]] = None,
         license_info: Optional[Dict[str, Union[str, Any]]] = None,
         remove_system_prompt: Optional[bool] = None,  # Whether to remove system prompts
-        remove_dd_configs: Optional[bool] = None,     # Whether to remove DD configs
-        trap_summarization : Optional[bool] = None    # Whether to trap summarization requests
     ) -> None:
         """Initialize the AgentRestAPI with FastAPI parameters.
         
@@ -119,16 +118,6 @@ class AgentRestAPI(FastAPI):
         else:
             self.remove_system_prompt = remove_system_prompt
 
-        if remove_dd_configs is None:
-            self.remove_dd_configs = os.getenv('REMOVE_DD_CONFIGS', True)
-        else:
-            self.remove_dd_configs = remove_dd_configs
-
-        if models_dir is None:
-            self.models_dir = os.getenv('MODELS_DIR', "models.d")
-        else:
-            self.models_dir = models_dir
-
         if agent_port is None:
             self.agent_port = int(os.getenv("AGENT_PORT", 8088))
         else:
@@ -138,11 +127,6 @@ class AgentRestAPI(FastAPI):
             self.agent_host = os.getenv("AGENT_HOST", "http://127.0.0.1")
         else:
             self.agent_host = agent_host
-
-        if trap_summarization is None:
-            self.trap_summarization = os.getenv("TRAP_CHAT_NAMES", True)
-        else:
-            self.trap_summarization = agent_host
 
         self.agents = {}  # Dictionary to store multiple agents
         self._agent_related_config(agent_config, agent_section, agent_parent_section)
@@ -162,132 +146,25 @@ class AgentRestAPI(FastAPI):
                 self.agent = agent  # Keep default agent for backward compatibility
             else:
                 # Load all agents using from_yaml_dict
-                self.agents: Dict[str, WebAgent] = WebAgent.from_yaml_dict(agent_config, agent_parent_section)
-                #TODO consider what to do if we have not a WebAgent but agent that is a subclass of it
+                self.agents: Dict[str, BaseAgent] = WebAgent.from_yaml_dict(agent_config, agent_parent_section)
 
-                # Remove unlisted config files if flag is set
-                if self.remove_dd_configs:
-                    for config_file in Path(self.models_dir).glob("[0123456789][0123456789]_*.json"):
-                        config_file.unlink()
-
-                # Set enforce_agent_prompt for all agents
                 for agent in self.agents.values():
-
                     agent.address = self.agent_host or "127.0.0.1"
                     agent.port=self.agent_port or 8088
-                    agent.enforce_agent_prompt = self.remove_system_prompt
-                    agent.write_model_config_to_json(models_dir=Path(self.models_dir))
+                    #agent.enforce_agent_prompt = self.remove_system_prompt
                     action.log(
                         message_type=f"Added agent",
-                        displayname=agent.display_name,
                         name=agent.shortname,
                         address=agent.address,
                         port=agent.port,
-                        enforce_prompt=agent.enforce_agent_prompt,
-                        action="agent_config_success"
+                        action="agent_load_success"
                     )
-
-                # self.prepare_dot_env()
 
                 # Set the first agent as default if any were loaded
                 if self.agents:
                     self.agent = next(iter(self.agents.values()))
 
 
-    def prepare_dot_env(self):
-        with start_task(action_type="prepare_dot_env") as action:
-            env_local_path = self.env_keys_path
-            models_dir = self.models_dir
-            temp_env_local_path = '.env.local.tmp'
-
-            # Check if .env.local exists
-            if not os.path.exists(env_local_path):
-                action.log(
-                    message_type=f"Error: {env_local_path} does not exist.",
-                    env_local_path=env_local_path,
-                    action="error_no_env_file"
-                )
-                return
-
-            # Read the existing .env.local file
-            with open(env_local_path, 'r') as f:
-                lines = f.readlines()
-
-            # Remove existing MODELS variable (including multi-line definitions)
-            new_lines = []
-            skip = False
-
-            for line in lines:
-                stripped_line = line.strip()
-                if not skip:
-                    if stripped_line.startswith('MODELS='):
-                        if '`' in stripped_line:
-                            # Check if it's a single-line MODELS definition
-                            if stripped_line.count('`') == 2:
-                                continue  # Skip the entire line
-                            else:
-                                skip = True  # Start skipping lines
-                        else:
-                            skip = True  # Start skipping lines
-                    else:
-                        new_lines.append(line)
-                else:
-                    if '`' in stripped_line:
-                        skip = False  # Found closing backtick, stop skipping
-                    continue  # Skip lines within MODELS definition
-
-            # Load and validate JSON files from models.d
-            model_files = glob.glob(os.path.join(models_dir, '*.json'))
-            model_files.sort()  # Sort the list in place based on file names
-            models = []
-
-            if not model_files:
-                action.log(
-                    message_type=f"No JSON files found in {models_dir}.",
-                    models_dir=models_dir,
-                    action="error_no_json_models"
-                )
-                return
-
-            for model_file in model_files:
-                try:
-                    with open(model_file, 'r') as f:
-                        data = json.load(f)
-                        try:
-                            ModelConfig.model_validate(data)
-                        except ValidationError as e:
-                            action.log(
-                                message_type="Syntax problem in {model_file}",
-                                data=data,
-                                error=str(e),
-                                action="json_not_validated_error"
-                            )
-                        models.append(data)
-                except Exception as e:
-                    action.log(
-                        message_type=f"Error loading {model_file}",
-                        model_file=model_file,
-                        error=str(e),
-                        action="json_not_loaded_error"
-                    )
-
-            # Write the updated .env.local file
-            with open(temp_env_local_path, 'w') as f:
-                f.writelines(new_lines)
-
-                # Serialize the models list as a JSON string and add it to MODELS=
-                models_json = json.dumps(models, ensure_ascii=False, indent=4)
-                f.write("MODELS=`\n")
-                f.write(f"{models_json}\n")
-                f.write("`\n")
-
-            # Replace the old .env.local with the new one
-            shutil.move(temp_env_local_path, env_local_path)
-
-            # Output the list of models using 'displayName' field
-            print("Models loaded successfully:")
-            for model in models:
-                print(f"- {model.get('displayName')}")
 
     def _routes_config(self):
           # Add CORS middleware
@@ -330,6 +207,36 @@ class AgentRestAPI(FastAPI):
             with open(file_path, "wb") as f:
                 f.write(file_content)
 
+    async def preprocess_request(self, request: ChatCompletionRequest) -> ChatCompletionRequest:
+        if "file_params" in request:
+            params = request.file_params
+            if params != []:
+                self.save_files(request.model_dump())
+        return request
+    
+    async def get_override_agent(self, request: ChatCompletionRequest, selected_agent:Optional[WebAgent], available_models: List[str]) -> Optional[WebAgent]:
+        with start_task(action_type="get_override_agent") as action:
+            override_agent = None
+            if not selected_agent:
+                action.log(
+                    message_type="invalid_model_requested",
+                    model=request.model,
+                    available_models=available_models,
+                    action="error_no_model"
+                )
+                if len(self.agents) == 0:
+                    raise ValueError(f"No agents found. Available models: {available_models}")
+                else:
+                    action.log(
+                        message_type=f"no_agent_found for {request.model} with {request.messages[0].content}",
+                        available_models=available_models,
+                        action="error_no_model",
+                        error="No agent found, using the first one"
+                    )
+                    override_agent = next(iter(self.agents.values()))
+           
+            return override_agent 
+
 
 #    @log_call(action_type="chat_completions", include_result=False)
     async def chat_completions(self, request: ChatCompletionRequest) -> Union[ChatCompletionResponse, Any, ErrorResponse]:
@@ -339,52 +246,20 @@ class AgentRestAPI(FastAPI):
                     message_type=f"chat_completions for {request.model}",
                     request = str(request.model_dump())
                 )
+                request = await self.preprocess_request(request)
                 # Get the agent based on the model name
                 available_models = list(self.agents.keys())
                 selected_agent = self.agents.get(request.model)
-                if not selected_agent:
-                    action.log(
-                        message_type="invalid_model_requested",
-                        model=request.model,
-                        available_models=available_models,
-                        action="error_no_model"
-                    )
-                    if len(self.agents) == 0:
-                        raise ValueError(f"No agents found. Available models: {available_models}")
-                    else:
-                        action.log(
-                            message_type=f"no_agent_found for {request.model} with {request.messages[0].content}",
-                            available_models=available_models,
-                            action="error_no_model",
-                            error="No agent found, using the first one"
-                        )
-                        selected_agent = next(iter(self.agents.values()))
 
-                override_agent = None
-                if self.trap_summarization:
-                    prompt = has_system_prompt(request)
-                    if prompt and prompt.startswith(
-                        "You are a summarization AI. Summarize the user's request into a single short sentence of four words or less."
-                    ):
-                        override_agent = self.agents.get("chat_naming_agent")
-                        action.log(
-                            message_type=f"Agent overridden for chat naming request to {request.model} with {str(override_agent)}",
-                            available_models=available_models,
-                            action="agent_override"
-                        )
-                    else:
-                        action.log(
-                            message_type=f"Using default agent chat for naming request to {request.model} with {str(selected_agent)}",
-                            available_models=available_models,
-                            action="agent_select"
-                        )
-
-                if "file_params" in request:
-                    params = request.file_params
-                    if params != []:
-                        self.save_files(request.model_dump())
-
-                agent = override_agent or selected_agent
+                agent = await self.get_override_agent(request, selected_agent, available_models) or selected_agent
+                action.log(
+                    message_type=f"Agent selected: {str(selected_agent)}",
+                    requested_agent=request.model,
+                    selected_agent=selected_agent,
+                    override_agent=agent,
+                    available_models=available_models,
+                    action="agent_select"
+                )
 
                 is_streaming = request.stream
                 stream_generator = agent.stream(
@@ -447,3 +322,218 @@ class AgentRestAPI(FastAPI):
 
         return ModelList(data=models, object="list")
 
+class ChatUIAgentRestAPI(AgentRestAPI):
+    def __init__(
+        self,
+        *,
+        agent_config: Optional[Path | str] = None,  # Path to agent configuration file
+        agent_section: Optional[str] = None,        # Specific section in config to load
+        agent_parent_section: Optional[str] = None, # Parent section for inheritance
+        agent_host: Optional[str] = None,          # Host address for the API
+        agent_port: Optional[str] = None,          # Port number for the API
+        debug: bool = False,                       # Enable debug mode
+        title: str = "Just-Agent endpoint",        # API title for documentation
+        description: str = "OpenAI-compatible API endpoint for Just-Agents",
+        version: str = "1.1.0",
+        openapi_url: str = "/openapi.json",
+        models_dir: Optional[str] = None,          # Directory containing model configs
+        env_keys_path: Optional[str] = None,       # Path to environment keys file
+        openapi_tags: Optional[List[Dict[str, Any]]] = None,
+        servers: Optional[List[Dict[str, Union[str, Any]]]] = None,
+        docs_url: str = "/docs",
+        redoc_url: str = "/redoc",
+        terms_of_service: Optional[str] = None,
+        contact: Optional[Dict[str, Union[str, Any]]] = None,
+        license_info: Optional[Dict[str, Union[str, Any]]] = None,
+        remove_system_prompt: Optional[bool] = None,  # Whether to remove system prompts
+        remove_dd_configs: Optional[bool] = None,     # Whether to remove DD configs
+        trap_summarization : Optional[bool] = None    # Whether to trap summarization requests
+    ) -> None:
+        """Initialize the AgentRestAPI with FastAPI parameters.
+        
+        Args:
+            debug: Enable debug mode
+            title: API title shown in documentation
+            description: API description shown in documentation
+            version: API version
+            openapi_url: URL for OpenAPI schema
+            openapi_tags: List of tags to be included in the OpenAPI schema
+            servers: List of servers to be included in the OpenAPI schema
+            docs_url: URL for API documentation
+            redoc_url: URL for ReDoc documentation
+            terms_of_service: URL to the terms of service
+            contact: Contact information in the OpenAPI schema
+            license_info: License information in the OpenAPI schema
+        """
+        super().__init__(
+           agent_config=agent_config,
+           agent_section=agent_section,
+           agent_parent_section=agent_parent_section,
+           agent_host=agent_host,
+           agent_port=agent_port,
+           debug=debug,
+           title=title,
+           description=description,
+           version=version,
+           openapi_url=openapi_url,
+           models_dir=models_dir,
+           env_keys_path=env_keys_path,
+           openapi_tags=openapi_tags,
+           servers=servers,
+           docs_url=docs_url,
+           redoc_url=redoc_url,
+           terms_of_service=terms_of_service,
+           contact=contact,
+           license_info=license_info,
+           remove_system_prompt=remove_system_prompt,
+           remove_dd_configs=remove_dd_configs,
+           trap_summarization=trap_summarization
+        )
+        load_dotenv(override=True)
+
+        if remove_dd_configs is None:
+            self.remove_dd_configs = os.getenv('REMOVE_DD_CONFIGS', True)
+        else:
+            self.remove_dd_configs = remove_dd_configs
+
+        if models_dir is None:
+            self.models_dir = os.getenv('MODELS_DIR', "models.d")
+        else:
+            self.models_dir = models_dir
+
+        if trap_summarization is None:
+            self.trap_summarization = os.getenv("TRAP_CHAT_NAMES", True)
+        else:
+            self.trap_summarization = trap_summarization
+
+    def get_override_agent(self, request: ChatCompletionRequest, selected_agent:Optional[WebAgent], available_models: List[str]) -> Optional[WebAgent]:
+        with start_task(action_type="get_override_agent") as action:
+            override_agent = super().get_override_agent(request, selected_agent, available_models)
+            if self.trap_summarization:
+                prompt = has_system_prompt(request)
+                if prompt and prompt.startswith(
+                    "You are a summarization AI. Summarize the user's request into a single short sentence of four words or less."
+                ):
+                    override_agent = self.agents.get("chat_naming_agent")
+                    action.log(
+                        message_type=f"Agent overridden for chat naming request to {request.model} with {str(override_agent)}",
+                        available_models=available_models,
+                        action="agent_override"
+                    )
+            return override_agent
+
+    def _agent_related_config(self, agent_config: Path | str, agent_section: Optional[str] = None, agent_parent_section: Optional[str] = None):
+        with start_task(action_type="agent_related_configs") as action:
+            super()._agent_related_config(agent_config, agent_section, agent_parent_section)
+              # Remove unlisted config files if flag is set
+            if self.remove_dd_configs:
+                for config_file in Path(self.models_dir).glob("[0123456789][0123456789]_*.json"):
+                    config_file.unlink()
+            for agent in self.agents.values():
+                agent.write_model_config_to_json(models_dir=Path(self.models_dir))
+                action.log(
+                    message_type=f"Config saved for agent",
+                    displayname=agent.display_name,
+                    name=agent.shortname,
+                    enforce_prompt=agent.enforce_agent_prompt,
+                    action="agent_config_success"
+                )
+            self.prepare_dot_env()
+
+    def prepare_dot_env(self):
+        with start_task(action_type="prepare_dot_env") as action:
+            env_local_path = self.env_keys_path
+            models_dir = self.models_dir
+            temp_env_local_path = '.env.local.tmp'
+
+            # Check if .env.local exists
+            if not os.path.exists(env_local_path):
+                action.log(
+                    message_type=f"Error: {env_local_path} does not exist.",
+                    env_local_path=env_local_path,
+                    action="error_no_env_file"
+                )
+                raise ValueError(f"Error: {env_local_path} does not exist.")
+
+            # Read the existing .env.local file
+            with open(env_local_path, 'r') as f:
+                lines = f.readlines()
+
+            # Remove existing MODELS variable (including multi-line definitions)
+            new_lines = []
+            skip = False
+
+            for line in lines:
+                stripped_line = line.strip()
+                if not skip:
+                    if stripped_line.startswith('MODELS='):
+                        if '`' in stripped_line:
+                            # Check if it's a single-line MODELS definition
+                            if stripped_line.count('`') == 2:
+                                continue  # Skip the entire line
+                            else:
+                                skip = True  # Start skipping lines
+                        else:
+                            skip = True  # Start skipping lines
+                    else:
+                        new_lines.append(line)
+                else:
+                    if '`' in stripped_line:
+                        skip = False  # Found closing backtick, stop skipping
+                    continue  # Skip lines within MODELS definition
+
+            # Load and validate JSON files from models.d
+            model_files = glob.glob(os.path.join(models_dir, '*.json'))
+            model_files.sort()  # Sort the list in place based on file names
+            models = []
+
+            if not model_files:
+                action.log(
+                    message_type=f"No JSON files found in {models_dir}.",
+                    models_dir=models_dir,
+                    action="error_no_json_models"
+                )
+                raise ValueError(f"No JSON files found in {models_dir}.")
+
+            for model_file in model_files:
+                try:
+                    with open(model_file, 'r') as f:
+                        data = json.load(f)
+                        try:
+                            ModelConfig.model_validate(data)
+                        except ValidationError as e:
+                            action.log(
+                                message_type="Syntax problem in {model_file}",
+                                data=data,
+                                error=str(e),
+                                action="json_not_validated_error"
+                            )
+                            raise ValueError(f"Syntax problem in {model_file}")
+                        models.append(data)
+                except Exception as e:
+                    action.log(
+                        message_type=f"Error loading {model_file}",
+                        model_file=model_file,
+                        error=str(e),
+                        action="json_not_loaded_error"
+                    )
+                    raise ValueError(f"Error loading {model_file}: {str(e)}")
+                
+            # Write the updated .env.local file
+            with open(temp_env_local_path, 'w') as f:
+                f.writelines(new_lines)
+
+                # Serialize the models list as a JSON string and add it to MODELS=
+                models_json = json.dumps(models, ensure_ascii=False, indent=4)
+                f.write("MODELS=`\n")
+                f.write(f"{models_json}\n")
+                f.write("`\n")
+
+            # Replace the old .env.local with the new one
+            shutil.move(temp_env_local_path, env_local_path)
+
+            # Output the list of models using 'displayName' field
+            print("Models loaded successfully:")
+            for model in models:
+                print(f"- {model.get('displayName')}")
+    

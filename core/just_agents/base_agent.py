@@ -10,7 +10,7 @@ from just_agents.interfaces.protocol_adapter import IProtocolAdapter, BaseModelR
 from just_agents.interfaces.agent import IAgentWithInterceptors, QueryListener, ResponseListener, VariArgs
 
 from just_agents.base_memory import IBaseMemory, BaseMemory, OnToolCallable, OnMessageCallable
-from just_agents.just_profile import JustAgentProfile
+from just_agents.just_profile import JustAgentProfile, JustAgentProfileChatMixin
 from just_agents.rotate_keys import RotateKeys
 from just_agents.protocols.protocol_factory import StreamingMode, ProtocolAdapterFactory
 from just_agents.just_tool import SubscriberCallback
@@ -486,6 +486,8 @@ class BaseAgentWithLogging(BaseAgent):
         self._log_tool_error = self.tool_error_callback
         self.subscribe_to_tool_error(self._log_tool_error) #using listener to log tool errors
 
+        self._log_function(f"Loaded {self.shortname}", "instantiation.success", "BaseAgentWithLogging", class_name=self.__class__)
+
 
     def _message_to_strings(self, message: SupportedMessages) -> List[str]:
         if isinstance(message, list):
@@ -584,17 +586,10 @@ class BaseAgentWithLogging(BaseAgent):
             self._log_function(str(message), action="memory.add", source=role)
 
 
-class ChatAgent(BaseAgent):
+class ChatAgent(BaseAgent, JustAgentProfileChatMixin):
     """
     An agent that has role/goal/task attributes and can call other agents
     """
-
-    role: Optional[str] = Field(default=None, description="Defines the agent's persona or identity")
-    goal: Optional[str] = Field (default=None, description="Specifies the agent's broader objective.")
-    task: Optional[str] = Field (default=None, description="Describes the specific task the agent is responsible for.")
-    format: Optional[str] = Field (default=None, description="Describes the specific format the agent is responsible for.")
-    
-
 
     def model_post_init(self, __context: Any) -> None:
         # Call parent's post_init to maintain core functionality

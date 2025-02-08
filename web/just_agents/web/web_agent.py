@@ -1,32 +1,126 @@
+
+import uuid
+from datetime import datetime
 from pathlib import Path
-import json
-import os
-from typing import List, ClassVar, Optional, Dict, Union
-from just_agents.just_profile import JustAgentFullProfile
-from just_agents.base_agent import BaseAgent
-from just_agents.web.chat_ui import ModelConfig, ModelParameters, ModelEndpoint, ModelPromptExample
-from pydantic import BaseModel, Field, ConfigDict
-from just_agents.protocols.openai_streaming import DEFAULT_OPENAI_STOP
+from typing import ClassVar, Optional, Dict, Any, Callable, Literal, Type
+from just_agents.base_agent import BaseAgent, BaseAgentWithLogging, VariArgs, LogFunction
+from just_agents.just_serialization import JustSerializable
+from pydantic import Field,BaseModel,PrivateAttr
 import yaml
-from eliot import start_action
+from eliot import start_action,start_task, Action, to_file, add_destinations, remove_destination
+from just_agents.just_bus import SingletonMeta
 
-class WebAgent(BaseAgent, JustAgentFullProfile):
+
+LogDestinations = Literal["stdout","file","both","print_fallback"]
+class EliotLogger(metaclass=SingletonMeta):
+    """
+    A simple singleton class to provide Eliot logging functionality to a WebAgent.
+    """
+
+    _logger_output: LogDestinations
+    _logdir : Path
+    log_path: Path
     
-    DEFAULT_PROMPT_EXAMPLE: ClassVar[ModelPromptExample] = ModelPromptExample(
-                title = "Is aging a disease?",
-                prompt = "Explain why biological aging can be classified as a disease"
-            )
-    DEFAULT_DESCRIPTION: ClassVar[str] = "Generic all-purpose Web AI agent"
-    DEFAULT_DISPLAY_NAME: ClassVar[str] = "🦙 A simple Web AI agent"
-    DEFAULT_ADDRESS: ClassVar[str] = "http://172.17.0.1"
+    def stdout_logger(self,message: str, **kwargs: Any) -> None:
+        print(message)
+        if kwargs:
+            print(kwargs)
 
+    def __init__(self, logdir: Path, logger_output: LogDestinations):
+        if not logdir:
+            logdir = Path("logs")
+        self._logdir = logdir
+        self._logdir.mkdir(exist_ok=True)
+
+        if not logger_output:
+            logger_output = "both"
+        self._logger_output = logger_output
+        # Generate unique log filename if not provided
+       
+        timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
+        unique_id = uuid.uuid4().hex[:4]
+        uniqname = f"{timestamp}_{unique_id}"
+        self.log_path = self._logdir / f"{uniqname}.log"
+
+        if self._logger_output == "stdout" or self._logger_output == "both":
+            add_destinations(self.stdout_logger)
+        if self._logger_output == "file" or self._logger_output == "both":
+            to_file(open(self.log_path, "ab"))
+
+
+
+class WebAgentEliotLoggerMixin(BaseModel):
+    """
+    A mixin class that provides Eliot logging functionality to a WebAgent.
+    """
+
+    logger_output: LogDestinations = Field(default="both",description="The output destination for Eliot logs")
+    _logger: EliotLogger = PrivateAttr(default=None)
+    _logdir: Path = PrivateAttr(default=None)
+    _log_function: LogFunction = PrivateAttr(default=None)
+    _task : Action = PrivateAttr(default_factory=lambda: start_task(action_type="WebAgent"))
+    
+
+    def log_action(self,log_string: str, action: str, source: str, *args: VariArgs.args, **kwargs: VariArgs.kwargs) -> None:
+        """
+        Log an action using Eliot's task logging mechanism.
+        This method logs a message with additional context using Eliot's structured logging.
+
+        Args:
+            log_string (str): The primary message to log
+            action (str): The type of action being logged
+            source (str): The source of the log message
+            *args (VariArgs.args): Variable positional arguments
+            **kwargs (VariArgs.kwargs): Variable keyword arguments for additional logging details
+        """
+
+        # Transform kwargs into a string-to-string dictionary for logging
+        str_kwargs = {str(k): str(v) for k, v in kwargs.items()}
+        
+        with self._task as log_action:
+            log_action.log(
+                message_type="WebAgent.log",
+                message=log_string,
+                action=action,
+                source=source,
+            #    extra_args=args,
+                **str_kwargs
+            )
+
+    
+    def model_post_init(self, __context: Any) -> None:
+        super().model_post_init(__context)
+        if  self._logdir is None:
+            self._logdir = Path("logs").resolve().absolute()
+            self._logdir.mkdir(exist_ok=True)
+
+        self._logger = EliotLogger(self._logdir, self.logger_output)
+
+        if self.logger_output == "stdout":
+            self._log_function=self.log_action
+        elif self.logger_output == "file":
+            self._log_function=self.log_action
+        elif self.logger_output == "both":
+            self._log_function=self.log_action
+        elif self.logger_output == "print_fallback":
+            self._log_function=self.default_logging_function
+        else:
+            raise ValueError(f"Invalid logger_output value: {self.logger_output}")
+
+        self._log_function("Logging initialization complete", action="startup", source="EliotLogger",
+                           log_destination = self.logger_output, path=self._logger.log_path)
+
+class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
+    """
+    A WebAgent is a REST API agent that can be used within an OpenAI compatible API endpoint.
+    Any instance of BaseAgent can be used as a WebAgent
+    """
+    REQUIRED_CLASS: ClassVar[Type[BaseAgent]] = BaseAgent
+    DEFAULT_DESCRIPTION: ClassVar[str] = "Generic all-purpose Web AI agent"
     description: str = Field(
         DEFAULT_DESCRIPTION,
         description="Short description of what the agent does")
-
-    display_name: Optional[str] = Field(
-        DEFAULT_DISPLAY_NAME,
-        description="A fancy one-line name of the agent, replaces shortname in UIs, may include spaces, emoji and other stuff")
+    """Short description of what the agent does."""
 
     enforce_agent_prompt: bool = Field(
         default=False,
@@ -40,96 +134,16 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
         default=False,
         description="Add new query messages to memory")
 
-    assistant_index: Optional[int] = Field(
-        default=None,
-        ge=0,
-        description="Non-negative value that specifies model position in Chat UI models list, highest is default")
-
-    address: str = Field(DEFAULT_ADDRESS, description="Http address of the REST endpoint hosting the agent")
-    port: int = Field(8088, ge=1000, lt=65535, description="Port of the REST endpoint hosting the agent")
-
-
-    def compose_model_config(self, proxy_address: str = None) -> dict:
-        """
-        Creates a ModelConfig instance populated with reasonable defaults.
-        """
-        # Create a default list of prompt examples
-        prompt_examples = self.examples or [self.DEFAULT_PROMPT_EXAMPLE]
-        # Create a default parameters object
-        params = ModelParameters(
-            temperature=self.llm_options.get("temperature",0.0),
-            max_new_tokens=self.llm_options.get("max_new_tokens",4096),
-            stop=self.llm_options.get("stop",[DEFAULT_OPENAI_STOP]),
-        )
-        # Create a default list of endpoints
-        if proxy_address:
-            baseurl = proxy_address
-        else:
-            baseurl = f"{self.address}:{self.port}/v1"
-        endpoints = [
-            ModelEndpoint(
-                type="openai",
-                baseURL=baseurl
-            )
-        ]
-        # Compose the top-level ModelConfig
-        model_config = ModelConfig(
-            name=self.shortname,
-            displayName=self.display_name or self.shortname,
-            description=self.description,
-            parameters=params,
-            endpoints=endpoints,
-            promptExamples=prompt_examples
-        )
-
-        return model_config.model_dump(
-            mode='json',
-            exclude_defaults=False,
-            exclude_unset=False,
-            exclude_none=True,
-        )
-
-    
-    def write_model_config_to_json(self, models_dir: Union[Path,str], filename: str = None):
-        """
-        Writes a sample ModelConfig instance to a JSON file in the specified test directory.
-
-        Args:
-            models_dir (Path): Directory where the JSON file will be saved.
-            filename (str): Name of the JSON file. Defaults to "model_config.json".
-
-        Returns:
-            Path: The path to the written JSON file.
-        """
-        with start_action(action_type="model_config.write") as action:
-        # Create the sample ModelConfig instance
-            if isinstance(models_dir,str):
-                models_dir = Path(models_dir).resolve().absolute()
-            model_config = self.compose_model_config()
-            models_dir.mkdir(parents=True, exist_ok=True)
-            os.chmod(models_dir, 0o777)
-
-            # Define the file path
-            if filename is None:
-                index = self.assistant_index or 99
-                filename = f"{index:02d}_{self.shortname}_config.json"
-            file_path = models_dir / filename
-
-            # Write the JSON file
-            with open(file_path, "w", encoding="utf-8") as f:
-                json.dump(model_config, f, ensure_ascii=False, indent=4)
-            os.chmod(models_dir, 0o777)
-
-            action.log(message_type="model_config.write", file_path=str(file_path))
-
-        return file_path
+    def __str__(self):
+        name = self.description or self.shortname
+        return f"{name}"
 
     @classmethod
     def from_yaml_dict(
         cls,
         yaml_path: Path | str,
         parent_section: Optional[str] = "agent_profiles"
-    ) -> Dict[str, 'WebAgent']:
+    ) -> Dict[str, 'BaseAgent']:
         """
         Creates a dictionary of WebAgent (or subclass) instances from a YAML file.
         """
@@ -143,7 +157,7 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
             with yaml_path.open('r') as f:
                 config_data = yaml.safe_load(f) or {}
 
-            agents = {}
+            agents : Dict[str,BaseAgent] = {}
 
             # Get the correct section data
             if parent_section:
@@ -160,11 +174,20 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
 
             # Process each section
             for section_name, section_data in sections.items():
-                agent: BaseAgent = cls.from_yaml(
+                auto_instance : JustSerializable = WebAgent.from_yaml_auto(
                     section_name,
                     parent_section,
                     yaml_path
                 )
+                if isinstance(auto_instance,BaseAgent) and isinstance(auto_instance,cls.REQUIRED_CLASS):
+                    agent = auto_instance
+                else:
+                    action.log(
+                        message_type="agent.config_error",
+                        instance=auto_instance,
+                        error=f"Agent is not an instance or a descendant of {str(cls.REQUIRED_CLASS.__name__)}, bound=BaseAgent! It will be discarded"
+                    )
+                    continue
                 agents[section_name] = agent
                 if agent.llm_options.get("tools", None):
                     action.log(
@@ -177,7 +200,6 @@ class WebAgent(BaseAgent, JustAgentFullProfile):
                     message_type="agent.loaded",
                     section_name=section_name,
                     parent_section=parent_section,
-                    displayname=agent.display_name,
                     name=agent.shortname
                 )
 

@@ -67,7 +67,6 @@ ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
 ENV APP_HOST="0.0.0.0"
 ENV APP_PORT=8088
-
 ENV AGENT_HOST="http://localhost"
 ENV AGENT_PORT=8088
 ENV AGENT_WORKERS=1
@@ -95,4 +94,4 @@ RUN if [ -f "/opt/conda/bin/python" ]; then \
 #    web-agent:
 #      image: ghcr.io/longevity-genie/just-agents:main-gpu
 #      entrypoint: /usr/local/bin/entrypoint.sh
-CMD ["python", "-m", "just_agents.web.run_agent"]
+CMD ["python", "-m", "just_agents.web.run_agent", "run-server-command"]

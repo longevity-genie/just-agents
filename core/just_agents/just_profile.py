@@ -1,5 +1,5 @@
 from pathlib import Path
-from pydantic import Field, model_validator
+from pydantic import Field, model_validator, BaseModel
 from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict, Union, Type
 
 from just_agents.just_serialization import JustSerializable
@@ -11,6 +11,7 @@ class JustAgentProfile(JustSerializable):
     """
     A Pydantic model representing an agent profile
     """
+    DEFAULT_DESCRIPTION: ClassVar[str] = "Generic all-purpose AI agent"
     DEFAULT_GENERIC_PROMPT: ClassVar[str] = "You are a helpful AI assistant"
     DEFAULT_PARENT_SECTION: ClassVar[str] = None#'agent_profiles'
     DEFAULT_CONFIG_PATH: ClassVar[Path] = Path('./config/agent_profiles.yaml')
@@ -21,7 +22,11 @@ class JustAgentProfile(JustSerializable):
         description="System prompt of the agent")
     """System prompt of the agent."""
 
-    
+    description: str = Field(
+        DEFAULT_DESCRIPTION,
+        description="Short description of what the agent does")
+    """Short description of what the agent does."""
+
     tools: Optional[JustTools] = Field(
         None,
         description="A List[Callable] of tools s available to the agent and their descriptions")
@@ -73,16 +78,19 @@ class JustAgentProfile(JustSerializable):
         return [tool.get_callable(refresh=tool.auto_refresh) for tool in self.tools]
     
     def subscribe_to_tool_call(self, callback: SubscriberCallback) -> None:
-        for name, tool in self.tools.items():
-            tool.subscribe_to_call(callback)
+        if self.tools:
+            for name, tool in self.tools.items():
+                tool.subscribe_to_call(callback)
 
     def subscribe_to_tool_result(self, callback: SubscriberCallback) -> None:
-        for name, tool in self.tools.items():
-            tool.subscribe_to_result(callback)
+        if self.tools:
+            for name, tool in self.tools.items():
+                tool.subscribe_to_result(callback)
 
     def subscribe_to_tool_error(self, callback: SubscriberCallback) -> None:
-        for name, tool in self.tools.items():
-            tool.subscribe_to_error(callback)
+        if self.tools:
+            for name, tool in self.tools.items():
+                tool.subscribe_to_error(callback)
 
     @classmethod
     def auto_load(
@@ -177,41 +185,65 @@ class JustAgentProfile(JustSerializable):
         
         return agent
 
+class JustAgentProfileChatMixin(BaseModel):
+    role: Optional[str] = Field(
+        default=None,
+        description="Defines the agent's persona or identity")
+    """Defines the agent's persona or identity."""
 
-class JustAgentFullProfile(JustAgentProfile):
-    """
-    A Pydantic model representing an agent profile with extended attributes.
-    """
+    goal: Optional[str] = Field(
+        default=None,
+        description="Specifies the agent's broader objective")
+    """Specifies the agent's broader objective"""
+    task: Optional[str] = Field(
+        default=None,
+        description="Describes the specific task the agent is responsible for")
+    """TDescribes the specific task the agent is responsible for"""
 
-    DEFAULT_DESCRIPTION: ClassVar[str] = "Generic all-purpose AI agent"
+    format: Optional[str] = Field(
+        default=None,
+        description="Describes the specific format the agent is responsible for")
+    """Describes the specific format the agent is responsible for"""
 
+    backstory: Optional[str] = Field(
+        None,
+        description="Detailed narrative of the agent's background, personality traits, and experiences that shape its behavior and responses")
+    """Detailed narrative of the agent's background, personality traits, and experiences that shape its behavior and responses."""
+    
+class JustAgentProfileWebMixin(BaseModel):
+
+    DEFAULT_DISPLAY_NAME: ClassVar[str] = "🦙 A simple Web AI agent"
+    DEFAULT_PROMPT_EXAMPLE: ClassVar[ModelPromptExample] = ModelPromptExample(
+            title = "Is aging a disease?",
+            prompt = "Explain why biological aging can be classified as a disease"
+        )
+    
     display_name: Optional[str] = Field(
         None,
         description="A fancy one-line name of the agent, replaces shortname in UIs, may include spaces, emoji and other stuff")
 
-    description: str = Field(
-        DEFAULT_DESCRIPTION,
-        description="Short description of what the agent does")
-    """Short description of what the agent does."""
+    assistant_index: Optional[int] = Field(
+        default=None,
+        ge=0,
+        description="Non-negative value that specifies model position in Chat UI models list, highest is default")
 
-    TO_REFRESH: ClassVar[Tuple[str, ...]] = ('shortname', 'description')
-    """Fields to force-renew using LLM"""
-
-    role: Optional[str] = Field(
+    examples: Optional[List[ModelPromptExample]] = Field(
         None,
-        description="Role of the agent")
-    """Role of the agent."""
+        description="A List[dict] of model prompt examples, each example is structured as {\"title\":\"Letter counting\", \"prompt\":\"How many letters...\"} "
+    )
 
-    goal: Optional[str] = Field(
+    def __str__(self):
+        name = self.display_name or self.shortname
+        return f"{name}"
+
+class JustAgentProfileSpecializationMixin(BaseModel):
+    prefered_model_name: Optional[str] = Field(
         None,
-        description="Goal of the agent")
-    """Goal of the agent."""
-
-    task: Optional[str] = Field(
-        None,
-        description="Tasks of the agent")
-    """Tasks of the agent."""
-
+        description="The name of the preferred model to use for inference",
+        alias="model_name" #model_name conflicts with pydantic
+    )
+    """The name of the preferred model to use for inference"""
+    
     expertise_domain: Optional[str] = Field(
         None,
         description="Agent's field of expertise")
@@ -222,30 +254,17 @@ class JustAgentFullProfile(JustAgentProfile):
         description="Agent's known limitations")
     """Agent's known limitations."""
 
-    backstory: Optional[str] = Field(
-        None,
-        description="Backstory of the agent")
-    """Backstory of the agent."""
-
-    llm_model_name: Optional[str] = Field(
-        None,
-        description="The name of the preferred model to use for inference",
-        alias="model_name" #model_name conflicts with pydantic
-    )
-    """The name of the preferred model to use for inference"""
+class JustAgentProfileRagMixin(BaseModel):
 
     knowledge_sources: Optional[List[str]] = Field(
         None,
         description="A List[str] of of external knowledge sources the agent is capable of accessing, e.g., databases, APIs, etc.")
     """List of external knowledge sources the agent is capable of accessing, e.g., databases, APIs, etc."""
 
-    examples: Optional[List[ModelPromptExample]] = Field(
-        None,
-        description="A List[dict] of model prompt examples, each example is structured as {\"title\":\"Letter counting\", \"prompt\":\"How many letters...\"} "
-    )
+class JustAgentFullProfile(JustAgentProfile, JustAgentProfileChatMixin, JustAgentProfileWebMixin, JustAgentProfileSpecializationMixin, JustAgentProfileRagMixin):
+    """
+    A Pydantic model representing an agent profile with all extended attributes.
+    """
 
-    def __str__(self) -> str:
-        """
-        Returns the 'description' field when the instance is converted to a string.
-        """
-        return self.description
+    TO_REFRESH: ClassVar[Tuple[str, ...]] = ('shortname', 'description')
+    """Fields to force-renew using LLM"""

@@ -150,7 +150,7 @@ agent_profiles:
       ### Personal Motivation
       Livia Zaharia -team member and type 1 diabetic since 2001:
   web_agent:
-    class_qualname: just_agents.base_agent.BaseAgent
+    class_qualname: just_agents.web.web_agent.WebAgent
     assistant_index: 20
     llm_options:
       api_base: https://api.groq.com/openai/v1
