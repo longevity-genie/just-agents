@@ -89,7 +89,7 @@ RUN if [ -f "/opt/conda/bin/python" ]; then \
     echo "export PATH=/opt/conda/bin:\$PATH" >> /home/appuser/.bashrc ; \
     fi
 
-#ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
+ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 # we will copy but not activate entrypoint script in the container as in docker-compose we will:
 #services:
 #    web-agent:
