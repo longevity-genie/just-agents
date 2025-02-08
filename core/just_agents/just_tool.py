@@ -1,15 +1,21 @@
-from typing import Callable, Optional, List, Dict, Any, Sequence, Union, Literal
+from typing import Callable, Optional, List, Dict, Any, Sequence, Union, Literal, TypeVar
 
 from litellm.utils import function_to_dict
 from pydantic import BaseModel, Field, PrivateAttr
-from just_agents.just_bus import JustEventBus
+from just_agents.just_bus import JustEventBus, VariArgs, SubscriberCallback
 from importlib import import_module
 import inspect
 from pydantic import ConfigDict
+import sys
 
 FunctionParamFields=Literal["kind","default","type_annotation"]
 FunctionParams = List[Dict[str, Dict[FunctionParamFields,Optional[str]]]]
 
+# Create a TypeVar for the class
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    Self = TypeVar('Self', bound='JustTool')
 
 class JustToolsBus(JustEventBus):
     """
@@ -17,6 +23,7 @@ class JustToolsBus(JustEventBus):
     Inherits from JustEventBus with no additional changes.
     """
     pass
+
 
 class LiteLLMDescription(BaseModel):
 
@@ -47,10 +54,14 @@ class JustTool(LiteLLMDescription):
         """
         def __wrapper(*args, **kwargs):
             bus = JustToolsBus()
-            bus.publish(f"{name}.call", args=args, kwargs=kwargs)
-            result = func(*args, **kwargs)
-            bus.publish(f"{name}.result", result_interceptor=result)
-            return result
+            bus.publish(f"{name}.execute", *args, kwargs=kwargs)
+            try:
+                result = func(*args, **kwargs)
+                bus.publish(f"{name}.result", result_interceptor=result, kwargs=kwargs)
+                return result
+            except Exception as e:
+                bus.publish(f"{name}.error", error=e)
+                raise e
         return __wrapper
 
 
@@ -80,7 +91,7 @@ class JustTool(LiteLLMDescription):
 
 
     @classmethod
-    def from_callable(cls, input_function: Callable) -> 'JustTool':
+    def from_callable(cls, input_function: Callable) -> Self:
         """Create a JustTool instance from a callable."""
         package = input_function.__module__
         litellm_description = function_to_dict(input_function)
@@ -102,9 +113,54 @@ class JustTool(LiteLLMDescription):
             _callable=wrapped_callable,
         )
 
+    def subscribe(self, callback: SubscriberCallback, type: Optional[str]=None) -> bool:
+        """
+        Subscribe to the JustToolsBus.
+        """
+        bus = JustToolsBus()
+        if type is None:
+            return bus.subscribe(f"{self.name}.*", callback)
+        else:
+            return bus.subscribe(f"{self.name}.{type}", callback)
 
+    def unsubscribe(self, callback: SubscriberCallback,type: Optional[str]=None) -> bool:
+        """
+        Unsubscribe from the JustToolsBus.
+        """
+        bus = JustToolsBus()
+        if type is None:
+            return bus.unsubscribe(f"{self.name}.*", callback)
+        else:
+            return bus.unsubscribe(f"{self.name}.{type}", callback)
 
-    def refresh(self)->'JustTool':
+    def subscribe_to_call(self, callback: SubscriberCallback) -> None:
+        """
+        Subscribe to the call event.
+        
+        Args:
+            callback (SubscriberCallback): Callback function that takes event_name (str) and *args, kwargs=kwargs
+        """
+        if not self.subscribe(callback, "execute"):
+            raise ValueError(f"Failed to subscribe to {self.name}.execute")
+
+    def subscribe_to_result(self, callback: SubscriberCallback) -> None:
+        """
+        Subscribe to the result event.
+        
+        Args:
+            callback (SubscriberCallback): Callback function that takes event_name (str) and result_interceptor=result
+        """
+        if not self.subscribe(callback, "result"):
+            raise ValueError(f"Failed to subscribe to {self.name}.result")
+
+    def subscribe_to_error(self, callback: SubscriberCallback) -> None:
+        """
+        Subscribe to the error event.
+        """
+        if not self.subscribe(callback, "error"):
+            raise ValueError(f"Failed to subscribe to {self.name}.error")
+
+    def refresh(self)->Self:
         """
         Refresh the JustTool instance to reflect the current state of the actual function.
         Updates package, function name, description, parameters, and ensures the function is importable.

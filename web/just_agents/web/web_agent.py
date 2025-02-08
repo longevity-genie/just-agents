@@ -1,4 +1,3 @@
-from ossaudiodev import error
 from pathlib import Path
 import json
 import os

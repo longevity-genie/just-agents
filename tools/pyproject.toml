@@ -11,7 +11,7 @@ packages = [
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.11,<4.0"
+python = ">=3.10,<4.0"
 just-agents-core = ">=0.5.2"
 semanticscholar = ">=0.8.4"
 typer = ">=0.13.0"

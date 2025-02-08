@@ -1,20 +1,20 @@
 import yaml
 import importlib
-from typing import Optional, Dict, Any, ClassVar, Sequence, Union, Set, Type, TypeVar
+import sys
+import importlib.util
+from typing import Optional, Dict, Any, ClassVar, Sequence, Union, Set, Type, TypeVar, Union, Callable, Type
 from pathlib import Path
-
+import types
 from pydantic import BaseModel, Field, field_validator
 from collections.abc import MutableMapping, MutableSequence
-from pydantic import ConfigDict
-import sys
+from pydantic import BaseModel, Field, ConfigDict
+
 
 # Create a TypeVar for the class
-JustSerializableSubclass = TypeVar('JustSerializableSubclass', bound='JustSerializable')
 if sys.version_info >= (3, 11):
     from typing import Self
-    SelfType = Self
 else:
-    SelfType = JustSerializableSubclass
+    Self = TypeVar('Self', bound='JustSerializable')
 
 class JustYaml:
     """
@@ -145,13 +145,11 @@ class JustYaml:
         else:
             file_path.parent.mkdir(parents=True, exist_ok=True)
 
-        # Ensure the parent section exists
-        if parent_section:
-            if parent_section not in data:
-                data[parent_section] = {}
-
         # Update the data with the current instance's data
         if parent_section:
+            # Ensure the parent section exists
+            if parent_section not in data:
+                data[parent_section] = {}
             data[parent_section][section_name] = section_data
         else:
             data[section_name] = section_data
@@ -181,7 +179,10 @@ class JustSerializable(BaseModel):
         extra="allow",
         use_enum_values=True,
         validate_assignment=True,
-        populate_by_name=True
+        populate_by_name=True,
+        # json_encoders = {
+        #     types.FunctionType: lambda v: f"{v.__module__ }.{v.__name__}",
+        # }
     )
     DEFAULT_CONFIG_PATH : ClassVar[Path] = Path('./config/default_config.yaml')
     DEFAULT_PARENT_SECTION : ClassVar[Optional[str]] = None
@@ -213,6 +214,10 @@ class JustSerializable(BaseModel):
         None,
         exclude=True)
     """Fallback container to store fields that don't fit the model."""
+
+
+ 
+
 
     def model_post_init(self, __context: Any) -> None:
         """
@@ -277,7 +282,7 @@ class JustSerializable(BaseModel):
         return value
 
     @classmethod
-    def from_json(cls, json_data: Dict[str, Any], qualname_check: bool = True) -> SelfType:
+    def from_json(cls, json_data: Dict[str, Any], qualname_check: bool = True) -> Self:
         """
         Constructor from JSON data. Populates fields that are present in the class,
         and stores any extra fields in 'extras'.
@@ -323,7 +328,7 @@ class JustSerializable(BaseModel):
     def from_yaml(cls, section_name: str,
                   parent_section: str = None,
                   file_path: Path = None,
-    ) -> SelfType:
+    ) -> Self:
         """
         Creates an instance from a YAML file path, section name, and parent section name.
 
@@ -350,14 +355,15 @@ class JustSerializable(BaseModel):
             parent_section,
         )
         section_data = cls.update_config_data(section_data, section_name, parent_section, file_path)
-        return cls.from_json(json_data=section_data)
+        return cls.from_json(json_data=section_data, qualname_check=False)
 
     @staticmethod
     def from_yaml_auto(section_name: str,
                        parent_section: Optional[str],
                        file_path: Path,
                        class_hint: Optional[Union[Type|str]] = None,
-                       ) -> Optional[JustSerializableSubclass]:
+                       ) -> Optional[Self]:
+
         """
         Creates an instance from a YAML file.
 

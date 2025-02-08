@@ -29,6 +29,10 @@ class EnumLiteral(str, Enum):
     def __hash__(self):
         # Use the hash of the value to behave like a string in hashable contexts
         return hash(self.value)
+    
+    def __repr__(self):
+        # For print statements
+        return self.value
 
 class Role(EnumLiteral):
     """OpenAI compatible role enum class with string representation"""

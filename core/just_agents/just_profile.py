@@ -4,7 +4,7 @@ from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict, Un
 
 from just_agents.just_serialization import JustSerializable
 from just_agents.data_classes import ModelPromptExample
-from just_agents.just_tool import JustTool, JustTools
+from just_agents.just_tool import JustTool, JustTools, SubscriberCallback
 
 
 class JustAgentProfile(JustSerializable):
@@ -71,6 +71,18 @@ class JustAgentProfile(JustSerializable):
         if self.tools is None:
             return None
         return [tool.get_callable(refresh=tool.auto_refresh) for tool in self.tools]
+    
+    def subscribe_to_tool_call(self, callback: SubscriberCallback) -> None:
+        for name, tool in self.tools.items():
+            tool.subscribe_to_call(callback)
+
+    def subscribe_to_tool_result(self, callback: SubscriberCallback) -> None:
+        for name, tool in self.tools.items():
+            tool.subscribe_to_result(callback)
+
+    def subscribe_to_tool_error(self, callback: SubscriberCallback) -> None:
+        for name, tool in self.tools.items():
+            tool.subscribe_to_error(callback)
 
     @classmethod
     def auto_load(

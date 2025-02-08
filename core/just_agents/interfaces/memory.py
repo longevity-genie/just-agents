@@ -4,7 +4,7 @@ from typing import TypeVar, Generic, List, Callable, Optional, Dict
 Memorable = TypeVar("Memorable")
 MemoryKey = TypeVar("MemoryKey")
 from rich.panel import Panel
-HandlerType = Callable[[Memorable], None]
+HandlerType = Callable[[MemoryKey, Memorable], None]
 
 class IMemory(ABC, Generic[MemoryKey, Memorable]):
     """

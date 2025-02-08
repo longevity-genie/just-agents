@@ -18,7 +18,7 @@ class ReflectionAgent(IAgent):
         if self.agent_schema is None:
             self.agent_schema = dict()
 
-    def query(self, query_input: Union[str, Dict, Sequence[Dict]]) -> str:
+    def query(self, query_input: Union[str, Dict, Sequence[Dict]],  **kwargs) -> str:
         solution = self.author.query(query_input)
         iterations = self.agent_schema.get(ITERATIONS, 3)
         critic_prompt = self.agent_schema.get(CRITIC_PROMPT, "Review this output and provide specific constructive criticism: ")

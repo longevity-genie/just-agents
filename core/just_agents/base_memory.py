@@ -81,7 +81,7 @@ class MessageFormatter(IMessageFormatter):
             panel = self.pretty_print_message(msg)
             console.print(panel)
 
-OnMessageCallable = Callable[[MessageDict], None]
+OnMessageCallable = Callable[[Role,MessageDict], None]
 OnToolCallable = Callable[[ToolCall], None]
 
 class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC):
@@ -137,14 +137,10 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC)
         Adds a handler to track function calls.
         """
 
-        def tool_handler(message: MessageDict) -> None:
+        def tool_handler(role: Role, message: MessageDict) -> None:
             tool_calls = message.get('tool_calls', [])
             for call in tool_calls:
-                function_name = call.get('function')
-                if function_name:
-                    fun(function_name)
-                else:
-                    raise ValueError("Function name is None")
+                fun(ToolCall(**call))
 
         self.add_on_message_handler(Role.assistant, tool_handler)
 
@@ -180,6 +176,16 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC)
         """
         self.add_on_message_handler(Role.system, handler)
 
+    def add_on_message(self, handler: OnMessageCallable) -> None:
+        """
+        Adds a handler to be called for all messages.
+
+        :param handler: The callable to be executed when a message is added.
+        """
+        role: Role
+        for role in Role:
+            self.add_on_message_handler(role, handler)
+
     def remove_on_tool_message(self, handler: OnMessageCallable) -> None:
         """
         Removes a specific handler for tool messages.
@@ -212,6 +218,14 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC)
         """
         self._remove_on_message(handler, Role.system)
 
+    def remove_on_message(self, handler: OnMessageCallable) -> None:
+        """
+        Removes a specific handler for all messages.
+
+        :param handler: The handler to be removed.
+        """
+        for role in Role:
+            self._remove_on_message(handler, role)
 
 class BaseMemory(IBaseMemory, MessageFormatter):
     """
@@ -224,11 +238,11 @@ class BaseMemory(IBaseMemory, MessageFormatter):
         """
         Implements the abstract method to handle messages based on their roles.
         """
-        role: Optional[Role] = message.get("role")
+        role: Optional[Role] = message.get("role", None)
         if role is None:
             raise ValueError("Message does not have a role")
         for handler in self._on_message.get(role, []):
-            handler(message)
+            handler(role,message)
 
     # Overriding add_message with specific implementations
     @singledispatchmethod

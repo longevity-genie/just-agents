@@ -2,8 +2,10 @@ from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, A
 
 from pydantic import Field, PrivateAttr, BaseModel
 from functools import singledispatchmethod
-
+import litellm
+import os
 from litellm import CustomStreamWrapper, completion, acompletion, stream_chunk_builder
+from litellm._logging import _is_debugging_on
 from litellm.types.utils import Delta, Message, ModelResponse, ModelResponseStream
 from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
 
@@ -66,6 +68,39 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         else:
             return None
 
+    def enable_logging(self) -> None:
+        """
+        Enable logging and callbacks for the protocol adapter.
+        Sets up Langfuse and Opik callbacks if environment variables are present.
+        """
+        callbacks = []
+        
+        # Check if Langfuse credentials are set
+        if os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY"):
+            callbacks.append("langfuse")
+            
+        # Check if Opik credentials are set    
+        if os.environ.get("OPIK_API_KEY") and os.environ.get("OPIK_WORKSPACE"):
+            callbacks.append("opik")
+            
+        # Set unified callbacks if any integrations are enabled
+        if callbacks:
+            litellm.callbacks = callbacks
+
+    def debug_enabled(self) -> bool:
+        return litellm._is_debugging_on()
+
+    def enable_debug(self) -> None:
+        """
+        Enable debug mode for the protocol adapter.
+        """
+        litellm._turn_on_debug()
+
+    def disable_logging(self) -> None:
+        """
+        Disable logging mode for the protocol adapter by removing all callbacks.
+        """
+        litellm.callbacks = []  # Reset callbacks to empty list
 
 
     @singledispatchmethod

@@ -52,6 +52,22 @@ class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelRespons
     def get_supported_params(self, model_name: str) -> Optional[list]:
         raise NotImplementedError("You need to implement get_supported_params first!")
 
+    @property
+    @abstractmethod
+    def debug_enabled(self) -> bool:
+        raise NotImplementedError("You need to implement debug_enabled first!")
+
+    @abstractmethod
+    def enable_debug(self) -> None:
+        raise NotImplementedError("You need to implement enable_debug first!")
+
+    @abstractmethod
+    def enable_logging(self) -> None:
+        raise NotImplementedError("You need to implement enable_logging first!")
+
+    @abstractmethod
+    def disable_logging(self) -> None:
+        raise NotImplementedError("You need to implement disable_logging first!")
 
     def get_chunk(self, index:int, delta:str, options:dict) -> AbstractMessage:
         return self._output_streaming.get_chunk(index, delta, options)

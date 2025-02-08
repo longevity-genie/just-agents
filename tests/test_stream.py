@@ -3,7 +3,7 @@ from dotenv import load_dotenv
 import pytest
 from typing import Callable, Any
 
-from just_agents.base_agent import BaseAgent
+from just_agents.base_agent import BaseAgent, BaseAgentWithLogging
 from just_agents.llm_options import LLMOptions, LLAMA3_3, LLAMA3_2_VISION, OPENAI_GPT4oMINI
 from just_agents.just_tool import JustToolsBus
 
@@ -35,14 +35,14 @@ def get_current_weather(location: str):
         return json.dumps({"location": location, "temperature": "unknown"})
 
 def agent_query(prompt: str, options: LLMOptions, **kwargs):
-    session: BaseAgent = BaseAgent(
+    session: BaseAgent = BaseAgentWithLogging(
         llm_options=options,
         tools=[get_current_weather]
     )
     return session.query(prompt, **kwargs)
 
 def agent_call(prompt: str, options: LLMOptions, reconstruct_chunks: bool, **kwargs):
-    session: BaseAgent = BaseAgent(
+    session: BaseAgent = BaseAgentWithLogging(
         llm_options=options,
         tools=[get_current_weather]
     )
@@ -90,7 +90,7 @@ def validate_tool_call(call : Callable[[Any,...],str],*args,**kwargs):
     bus = JustToolsBus()
     results = []
     result_callback = 'get_current_weather.result'
-    def callback(event_name: str, result_interceptor: str):
+    def callback(event_name: str, result_interceptor: str, **kwargs):
         assert event_name == result_callback
         results.append(result_interceptor)
     bus.subscribe(result_callback,callback)

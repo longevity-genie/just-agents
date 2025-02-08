@@ -17,12 +17,10 @@ class OpenaiStreamingProtocol(IAbstractStreamingProtocol):
             "choices": [{"delta": {"content": delta}}],
         }
         return self.sse_wrap(chunk)
-    #    return f"data: {json.dumps(chunk)}\n\n"
 
 
     def done(self):
         return self.sse_wrap(self.stop)
-    #    return "\ndata: [DONE]\n\n"
 
     def response_from_stream(self, stream_generator: Generator) -> str:
         response_content = ""

@@ -1,20 +1,18 @@
 from abc import ABC, abstractmethod
 import ast
 import json
-from typing import Type, Union, Generator, AsyncGenerator, Any, TypeVar, Generic, List, Optional, Callable, Coroutine, Protocol, Tuple
+from typing import Type, Union, Generator, AsyncGenerator, Any, TypeVar, Generic, List, Optional, Callable, Coroutine, \
+    Protocol, ParamSpec, ParamSpecArgs, ParamSpecKwargs
 from pydantic import BaseModel, ConfigDict
-import re
-
-# Add this near the top of the file, before any class definitions
-import pydantic
-pydantic.TypeAdapter.validate_python.__globals__['ConfigDict'] = ConfigDict(
-    max_error_message_length=None
-)
+import sys
 
 # Define generic types for inputs and outputs
-Self = TypeVar("Self") # 3.11+ only, replacement for 3.8+ compatibility
-AbstractQueryInputType = TypeVar("AbstractQueryInputType")
+if sys.version_info >= (3, 11):
+    from typing import Self
+else:
+    Self = TypeVar("Self")
 
+AbstractQueryInputType = TypeVar("AbstractQueryInputType")
 AbstractQueryResponseType = TypeVar("AbstractQueryResponseType")
 AbstractStreamingChunkType = TypeVar("AbstractStreamingChunkType")
 
@@ -30,23 +28,13 @@ AbstractStreamingGeneratorResponseType = Union[
 ]
 
 # Signature for a query function
-QueryFunction = Callable[[Self,AbstractQueryInputType,...],Any]
 ResponseFunction = Callable[...,AbstractQueryResponseType]
 StreamingResponseFunction = Callable[...,AbstractStreamingGeneratorResponseType]
-
-# Signatures for listener templates
-class QueryListener(Protocol[AbstractQueryResponseType]):
-    def __call__(self, input_query: AbstractQueryResponseType, *args: Any, **kwargs: Any) -> None:
-        ...
-
-class ResponseListener(Protocol[AbstractQueryResponseType]):
-    def __call__(self, result: AbstractQueryResponseType, *args: Any, **kwargs: Any) -> None:
-        ...
 
 class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, AbstractStreamingChunkType]):
 
     @abstractmethod
-    def query(self, query_input: AbstractQueryInputType) -> Optional[AbstractQueryResponseType]:
+    def query(self, query_input: AbstractQueryInputType, **kwargs) -> Optional[AbstractQueryResponseType]:
         raise NotImplementedError("You need to implement query() abstract method first!")
     
     def query_structural(
@@ -105,6 +93,18 @@ class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, Abs
     def stream(self, query_input: AbstractQueryInputType) -> Optional[AbstractStreamingGeneratorResponseType]:
         raise NotImplementedError("You need to implement stream() abstract method first!")
 
+
+VariArgs = ParamSpec('VariArgs')
+
+# Signatures for listener templates
+class QueryListener(Protocol[AbstractQueryInputType]):
+    def __call__(self, input_query: AbstractQueryInputType, action: str, source: str, *args:VariArgs.args, **kwargs: VariArgs.kwargs) -> None:
+        ...
+
+class ResponseListener(Protocol[AbstractQueryResponseType]):
+    def __call__(self, response: AbstractQueryResponseType, action: str, source: str) -> None:
+        ...
+
 # Define IAgentWithInterceptors with methods to manage interceptors
 class IAgentWithInterceptors(
         IAgent[AbstractQueryInputType, AbstractQueryResponseType, AbstractStreamingChunkType],
@@ -116,7 +116,7 @@ class IAgentWithInterceptors(
     _on_response: List[ResponseListener[AbstractQueryResponseType]]
 
     # Methods to manage on_query listeners
-    def handle_on_query(self, input_query: AbstractQueryResponseType, *args, **kwargs) -> None:
+    def handle_on_query(self, input_query: AbstractQueryResponseType, *args:VariArgs.args, **kwargs: VariArgs.kwargs) -> None:
         for handler in self._on_query:
             handler(input_query, *args, **kwargs)
 
