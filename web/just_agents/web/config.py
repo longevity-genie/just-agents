@@ -1,0 +1,104 @@
+import os
+from pydantic import BaseModel, Field
+from typing import Optional
+
+class WebAgentConfig(BaseModel):
+    """
+    Configuration for agent server settings loaded from environment variables.
+    
+    Provides flexible configuration options for running a Just-Agent server, 
+    with defaults and environment variable overrides.
+    """
+    host: str = Field(
+        default_factory=lambda: os.getenv("APP_HOST", "0.0.0.0"),
+        description="Host address to bind the server",
+        examples=["0.0.0.0", "127.0.0.1"]
+    )
+    port: int = Field(
+        default_factory=lambda: int(os.getenv("APP_PORT", "8088")),
+        description="Port number for the server",
+        ge=1024,  # Recommended to use ports above 1024 for non-root users
+        le=65535,
+        examples=[8088, 8000, 5000]
+    )
+    workers: int = Field(
+        default_factory=lambda: int(os.getenv("AGENT_WORKERS", "1")),
+        description="Number of worker processes to run",
+        ge=1,
+        examples=[1, 2, 4]
+    )
+    title: str = Field(
+        default_factory=lambda: os.getenv("AGENT_TITLE", "Just-Agent endpoint"),
+        description="Title of the API endpoint",
+        examples=["Just-Agent endpoint", "My AI Service"]
+    )
+    section: Optional[str] = Field(
+        default_factory=lambda: os.getenv("AGENT_SECTION"),
+        description="Specific configuration section to load",
+        examples=["production", "development", "testing"]
+    )
+    parent_section: Optional[str] = Field(
+        default_factory=lambda: os.getenv("AGENT_PARENT_SECTION"),
+        description="Parent configuration section for inheritance",
+        examples=["base_config", "global_settings"]
+    )
+    debug: bool = Field(
+        default_factory=lambda: os.getenv("AGENT_DEBUG", "true").lower() == "true",
+        description="Enable debug mode for additional logging and error details",
+        examples=[True, False]
+    )
+    remove_system_prompt: bool = Field(
+        default_factory=lambda: os.getenv("AGENT_REMOVE_SYSTEM_PROMPT", "false").lower() == "true",
+        description="Option to remove system prompts from agent interactions",
+        examples=[False, True]
+    )
+    agent_config_path: str = Field(
+        default_factory=lambda: os.getenv('AGENT_CONFIG_PATH', 'agent_profiles.yaml'),
+        description="Path to the agent configuration file",
+        examples=['agent_profiles.yaml', 'config/agent_profiles.yaml']
+    )
+
+
+class ChatUIAgentConfig(WebAgentConfig):
+    """
+    Configuration for Chat UI Agent settings loaded from environment variables.
+    
+    Extends WebAgentConfig to include additional settings specific to Chat UI Agents.
+    """
+    models_dir: str = Field(
+        default_factory=lambda: os.getenv('MODELS_DIR', "models.d"),
+        description="Directory containing model configs",
+        examples=["models.d", "configs/models"]
+    )
+    env_keys_path: str = Field(
+        default_factory=lambda: os.getenv('ENV_KEYS_PATH', "env/.env.keys"),
+        description="Path to environment keys file",
+        examples=["env/.env.keys", "config/keys.env"]
+    )
+    remove_dd_configs: bool = Field(
+        default_factory=lambda: os.getenv('REMOVE_DD_CONFIGS', "true").lower() == "true",
+        description="Whether to remove DD configs",
+        examples=[True, False]
+    )
+    trap_summarization: bool = Field(
+        default_factory=lambda: os.getenv("TRAP_CHAT_NAMES", "true").lower() == "true",
+        description="Whether to trap summarization requests",
+        examples=[True, False]
+    )
+    agent_host: str = Field(
+        default_factory=lambda: os.getenv("AGENT_HOST", "http://127.0.0.1"),
+        description="Host address for the API",
+        examples=["http://127.0.0.1", "http://localhost"]
+    )
+    agent_port: int = Field(
+        default_factory=lambda: int(os.getenv("AGENT_PORT", "8088")),
+        description="Port number for the API",
+        ge=1024,
+        le=65535,
+        examples=[8088, 8000, 5000]
+    )
+    json_file_pattern: str = Field(
+        default_factory=lambda: os.getenv("JSON_FILE_PATTERN", "[0123456789][0123456789]_*.json"),
+        description="Pattern for JSON files to be removed",
+        examples=["[0123456789][0123456789]_*.json"]
+    )

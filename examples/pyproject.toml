@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-examples"
-version = "0.5.2"
+version = "0.5.3"
 description = "Just Agents - Examples code"
 authors = ["Alex Karmazin <karmazinalex@gmail.com>"]
 maintainers = ["Anton Kulaga <antonkulaga@gmail.com>"]
@@ -12,11 +12,11 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<4.0"
-just-agents-core = ">=0.5.2"
-just-agents-tools = ">=0.5.2"
-just-agents-coding = ">=0.5.2"
-just-agents-web = ">=0.5.2"
-just-agents-router = ">=0.5.2"
+just-agents-core = ">=0.5.3"
+just-agents-tools = ">=0.5.3"
+just-agents-coding = ">=0.5.3"
+just-agents-web = ">=0.5.3"
+just-agents-router = ">=0.5.3"
 docker = ">=7.1.0"
 
 [tool.poetry.group.dev.dependencies]

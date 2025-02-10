@@ -22,8 +22,14 @@ def test_web_agent_profile(load_env, tmp_path):
     config_path = Path(TESTS_DIR)   / "profiles" / "web_agent.yaml"
 
     agent: WebAgent = WebAgent.from_yaml_auto(file_path=config_path, section_name="example_web_agent", parent_section="agent_profiles")
-    agent.write_model_config_to_json(models_dir=MODELS_DIR)
     agent.save_to_yaml()
+
+# def test_chatui_agent_profile(load_env, tmp_path):
+#     config_path = Path(TESTS_DIR) / "profiles" / "web_agent.yaml"
+#
+#     agent: WebAgent = WebAgent.from_yaml_auto(file_path=config_path, section_name="example_web_agent",
+#                                                   parent_section="agent_profiles")
+#     agent.write_model_config_to_json(models_dir=MODELS_DIR)
 
 def test_web_agent_tool(load_env, tmp_path):
 

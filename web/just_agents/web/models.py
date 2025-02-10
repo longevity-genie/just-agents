@@ -1,4 +1,4 @@
-from typing import List, Union, Optional, Literal
+from typing import List, Union, Optional, Literal, Dict, Any
 from pydantic import BaseModel, Field
 from just_agents.data_classes import Message, ToolCall, Role
 from just_agents.llm_options import ModelOptions
@@ -91,6 +91,68 @@ class ChatCompletionResponse(BaseModel):
 
 class ChatCompletionChunkResponse(ChatCompletionResponse):
     choices: List[ChatCompletionChoiceChunk] = Field(...,description="A list of chunked choices. Can be more than one if `n` is greater than 1.")
+
+# Model definitions for API responses
+
+class Model(BaseModel):
+    """Represents a model in the API response, following OpenAI's model format"""
+    id: str = Field(
+        description="Unique identifier for the model",
+        examples=["gpt-3.5-turbo", "claude-2", "llama-2-7b"]
+    )
+    created: int = Field(
+        description="Unix timestamp of model creation",
+        examples=[1677649963]
+    )
+    object: str = Field(
+        default="model", 
+        description="Object type in the API response",
+        examples=["model"]
+    )
+    owned_by: str = Field(
+        default="organization", 
+        description="Entity that owns the model",
+        examples=["organization", "anthropic", "openai"]
+    )
+    permission: Optional[List[Dict[str, Any]]] = Field(
+        default=None, 
+        description="Array of permissions associated with the model",
+        examples=[[{"id": "modelperm-123", "type": "access"}]]
+    )
+    root: Optional[str] = Field(
+        default=None, 
+        description="The base model this model is derived from",
+        examples=["gpt-3.5"]
+    )
+    parent: Optional[str] = Field(
+        default=None, 
+        description="The immediate parent model in a model hierarchy",
+        examples=["gpt-3.5-turbo"]
+    )
+
+class ModelList(BaseModel):
+    """Container for list of models in API response, following OpenAI's model list format."""
+    object: str = Field(
+        default="list", 
+        description="Type of object in the API response",
+        examples=["list"]
+    )
+    data: List[Model] = Field(
+        ..., 
+        description="List of available models",
+        min_length=0,
+        examples=[
+            [
+                {
+                    "id": "gpt-3.5-turbo", 
+                    "created": 1677649963, 
+                    "object": "model", 
+                    "owned_by": "organization"
+                }
+            ]
+        ]
+    )
+
 
 class ErrorResponse(BaseModel):
     class ErrorDetails(BaseModel):

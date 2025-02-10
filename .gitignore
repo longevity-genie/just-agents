@@ -170,3 +170,9 @@ cython_debug/
 
 ./config/ #temporal config produced by tests
 config/agent_profiles.yaml #to deal with testing bug
+
+output/*
+output/**
+logs/*
+env/*
+models.d/*

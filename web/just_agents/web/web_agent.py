@@ -142,7 +142,9 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
     def from_yaml_dict(
         cls,
         yaml_path: Path | str,
-        parent_section: Optional[str] = "agent_profiles"
+        parent_section: Optional[str] = "agent_profiles",
+        section: Optional[str] = None,
+        required_base_class: Optional[Type[BaseAgent]] = None
     ) -> Dict[str, 'BaseAgent']:
         """
         Creates a dictionary of WebAgent (or subclass) instances from a YAML file.
@@ -153,6 +155,9 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
 
             if not yaml_path.exists():
                 raise FileNotFoundError(f"YAML file not found: {yaml_path}")
+
+            if required_base_class is None:
+                required_base_class = getattr(cls, 'REQUIRED_CLASS', None) or cls
 
             with yaml_path.open('r') as f:
                 config_data = yaml.safe_load(f) or {}
@@ -173,19 +178,38 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
                     sections = config_data
 
             # Process each section
-            for section_name, section_data in sections.items():
+            selected_sections = {}
+            if section:
+                if section in sections:
+                    sections = {section: sections[section]}
+                else:
+                    action.log(
+                        message_type="agent.config_error",
+                        error=f"Section {section} not found in {parent_section} of {yaml_path}",
+                        action="agent_config_error"
+                    )
+            else:
+                selected_sections = sections
+
+            for section_name, section_data in selected_sections.items():
                 auto_instance : JustSerializable = WebAgent.from_yaml_auto(
                     section_name,
                     parent_section,
                     yaml_path
                 )
-                if isinstance(auto_instance,BaseAgent) and isinstance(auto_instance,cls.REQUIRED_CLASS):
+                if isinstance(auto_instance,BaseAgent) and isinstance(auto_instance, required_base_class):
                     agent = auto_instance
+                    action.log(
+                        message_type="agent.type_check",
+                        instance=auto_instance.__class__.__qualname__,
+                        required_class=required_base_class.__qualname__,
+                        message=f"Agent is an instance of {auto_instance.__class__.__name__} matching or inheriting from {required_base_class.__name__}"
+                    )
                 else:
                     action.log(
                         message_type="agent.config_error",
                         instance=auto_instance,
-                        error=f"Agent is not an instance or a descendant of {str(cls.REQUIRED_CLASS.__name__)}, bound=BaseAgent! It will be discarded"
+                        error=f"Agent is not an instance or a descendant of {str(required_base_class.__name__)}, bound=BaseAgent! It will be discarded"
                     )
                     continue
                 agents[section_name] = agent

@@ -3,20 +3,20 @@ import hashlib
 import mimetypes
 import os
 import time
-import sys
 import json
 import glob
-import shutil
+
 
 from pathlib import Path
-
-from docutils.nodes import address
-from pydantic import BaseModel, ValidationError
-from typing import Optional, List, Dict, Any, Union
+from pydantic import BaseModel, ValidationError, Field
+from typing import Optional, List, Dict, Any, Union, Type, ClassVar
 
 from just_agents.base_agent import BaseAgent
+from just_agents.web.models import Model, ModelList
 from just_agents.web.chat_ui import ModelConfig
 from just_agents.web.web_agent import WebAgent
+from just_agents.web.chat_ui_agent import ChatUIAgent
+from just_agents.web.config import WebAgentConfig, ChatUIAgentConfig
 from just_agents.web.streaming import response_from_stream, get_completion_response, async_wrap, has_system_prompt
 
 from just_agents.web.models import (
@@ -29,27 +29,14 @@ from fastapi import FastAPI
 from fastapi.responses import StreamingResponse
 from eliot import start_task
 
-# Model definitions for API responses
-class Model(BaseModel):
-    """Represents a model in the API response, following OpenAI's model format"""
-    id: str
-    created: int
-    object: str = "model"
-    owned_by: str = "organization"
-    permission: Optional[List[Dict[str, Any]]] = None  # Array of permissions objects
-    root: Optional[str] = None  # The model this is derived from, if applicable
-    parent: Optional[str] = None  # The parent model
 
-class ModelList(BaseModel):
-    """Container for list of models in API response"""
-    object: str = "list"
-    data: List[Model]
 
 class AgentRestAPI(FastAPI):
     """FastAPI implementation providing OpenAI-compatible endpoints for Just-Agents.
     This class extends FastAPI to provide endpoints that mimic OpenAI's API structure,
     allowing Just-Agents to be used as a drop-in replacement for OpenAI's API.
     """
+    AGENT_CLASS: ClassVar[Type[BaseAgent]] = WebAgent
 
     def __init__(
         self,
@@ -57,14 +44,11 @@ class AgentRestAPI(FastAPI):
         agent_config: Optional[Path | str] = None,  # Path to agent configuration file
         agent_section: Optional[str] = None,        # Specific section in config to load
         agent_parent_section: Optional[str] = None, # Parent section for inheritance
-        agent_host: Optional[str] = None,          # Host address for the API
-        agent_port: Optional[str] = None,          # Port number for the API
         debug: bool = False,                       # Enable debug mode
         title: str = "Just-Agent endpoint",        # API title for documentation
         description: str = "OpenAI-compatible API endpoint for Just-Agents",
         version: str = "1.1.0",
         openapi_url: str = "/openapi.json",
-        env_keys_path: Optional[str] = None,       # Path to environment keys file
         openapi_tags: Optional[List[Dict[str, Any]]] = None,
         servers: Optional[List[Dict[str, Union[str, Any]]]] = None,
         docs_url: str = "/docs",
@@ -72,7 +56,7 @@ class AgentRestAPI(FastAPI):
         terms_of_service: Optional[str] = None,
         contact: Optional[Dict[str, Union[str, Any]]] = None,
         license_info: Optional[Dict[str, Union[str, Any]]] = None,
-        remove_system_prompt: Optional[bool] = None,  # Whether to remove system prompts
+
     ) -> None:
         """Initialize the AgentRestAPI with FastAPI parameters.
         
@@ -106,57 +90,67 @@ class AgentRestAPI(FastAPI):
         )
         load_dotenv(override=True)
 
-        if env_keys_path is None:
-            self.env_keys_path = os.getenv('ENV_KEYS_PATH', "env/.env.keys")
-        else:
-            self.env_keys_path = env_keys_path
-
-        load_dotenv(self.env_keys_path,override=True)
-
-        if remove_system_prompt is None:
-            self.remove_system_prompt = os.getenv('REMOVE_SYSTEM_PROMPT', False)
-        else:
-            self.remove_system_prompt = remove_system_prompt
-
-        if agent_port is None:
-            self.agent_port = int(os.getenv("AGENT_PORT", 8088))
-        else:
-            self.agent_port = agent_port
-
-        if agent_host is None:
-            self.agent_host = os.getenv("AGENT_HOST", "http://127.0.0.1")
-        else:
-            self.agent_host = agent_host
-
+        # Initialize WebAgentConfig
+        self._initialize_config()
+        
         self.agents = {}  # Dictionary to store multiple agents
-        self._agent_related_config(agent_config, agent_section, agent_parent_section)
+        self._agent_related_config(agent_config, agent_section, agent_parent_section, self.AGENT_CLASS)
         self._routes_config()
 
-    def _agent_related_config(self, agent_config: Path | str, agent_section: Optional[str] = None, agent_parent_section: Optional[str] = None):
+    def _initialize_config(self):
+        self.config = WebAgentConfig()
+
+    def _agent_related_config(
+            self, 
+            agent_config: Path | str, 
+            agent_section: Optional[str] = None, 
+            agent_parent_section: Optional[str] = None,
+            agent_class: Optional[Type[BaseAgent]] = None
+        ):
         with start_task(action_type="agent_related_configs") as action:
+            
+            if agent_class is None:
+                agent_class = WebAgent
+
             if agent_config is None:
                 # Load from environment variable or use default
-                agent_config = os.getenv('AGENT_CONFIG_PATH', 'agent_profiles.yaml')
-
+                agent_config = self.config.agent_config_path
+            
+            # Load all agents using from_yaml_dict
+           
             if agent_section:
                 # Load single agent
-                agent: WebAgent = WebAgent.from_yaml(agent_section, agent_parent_section, agent_config)
-                agent.enforce_agent_prompt = self.remove_system_prompt #TODO :remove nasty override, only apply to unset
-                self.agents[agent_section] = agent
-                self.agent = agent  # Keep default agent for backward compatibility
+                self.agents: Dict[str, BaseAgent] = agent_class.from_yaml_dict(agent_config, agent_parent_section, section=agent_section) # requirements-aware autoload
+
+                if agent_section in self.agents:
+                    self.agent = self.agents[agent_section]
+                    self.agents = {agent_section:self.agent}
+                    action.log(
+                        message_type=f"Single agent successfully loaded and selected",
+                        name=self.agent.shortname,
+                        action="agent_load_success"
+                    )
+                else:
+                    action.log(
+                        message_type=f"Requested agent {agent_section} not loaded, cause in previous messages",
+                        name=agent_section,
+                        action="agent_load_error",
+                    )
+                raise ValueError(f"Requested agent {agent_section} not loaded due to errors")
             else:
-                # Load all agents using from_yaml_dict
-                self.agents: Dict[str, BaseAgent] = WebAgent.from_yaml_dict(agent_config, agent_parent_section)
+                self.agents: Dict[str, BaseAgent] = agent_class.from_yaml_dict(agent_config, agent_parent_section) # requirements-aware autoload
+                if not self.agents:
+                    action.log(
+                        message_type="No agents loaded",
+                        action="error_no_agents_loaded"
+                    )
+                    raise ValueError("No agents loaded successfully")
 
                 for agent in self.agents.values():
-                    agent.address = self.agent_host or "127.0.0.1"
-                    agent.port=self.agent_port or 8088
                     #agent.enforce_agent_prompt = self.remove_system_prompt
                     action.log(
                         message_type=f"Added agent",
                         name=agent.shortname,
-                        address=agent.address,
-                        port=agent.port,
                         action="agent_load_success"
                     )
 
@@ -323,93 +317,25 @@ class AgentRestAPI(FastAPI):
         return ModelList(data=models, object="list")
 
 class ChatUIAgentRestAPI(AgentRestAPI):
-    def __init__(
-        self,
-        *,
-        agent_config: Optional[Path | str] = None,  # Path to agent configuration file
-        agent_section: Optional[str] = None,        # Specific section in config to load
-        agent_parent_section: Optional[str] = None, # Parent section for inheritance
-        agent_host: Optional[str] = None,          # Host address for the API
-        agent_port: Optional[str] = None,          # Port number for the API
-        debug: bool = False,                       # Enable debug mode
-        title: str = "Just-Agent endpoint",        # API title for documentation
-        description: str = "OpenAI-compatible API endpoint for Just-Agents",
-        version: str = "1.1.0",
-        openapi_url: str = "/openapi.json",
-        models_dir: Optional[str] = None,          # Directory containing model configs
-        env_keys_path: Optional[str] = None,       # Path to environment keys file
-        openapi_tags: Optional[List[Dict[str, Any]]] = None,
-        servers: Optional[List[Dict[str, Union[str, Any]]]] = None,
-        docs_url: str = "/docs",
-        redoc_url: str = "/redoc",
-        terms_of_service: Optional[str] = None,
-        contact: Optional[Dict[str, Union[str, Any]]] = None,
-        license_info: Optional[Dict[str, Union[str, Any]]] = None,
-        remove_system_prompt: Optional[bool] = None,  # Whether to remove system prompts
-        remove_dd_configs: Optional[bool] = None,     # Whether to remove DD configs
-        trap_summarization : Optional[bool] = None    # Whether to trap summarization requests
-    ) -> None:
-        """Initialize the AgentRestAPI with FastAPI parameters.
-        
-        Args:
-            debug: Enable debug mode
-            title: API title shown in documentation
-            description: API description shown in documentation
-            version: API version
-            openapi_url: URL for OpenAPI schema
-            openapi_tags: List of tags to be included in the OpenAPI schema
-            servers: List of servers to be included in the OpenAPI schema
-            docs_url: URL for API documentation
-            redoc_url: URL for ReDoc documentation
-            terms_of_service: URL to the terms of service
-            contact: Contact information in the OpenAPI schema
-            license_info: License information in the OpenAPI schema
-        """
-        super().__init__(
-           agent_config=agent_config,
-           agent_section=agent_section,
-           agent_parent_section=agent_parent_section,
-           agent_host=agent_host,
-           agent_port=agent_port,
-           debug=debug,
-           title=title,
-           description=description,
-           version=version,
-           openapi_url=openapi_url,
-           models_dir=models_dir,
-           env_keys_path=env_keys_path,
-           openapi_tags=openapi_tags,
-           servers=servers,
-           docs_url=docs_url,
-           redoc_url=redoc_url,
-           terms_of_service=terms_of_service,
-           contact=contact,
-           license_info=license_info,
-           remove_system_prompt=remove_system_prompt,
-           remove_dd_configs=remove_dd_configs,
-           trap_summarization=trap_summarization
-        )
-        load_dotenv(override=True)
+    AGENT_CLASS: ClassVar[Type[BaseAgent]] = ChatUIAgent
 
-        if remove_dd_configs is None:
-            self.remove_dd_configs = os.getenv('REMOVE_DD_CONFIGS', True)
-        else:
-            self.remove_dd_configs = remove_dd_configs
+    def __init__(self, *args, **kwargs) -> None:
+        """Initialize the ChatUIAgentRestAPI with FastAPI parameters."""
+        # Initialize ChatUIAgentConfig
+        super().__init__(*args, **kwargs)
+        self._prepare_model_jsons()
+        self._prepare_dot_env()
 
-        if models_dir is None:
-            self.models_dir = os.getenv('MODELS_DIR', "models.d")
-        else:
-            self.models_dir = models_dir
+    def _initialize_config(self):
+        super()._initialize_config()
+        self.config = ChatUIAgentConfig()
+        if Path(self.config.env_keys_path).resolve().absolute().exists():
+            load_dotenv(self.config.env_keys_path, override=True)
 
-        if trap_summarization is None:
-            self.trap_summarization = os.getenv("TRAP_CHAT_NAMES", True)
-        else:
-            self.trap_summarization = trap_summarization
-
-    def get_override_agent(self, request: ChatCompletionRequest, selected_agent:Optional[WebAgent], available_models: List[str]) -> Optional[WebAgent]:
+    def get_override_agent(self, request: ChatCompletionRequest, selected_agent: Optional[WebAgent], available_models: List[str]) -> Optional[WebAgent]:
         with start_task(action_type="get_override_agent") as action:
             override_agent = super().get_override_agent(request, selected_agent, available_models)
-            if self.trap_summarization:
+            if self.config.trap_summarization:
                 prompt = has_system_prompt(request)
                 if prompt and prompt.startswith(
                     "You are a summarization AI. Summarize the user's request into a single short sentence of four words or less."
@@ -422,42 +348,75 @@ class ChatUIAgentRestAPI(AgentRestAPI):
                     )
             return override_agent
 
-    def _agent_related_config(self, agent_config: Path | str, agent_section: Optional[str] = None, agent_parent_section: Optional[str] = None):
-        with start_task(action_type="agent_related_configs") as action:
-            super()._agent_related_config(agent_config, agent_section, agent_parent_section)
-              # Remove unlisted config files if flag is set
-            if self.remove_dd_configs:
-                for config_file in Path(self.models_dir).glob("[0123456789][0123456789]_*.json"):
+    def _prepare_model_jsons(self):
+        with start_task(action_type="prepare_model_jsons") as action:
+            # Remove unlisted config files if flag is set
+            if self.config.remove_dd_configs:
+                for config_file in Path(self.config.models_dir).glob(self.config.json_file_pattern):
                     config_file.unlink()
             for agent in self.agents.values():
-                agent.write_model_config_to_json(models_dir=Path(self.models_dir))
+                agent.address = self.config.agent_host or "127.0.0.1"
+                agent.port = self.config.agent_port or 8088
+                agent.write_model_config_to_json(models_dir=Path(self.config.models_dir))
                 action.log(
                     message_type=f"Config saved for agent",
                     displayname=agent.display_name,
                     name=agent.shortname,
+                    address=agent.address,
+                    port=agent.port,
                     enforce_prompt=agent.enforce_agent_prompt,
                     action="agent_config_success"
-                )
-            self.prepare_dot_env()
+            )
 
-    def prepare_dot_env(self):
-        with start_task(action_type="prepare_dot_env") as action:
-            env_local_path = self.env_keys_path
-            models_dir = self.models_dir
-            temp_env_local_path = '.env.local.tmp'
+    def _prepare_env_file(self, env_file_name: str) -> List[str]:
+        """
+        Ensures that the .env file exists at the specified path. If it doesn't exist,
+        creates it with the provided environment variables.
 
-            # Check if .env.local exists
-            if not os.path.exists(env_local_path):
+        """
+        with start_task(action_type="prepare_env_file") as action:
+            env_file_path = Path(env_file_name).resolve().absolute()
+
+            if not env_file_path.exists():
+                try:
+                    action.log(
+                        message_type=f"Warning: {str(env_file_path)} does not exist.",
+                        env_local_path=str(env_file_path),
+                        action="error_no_env_file"
+                    )
+                    with open(env_file_path, 'w') as env_file:
+                        for key, value in self.AGENT_CLASS.DEFAULT_ENV_VARS.items():
+                                env_file.write(f"{key}={value}\n")
+                except Exception as e:
+                    action.log(
+                        message_type=f"Error: {str(env_file_path)} can not be written.",
+                        error=str(e),
+                        env_local_path=str(env_file_path),
+                        action="error_env_file_not_writable"
+                    )
+                    raise e
                 action.log(
-                    message_type=f"Error: {env_local_path} does not exist.",
-                    env_local_path=env_local_path,
-                    action="error_no_env_file"
+                    message_type=f".env file created at {str(env_file_path)} with default values.",
+                    env_local_path=str(env_file_path),
+                    action="env_file_created"
                 )
-                raise ValueError(f"Error: {env_local_path} does not exist.")
-
+            else:
+                action.log(
+                    message_type=f".env file already exists at {str(env_file_path)}.",
+                    env_local_path=str(env_file_path),
+                    action="env_file_exists"
+                )
+            
             # Read the existing .env.local file
-            with open(env_local_path, 'r') as f:
+            with open(env_file_path, 'r') as f:
                 lines = f.readlines()
+
+            return lines
+
+    def _prepare_dot_env(self):
+        with start_task(action_type="prepare_dot_env") as action:
+            models_dir = self.config.models_dir
+            lines = self._prepare_env_file(self.config.env_keys_path)
 
             # Remove existing MODELS variable (including multi-line definitions)
             new_lines = []
@@ -518,22 +477,30 @@ class ChatUIAgentRestAPI(AgentRestAPI):
                         action="json_not_loaded_error"
                     )
                     raise ValueError(f"Error loading {model_file}: {str(e)}")
-                
-            # Write the updated .env.local file
-            with open(temp_env_local_path, 'w') as f:
-                f.writelines(new_lines)
 
-                # Serialize the models list as a JSON string and add it to MODELS=
-                models_json = json.dumps(models, ensure_ascii=False, indent=4)
-                f.write("MODELS=`\n")
-                f.write(f"{models_json}\n")
-                f.write("`\n")
-
-            # Replace the old .env.local with the new one
-            shutil.move(temp_env_local_path, env_local_path)
-
+            try:
+                # Write the updated .env.local file
+                with open(self.config.env_keys_path, 'w') as f:
+                    f.writelines(new_lines)
+                    # Serialize the models list as a JSON string and add it to MODELS=
+                    models_json = json.dumps(models, ensure_ascii=False, indent=4)
+                    f.write("MODELS=`\n")
+                    f.write(f"{models_json}\n")
+                    f.write("`\n")
+                action.log(
+                    message_type=f"Updated .env.local file at {self.config.env_keys_path}",
+                    action="env_file_updated"
+                )
+            except Exception as e:
+                action.log(
+                    message_type=f"Error writing {self.config.env_keys_path}",
+                    error=str(e),
+                    action="error_env_file_not_writable"
+                )
+                raise e
             # Output the list of models using 'displayName' field
-            print("Models loaded successfully:")
             for model in models:
-                print(f"- {model.get('displayName')}")
-    
+                action.log(
+                    message_type=f"- {model.get('displayName')}",
+                    action="model_loaded"
+                )

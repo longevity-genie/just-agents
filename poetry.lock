@@ -377,13 +377,13 @@ files = [
 
 [[package]]
 name = "colored"
-version = "2.2.5"
+version = "2.3.0"
 description = "Simple python library for color and formatting to terminal"
 optional = false
 python-versions = ">=3.9"
 files = [
-    {file = "colored-2.2.5-py3-none-any.whl", hash = "sha256:c5434a905c2a6edcc41d7fc5b540999368b4bd8281ecf1e9e9bbd21ff62a6695"},
-    {file = "colored-2.2.5.tar.gz", hash = "sha256:60cc61ea656cd3e753380fbc19fc62b0f65b60b2a096ba01bc476d6738ace441"},
+    {file = "colored-2.3.0-py3-none-any.whl", hash = "sha256:2f7f455dc2ed490531b0b8e0ecf8f8513bb28a150d9f12f0e48b023641a55185"},
+    {file = "colored-2.3.0.tar.gz", hash = "sha256:4daf9b3ed687a01d59005e1bd03f354475226b933abb9a01836d6dde926d4c6f"},
 ]
 
 [[package]]
@@ -1007,7 +1007,7 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "just-agents-coding"
-version = "0.5.2"
+version = "0.5.3"
 description = "Just Agents - Coding Components"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1024,7 +1024,7 @@ url = "coding"
 
 [[package]]
 name = "just-agents-core"
-version = "0.5.2"
+version = "0.5.3"
 description = "Just Agents - Base Package"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1046,7 +1046,7 @@ url = "core"
 
 [[package]]
 name = "just-agents-examples"
-version = "0.5.2"
+version = "0.5.3"
 description = "Just Agents - Examples code"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1055,11 +1055,11 @@ develop = true
 
 [package.dependencies]
 docker = ">=7.1.0"
-just-agents-coding = ">=0.5.2"
-just-agents-core = ">=0.5.2"
-just-agents-router = ">=0.5.2"
-just-agents-tools = ">=0.5.2"
-just-agents-web = ">=0.5.2"
+just-agents-coding = ">=0.5.3"
+just-agents-core = ">=0.5.3"
+just-agents-router = ">=0.5.3"
+just-agents-tools = ">=0.5.3"
+just-agents-web = ">=0.5.3"
 
 [package.source]
 type = "directory"
@@ -1067,7 +1067,7 @@ url = "examples"
 
 [[package]]
 name = "just-agents-router"
-version = "0.5.2"
+version = "0.5.3"
 description = "Just Agents - Router Components"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1075,7 +1075,7 @@ files = []
 develop = true
 
 [package.dependencies]
-just-agents-core = ">=0.5.2"
+just-agents-core = ">=0.5.3"
 
 [package.source]
 type = "directory"
@@ -1083,7 +1083,7 @@ url = "router"
 
 [[package]]
 name = "just-agents-tools"
-version = "0.5.2"
+version = "0.5.3"
 description = "Just Agents - Tools Components"
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1091,7 +1091,7 @@ files = []
 develop = true
 
 [package.dependencies]
-just-agents-core = ">=0.5.2"
+just-agents-core = ">=0.5.3"
 semanticscholar = ">=0.8.4"
 typer = ">=0.13.0"
 
@@ -1101,7 +1101,7 @@ url = "tools"
 
 [[package]]
 name = "just-agents-web"
-version = "0.5.2"
+version = "0.5.3"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 optional = false
 python-versions = ">=3.10,<4.0"
@@ -1110,7 +1110,7 @@ develop = true
 
 [package.dependencies]
 fastapi = ">=0.115.6"
-just-agents-core = ">=0.5.2"
+just-agents-core = ">=0.5.3"
 pycomfort = ">=0.0.17"
 uvicorn = ">=0.34.0"
 
@@ -1120,13 +1120,13 @@ url = "web"
 
 [[package]]
 name = "litellm"
-version = "1.60.7"
+version = "1.60.8"
 description = "Library to easily interface with LLM API providers"
 optional = false
 python-versions = "!=2.7.*,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,!=3.7.*,>=3.8"
 files = [
-    {file = "litellm-1.60.7-py3-none-any.whl", hash = "sha256:4c439c41a9256e4329916d4e3fdbc4546685350b9f53df3f53f172902e507297"},
-    {file = "litellm-1.60.7.tar.gz", hash = "sha256:7b14e0a8ae5e4e73fcb7e37f6b2dac6ea6f73de98be2da9119c4cc3ccfbe3de6"},
+    {file = "litellm-1.60.8-py3-none-any.whl", hash = "sha256:260bdcc9749c769f1a84dc927abe7c91f6294a97da05abc6b513c5dd2dcf17a1"},
+    {file = "litellm-1.60.8.tar.gz", hash = "sha256:4a0aca9bd226d727ca4a41aaf8722f825fc10cf33f37a177a3cceb4ee2c442d8"},
 ]
 
 [package.dependencies]
@@ -1148,13 +1148,13 @@ proxy = ["PyJWT (>=2.8.0,<3.0.0)", "apscheduler (>=3.10.4,<4.0.0)", "backoff", "
 
 [[package]]
 name = "llm-sandbox"
-version = "0.2.0"
+version = "0.2.1"
 description = "Lightweight and portable LLM sandbox runtime (code interpreter) Python library"
 optional = false
 python-versions = "<4.0,>=3.10"
 files = [
-    {file = "llm_sandbox-0.2.0-py3-none-any.whl", hash = "sha256:f5ad574fbbd72b5d3f15fdc9b6219079411f3de19b66f3a7f6be28c12af100d7"},
-    {file = "llm_sandbox-0.2.0.tar.gz", hash = "sha256:062dee76b470071f8c92ad0a364f6713b09f268e4dc812a088b64bd6abe6a489"},
+    {file = "llm_sandbox-0.2.1-py3-none-any.whl", hash = "sha256:7bcb01d095df1a369ea29c19c4834d3547ba615c64dd076697a0d1cf7e8085e2"},
+    {file = "llm_sandbox-0.2.1.tar.gz", hash = "sha256:93b83bc49a3e416609c4438072d8b9f5de9fbe46d549558481b5f2d7752b81f2"},
 ]
 
 [package.extras]
@@ -3006,4 +3006,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.0"
 python-versions = ">=3.10,<4.0"
-content-hash = "511c01dc35f0293bc0bc2c42e6f7875e82204f0121b7d01ccc1dbde85042687c"
+content-hash = "d08fe573736e004f2ef1a881e10c8c8c4c5f7fb28f835d717d5c48e44d3cb937"

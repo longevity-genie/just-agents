@@ -1,4 +1,3 @@
-
 from pathlib import Path
 from typing import ClassVar, Optional, Dict, Any, Callable, Literal, Type, Union
 from just_agents.base_agent import BaseAgent, BaseAgentWithLogging, VariArgs, LogFunction
@@ -11,12 +10,24 @@ from just_agents.web.chat_ui import ModelParameters, ModelEndpoint, ModelConfig
 from just_agents.just_profile import JustAgentProfileWebMixin
 from just_agents.web.web_agent import WebAgent
 
-class WebChatUIAgent(WebAgent, JustAgentProfileWebMixin):
+class ChatUIAgent(WebAgent, JustAgentProfileWebMixin):
     """
     A WebChatUIAgent is a WebAgent flavor that can be used in a HuggingFace Chat UI.
     """
-    REQUIRED_CLASS: ClassVar[Type[BaseAgent]] = 'WebChatUIAgent'
+    REQUIRED_CLASS: ClassVar[Type['ChatUIAgent']] = None # override to force self-forward-reference as the required class
     DEFAULT_ADDRESS: ClassVar[str] = "http://172.17.0.1"
+    # Define the environment variables as a dictionary
+    DEFAULT_ENV_VARS: ClassVar[Dict[str, str]] = {
+        "MONGODB_URL": "mongodb://genie:super-secret-password@chat-mongo:27017",
+        "ALLOW_INSECURE_COOKIES": "true",
+        "PUBLIC_APP_NAME": "Just a ChatUI LLM-agent Server",
+        "PUBLIC_APP_ASSETS": "chatui",
+        "PUBLIC_APP_COLOR": "green",
+        "PUBLIC_APP_DESCRIPTION": "A HuggingChat demonstrator of chat + JustAgent",
+        "PUBLIC_APP_DATA_SHARING": "1",
+        "PUBLIC_APP_DISCLAIMER": "0",
+        "MODELS": "\`\n[\n]\n\`"
+    }
 
     address: str = Field(DEFAULT_ADDRESS, description="Http address of the REST endpoint hosting the agent")
     port: int = Field(8088, ge=1000, lt=65535, description="Port of the REST endpoint hosting the agent")
@@ -94,5 +105,7 @@ class WebChatUIAgent(WebAgent, JustAgentProfileWebMixin):
             action.log(message_type="model_config.write", file_path=str(file_path))
 
         return file_path
+
+
 
 
