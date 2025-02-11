@@ -66,4 +66,3 @@ ENV TRAP_CHAT_NAMES="True"
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 
 CMD ["python", "-m", "just_agents.web.run_agent", "run-chat-ui-server-command"]
-CMD sh -c "python /app/scripts/prepare.py && python -m my_project.main"
