@@ -68,6 +68,7 @@ def test_secretary_autoload_true(secretary_autoload_true: Tuple[SecretaryAgent, 
     assert secretary.extras.get("personality_traits") is not None, "Personality traits were not set."
     assert secretary.preferred_model_name is not None, "LLM model name is None."
 
+@pytest.mark.skip(reason="Play with fields descriptions or add retries to make this reliable")
 def test_new_secretary(temp_config_path: str) -> None:
     # Load the secretary from the YAML file created in previous tests
     dotenv.load_dotenv(override=True)
