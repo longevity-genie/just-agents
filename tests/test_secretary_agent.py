@@ -8,11 +8,13 @@ from pytest import TempPathFactory, FixtureRequest
 from typing import Tuple, Any
 from pathlib import Path
 
+TESTS_DIR = Path(os.path.dirname(__file__))  # Get the directory where this test file is located
+
 @pytest.fixture(scope='module')
 def temp_config_path(tmpdir_factory: TempPathFactory) -> str:
     # Create a temporary directory for YAML files
     dotenv.load_dotenv(override=True)
-    temp_dir = tmpdir_factory.mktemp('config')
+    temp_dir = tmpdir_factory.mktemp('profiles')
     # Return path to a file in the temporary directory
     return str(temp_dir / 'secretary_config.yaml')
 
@@ -56,7 +58,7 @@ def test_secretary_autoload_false(secretary_autoload_false: Tuple[SecretaryAgent
     secretary, result = secretary_autoload_false
     assert result is True, "Failed to update profile when autoload_from_yaml is False."
     assert secretary.description != secretary.DEFAULT_DESCRIPTION, "Description was not updated."
-    assert secretary.llm_model_name is not None, "LLM model name is None."
+    assert secretary.preferred_model_name is not None, "LLM model name is None."
 
 def test_secretary_autoload_true(secretary_autoload_true: Tuple[SecretaryAgent, bool]) -> None:
     dotenv.load_dotenv(override=True)
@@ -64,19 +66,19 @@ def test_secretary_autoload_true(secretary_autoload_true: Tuple[SecretaryAgent, 
     assert result is True, "Failed to update profile when autoload_from_yaml is True."
     assert secretary.description != secretary.DEFAULT_DESCRIPTION, "Description was not updated."
     assert secretary.extras.get("personality_traits") is not None, "Personality traits were not set."
-    assert secretary.llm_model_name is not None, "LLM model name is None."
+    assert secretary.preferred_model_name is not None, "LLM model name is None."
 
 def test_new_secretary(temp_config_path: str) -> None:
     # Load the secretary from the YAML file created in previous tests
     dotenv.load_dotenv(override=True)
     new_secretary = SecretaryAgent.from_yaml(
         'SecretaryAgent',
-        file_path=Path(temp_config_path)  # Convert string to Path
+        file_path=Path(TESTS_DIR)/"profiles"/"secretary_agent_profiles.yaml"  # Convert string to Path
     )
     assert new_secretary.role is not None, "Role is None in the loaded secretary."
     assert new_secretary.description is not None, "Description is None in the loaded secretary."
     assert new_secretary.extras.get("personality_traits") is not None, "Personality traits missing in loaded secretary."
-    assert new_secretary.llm_model_name is not None, "LLM model name is None in the loaded secretary."
+    assert new_secretary.preferred_model_name is not None, "LLM model name is None in the loaded secretary."
     assert not new_secretary.tools, "Tool names should be empty."
     assert not new_secretary.get_to_populate(new_secretary), "There are still fields to populate."
     print("Results:", json.dumps(new_secretary.to_json(), indent=2))

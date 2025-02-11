@@ -77,6 +77,7 @@ def test_agent_config(load_env):
     os.environ["REMOVE_DD_CONFIGS"] = "test"
     os.environ["AGENT_CONFIG_PATH"] = "testt.yaml"
     os.environ["MODELS_DIR"] = str(Path(TESTS_DIR) / "models.d")
+    os.environ["ENV_KEYS_PATH"] = str(Path(TESTS_DIR) / "env" / ".env.keys")
     env_config = ChatUIAgentConfig()
     assert env_config.remove_dd_configs == False
     assert env_config.agent_config_path == "testt.yaml"
@@ -109,7 +110,8 @@ def test_validate_agent_config(load_env):
 def test_validate_chat_ui_config(load_env):
     """Test the validate_agent_config function with ChatUIAgentRestAPI"""
     config_path = Path(TESTS_DIR) / "profiles" / "chat_agent_profiles.yaml"
-    
+    os.environ["MODELS_DIR"] = str(Path(TESTS_DIR) / "models.d")
+    os.environ["ENV_KEYS_PATH"] = str(Path(TESTS_DIR) / "env" / ".env.keys")
     os.environ["REMOVE_DD_CONFIGS"] = "test"
 
     # Test successful validation

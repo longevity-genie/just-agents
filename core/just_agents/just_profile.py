@@ -237,7 +237,7 @@ class JustAgentProfileWebMixin(BaseModel):
         return f"{name}"
 
 class JustAgentProfileSpecializationMixin(BaseModel):
-    prefered_model_name: Optional[str] = Field(
+    preferred_model_name: Optional[str] = Field(
         None,
         description="The name of the preferred model to use for inference",
         alias="model_name" #model_name conflicts with pydantic
