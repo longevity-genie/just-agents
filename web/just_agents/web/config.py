@@ -73,7 +73,7 @@ class ChatUIAgentConfig(WebAgentConfig):
     env_keys_path: str = Field(
         default_factory=lambda: os.getenv('ENV_KEYS_PATH', "env/.env.keys"),
         description="Path to environment keys file",
-        examples=["env/.env.keys", "config/keys.env"]
+        examples=["env/.env.local", "config/.env.models"]
     )
     remove_dd_configs: bool = Field(
         default_factory=lambda: os.getenv('REMOVE_DD_CONFIGS', "true").lower() == "true",

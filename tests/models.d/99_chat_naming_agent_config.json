@@ -1,9 +1,9 @@
 {
-    "name": "sugar_genie",
-    "displayName": "🍬 A Blood Sugar Prediction Genie",
-    "description": "Generic all-purpose Web AI agent",
+    "name": "chat_naming_agent",
+    "displayName": "📜 Chat Naming Agent",
+    "description": "Generates chat titles based on user queries.",
     "parameters": {
-        "temperature": 0.0,
+        "temperature": 0.7,
         "max_new_tokens": 4096,
         "stop": [
             "[DONE]"
@@ -17,8 +17,8 @@
     ],
     "promptExamples": [
         {
-            "title": "Glucose Level Prediction",
-            "prompt": "Why are glucose prediction models important?"
+            "title": "Agent Name from Query",
+            "prompt": "How are you today?"
         }
     ]
 }

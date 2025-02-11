@@ -5,8 +5,14 @@ import pytest
 from pathlib import Path
 from dotenv import load_dotenv
 import just_agents.llm_options
+from just_agents.base_agent import BaseAgent
+from just_agents.web.chat_ui_agent import ChatUIAgent
 from just_agents.web.web_agent import WebAgent
 from just_agents.web.chat_ui import ModelConfig
+from just_agents.web.run_agent import validate_agent_config
+from just_agents.web.rest_api import ChatUIAgentRestAPI
+from just_agents.web.config import ChatUIAgentConfig, BaseModel
+
 
 TESTS_DIR = os.path.dirname(__file__)  # Get the directory where this test file is located
 MODELS_DIR = os.path.join(TESTS_DIR, "models.d")  # Path to models.d inside tests
@@ -24,13 +30,6 @@ def test_web_agent_profile(load_env, tmp_path):
     agent: WebAgent = WebAgent.from_yaml_auto(file_path=config_path, section_name="example_web_agent", parent_section="agent_profiles")
     agent.save_to_yaml()
 
-# def test_chatui_agent_profile(load_env, tmp_path):
-#     config_path = Path(TESTS_DIR) / "profiles" / "web_agent.yaml"
-#
-#     agent: WebAgent = WebAgent.from_yaml_auto(file_path=config_path, section_name="example_web_agent",
-#                                                   parent_section="agent_profiles")
-#     agent.write_model_config_to_json(models_dir=MODELS_DIR)
-
 def test_web_agent_tool(load_env, tmp_path):
 
     config_path = Path(TESTS_DIR)  / "profiles" / "tool_problem.yaml"
@@ -45,14 +44,13 @@ def test_web_agent_tool(load_env, tmp_path):
     assert "Zaharia" in ill_agent.query("Who is the founder of GlucoseDAO?")
 
 
-
-
 def test_web_agents(load_env, tmp_path):
     config_path = Path(TESTS_DIR)  / "profiles" / "web_agent.yaml"
-    agents : dict[str,WebAgent] = WebAgent.from_yaml_dict(yaml_path=config_path, parent_section="agent_profiles")
+    agents : dict[str,BaseAgent] = WebAgent.from_yaml_dict(yaml_path=config_path, parent_section="agent_profiles")
     for name, agent in agents.items():
         assert name == agent.shortname
-        agent.write_model_config_to_json(models_dir=MODELS_DIR)
+        if isinstance(agent, ChatUIAgent):
+            agent.write_model_config_to_json(models_dir=MODELS_DIR)
 
 @pytest.mark.parametrize("model_file", glob.glob(os.path.join(MODELS_DIR, "*.json")))
 def test_models_valid(model_file):
@@ -74,3 +72,53 @@ def test_models_valid(model_file):
 
     # Step 4: Assert equality with the original dictionary
     assert reserialized_data == data, f"Round-trip mismatch in file: {model_file}"
+
+def test_agent_config(load_env):
+    os.environ["REMOVE_DD_CONFIGS"] = "test"
+    os.environ["AGENT_CONFIG_PATH"] = "testt.yaml"
+    os.environ["MODELS_DIR"] = str(Path(TESTS_DIR) / "models.d")
+    env_config = ChatUIAgentConfig()
+    assert env_config.remove_dd_configs == False
+    assert env_config.agent_config_path == "testt.yaml"
+    assert env_config.models_dir == str(Path(TESTS_DIR) / "models.d")
+
+def test_validate_agent_config(load_env):
+    """Test the validate_agent_config function with regular AgentRestAPI"""
+    config_path = Path(TESTS_DIR) / "profiles" / "agent_profiles.yaml"
+    env_config = ChatUIAgentConfig()
+    # Test successful validation
+    api = validate_agent_config(
+        config=config_path,
+        parent_section="agent_profiles",
+        debug=True
+    )
+    assert api.title == "Just-Agent endpoint"
+    # Convert agents to list before checking to make debugging easier
+    agents_list = list(api.agents)
+    # Add debug print to see what we're actually getting
+
+    assert all(isinstance(agent, BaseAgent) for agent in api.agents.values())
+    assert any(isinstance(agent, WebAgent) for agent in api.agents.values())
+    assert any(agent.__class__.__name__ == "BaseAgent" for agent in api.agents.values())
+    # Test with non-existent config file
+    with pytest.raises(FileNotFoundError):
+        validate_agent_config(config=Path("nonexistent.yaml"))
+
+    
+
+def test_validate_chat_ui_config(load_env):
+    """Test the validate_agent_config function with ChatUIAgentRestAPI"""
+    config_path = Path(TESTS_DIR) / "profiles" / "chat_agent_profiles.yaml"
+    
+    os.environ["REMOVE_DD_CONFIGS"] = "test"
+
+    # Test successful validation
+    api = validate_agent_config(
+        config=config_path,
+        parent_section="agent_profiles",
+        api_class=ChatUIAgentRestAPI,
+        debug=True
+    )
+    assert all(isinstance(agent, WebAgent) for agent in api.agents.values())
+    assert all(isinstance(agent, ChatUIAgent) for agent in api.agents.values())
+    assert isinstance(api, ChatUIAgentRestAPI)

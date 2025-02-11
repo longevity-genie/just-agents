@@ -1,0 +1,83 @@
+agent_profiles:
+  sugar_genie: # Short agent identifier in snake_case format.
+    class_qualname: just_agents.web.chat_ui_agent.ChatUIAgent # For ChatUI agents, always use this class name.
+    display_name: 🍬 A Blood Sugar Prediction Genie # Name displayed in the UI.
+    assistant_index: 20 # Determines the agent's position in the selection list. The first agent is set as the default.
+    llm_options: # Configuration options for the language model.
+      # tools: []  # Do not set tools here! They should be configured separately.
+      api_base: https://api.groq.com/openai/v1 # API endpoint URL.
+      model: groq/llama-3.3-70b-versatile # Specifies the model provider and name.
+      temperature: 0.0 # Controls response randomness (0.0 = deterministic).
+      tool_choice: auto # Automatically selects tools when applicable.
+    examples: # Sample user queries for reference.
+      - prompt: Why are glucose prediction models important?
+        title: Glucose Level Prediction
+
+    system_prompt: | # System prompt defining the AI's role and behavior.
+       You are a Glucose Level Prediction Advisor.
+
+  web_agent_example:
+    class_qualname: just_agents.web.web_agent.WebAgent
+    assistant_index: 50 # Lower index numbers appear higher in the list.
+    llm_options:
+      api_base: https://api.groq.com/openai/v1
+      model: groq/llama-3.3-70b-versatile
+      temperature: 0.0
+    examples:
+      - prompt: I can't sleep; my thoughts keep racing! What should I do?
+        title: Insomnia
+      - prompt: I feel anxious and impatient. What would you advise?
+        title: Anxiety Remediation Advice
+
+    system_prompt: | 
+      You are a general productivity and non-medical health advisor.
+
+  tools_agent:
+    class_qualname: just_agents.web.chat_ui_agent.ChatUIAgent
+    display_name: 🧰 Example Tools Agent # UI display name.
+    description: Demonstration agent for tool-assisted responses with external dependencies.
+    assistant_index: 70
+#    tools: # List of tools available to this agent. These will be automatically imported.
+#      - package: "tools.toy_tools" # Corresponds to tools/toy_tools.py.
+#        function: "generate_random_matrix" # Function available within the tool.
+#      - package: "tools.toy_tools"
+#        function: "summarize_dataframe"
+    llm_options:
+      api_base: https://api.groq.com/openai/v1
+      model: groq/llama-3.3-70b-versatile
+      temperature: 0.1 # Slightly increased randomness for better flexibility.
+    examples:
+      - prompt: Generate a random 3x4 matrix, please.
+        title: Random Matrix
+      - prompt: |
+          Summarize the following dataframe: 
+          "A": [1, 2, 3, 4, 5], "B": [10, 20, 30, 40, 50]
+        title: DataFrame Summarization
+    system_prompt: | 
+      You are a Research Calculation Presenter AI. Your purpose is to assist researchers in interpreting and reusing scientific data. 
+
+      You have access to specialized tools, including:
+      - `generate_random_matrix`: A high-entropy matrix generator.
+      - `summarize_dataframe`: A function for summarizing structured tabular data.
+
+      When a user requests matrix or dataframe operations, you must always utilize these tools. Format the results in two ways:
+      1. A human-readable version with rich text and annotations where applicable.
+      2. A properly indented JSON representation of the data in Markdown. If the tool output is not in JSON format, manually structure it into a valid JSON format.
+
+  chat_naming_agent: # Fallback agent used for naming chats in the UI’s sidebar.
+    class_qualname: just_agents.web.chat_ui_agent.ChatUIAgent
+    display_name: 📜 Chat Naming Agent # UI display name.
+    description: Generates chat titles based on user queries.
+    assistant_index: 99 # This agent is positioned last in the selection list.
+    llm_options:
+      api_base: https://api.groq.com/openai/v1
+      model: groq/llama-3.3-70b-versatile
+      temperature: 0.7 # Allows more creative name generation.
+    examples:
+      - prompt: How are you today?
+        title: Agent Name from Query
+    system_prompt: | 
+      You are a summarization AI. Your task is to condense user queries into a single short phrase of four words or fewer. 
+
+      Do not attempt to answer the question—only summarize it concisely. 
+      Always begin your response with a relevant emoji that reflects the topic of the user's query.

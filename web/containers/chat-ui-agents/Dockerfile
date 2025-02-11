@@ -11,19 +11,20 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 ### 2) Install Poetry (still as root)
-RUN if [ -f "/opt/conda/bin/python" ]; then \
-    echo "Using conda Python" && \
-    export PATH="/opt/conda/bin:${PATH}" && \
-    curl -sSL https://install.python-poetry.org | /opt/conda/bin/python3 - ; \
-    else \
-    echo "Using system Python" && \
-    curl -sSL https://install.python-poetry.org | python3 - ; \
-    fi
+RUN mkdir -p /opt/poetry && \
+    curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python3 - && \
+    ln -s /opt/poetry/bin/poetry /usr/local/bin/poetry && \
+    # Add poetry to system-wide PATH and for new users
+    echo 'export PATH="/opt/poetry/bin:$PATH"' >> /etc/profile && \
+    echo 'export PATH="/opt/poetry/bin:$PATH"' >> /etc/bash.bashrc && \
+    export POETRY_HOME="/opt/poetry" && \
+    export POETRY_VERSION="2.0.1" && \
+    export PATH="/opt/poetry/bin:$PATH"
 
 ### 3) Create app directory, copy project files in
 WORKDIR /app
 COPY . /app
-RUN mkdir -p /app/models.d /app/tools /app/scripts /app/data /app/logs
+RUN mkdir -p /app/models.d /app/agent_tools /app/scripts /app/data /app/logs /app/tmp
 
 ### 4) Copy entrypoint script and make it executable
 COPY ./web/containers/chat-ui-agents/entrypoint.sh /usr/local/bin/entrypoint.sh
@@ -32,35 +33,34 @@ RUN chmod +x /usr/local/bin/entrypoint.sh
 RUN chmod +x /app/scripts/init.py
 
 ### 5) Install main Python dependencies
-RUN if [ -f "/opt/conda/bin/python" ]; then \
-    export PATH="/opt/conda/bin:${PATH}" && \
-    export PYTHON=$(which python) && \
-    export POETRY_PYTHON=$(which python); \
-else \
-    export POETRY_HOME="/opt/poetry"; \
-fi && \
-/root/.local/bin/poetry config virtualenvs.create false && \
-/root/.local/bin/poetry install --without dev
-
-# Add verification step
-RUN python -c "import torch; print(f'PyTorch version: {torch.__version__}')" || echo "PyTorch not found"
+RUN poetry config virtualenvs.create false && \
+    poetry install --without dev
 
 ### 6) Expose ports and set environment variables
 EXPOSE 8088
 
 ENV PYTHONPATH=/app
 ENV PYTHONUNBUFFERED=1
+
+# WebAgentConfig environment variables
 ENV APP_HOST="0.0.0.0"
 ENV APP_PORT=8088
-ENV AGENT_HOST="http://localhost"
-ENV AGENT_PORT=8088
 ENV AGENT_WORKERS=1
 ENV AGENT_TITLE="Just-Agent endpoint"
+ENV AGENT_SECTION=""
 ENV AGENT_PARENT_SECTION=""
 ENV AGENT_DEBUG="true"
 ENV AGENT_REMOVE_SYSTEM_PROMPT="false"
-ENV AGENT_CONFIG="agent_profiles.yaml"
-ENV TRAP_CHAT_NAMES="True"
+ENV AGENT_CONFIG_PATH="agent_profiles.yaml"
+
+# ChatUIAgentConfig additional environment variables
+ENV MODELS_DIR="models.d"
+ENV ENV_KEYS_PATH="env/.env.local"
+ENV REMOVE_DD_CONFIGS="true"
+ENV TRAP_CHAT_NAMES="true"
+ENV AGENT_HOST="http://127.0.0.1"
+ENV AGENT_PORT=8088
+ENV JSON_FILE_PATTERN="[0123456789][0123456789]_*.json"
 
 ### 7) Keep running as root - let entrypoint handle user switching
 ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]

@@ -1,0 +1,28 @@
+{
+    "name": "tools_agent",
+    "displayName": "🧰 Example Tools Agent",
+    "description": "Demonstration agent for tool-assisted responses with external dependencies.",
+    "parameters": {
+        "temperature": 0.1,
+        "max_new_tokens": 4096,
+        "stop": [
+            "[DONE]"
+        ]
+    },
+    "endpoints": [
+        {
+            "type": "openai",
+            "baseURL": "http://127.0.0.1:8088/v1"
+        }
+    ],
+    "promptExamples": [
+        {
+            "title": "Random Matrix",
+            "prompt": "Generate a random 3x4 matrix, please."
+        },
+        {
+            "title": "DataFrame Summarization",
+            "prompt": "Summarize the following dataframe: \n\"A\": [1, 2, 3, 4, 5], \"B\": [10, 20, 30, 40, 50]\n"
+        }
+    ]
+}
