@@ -52,10 +52,12 @@ ENV AGENT_PARENT_SECTION=""
 ENV AGENT_DEBUG="true"
 ENV AGENT_REMOVE_SYSTEM_PROMPT="false"
 ENV AGENT_CONFIG_PATH="agent_profiles.yaml"
+ENV ENV_KEYS_PATH="env/.env.local"
 
 # ChatUIAgentConfig additional environment variables
+ENV ENV_MODELS_PATH="env/.env.local"
 ENV MODELS_DIR="models.d"
-ENV ENV_KEYS_PATH="env/.env.local"
+ENV AGENT_FAILFAST="true"
 ENV REMOVE_DD_CONFIGS="true"
 ENV TRAP_CHAT_NAMES="true"
 ENV AGENT_HOST="http://127.0.0.1"

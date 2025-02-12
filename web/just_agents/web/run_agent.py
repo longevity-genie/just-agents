@@ -1,7 +1,8 @@
 from pathlib import Path
 from typing import Optional, Type
 from just_agents.web.config import ChatUIAgentConfig
-from just_agents.web.rest_api import AgentRestAPI, ChatUIAgentRestAPI
+from just_agents.web.rest_api import AgentRestAPI
+from just_agents.web.chat_ui_rest_api import ChatUIAgentRestAPI
 import uvicorn
 import typer
 

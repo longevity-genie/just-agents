@@ -144,7 +144,8 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
         yaml_path: Path | str,
         parent_section: Optional[str] = "agent_profiles",
         section: Optional[str] = None,
-        required_base_class: Optional[Type[BaseAgent]] = None
+        required_base_class: Optional[Type[BaseAgent]] = None,
+        fail_on_any_error: bool = True
     ) -> Dict[str, 'BaseAgent']:
         """
         Creates a dictionary of WebAgent (or subclass) instances from a YAML file.
@@ -192,11 +193,22 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
                 selected_sections = sections
 
             for section_name, section_data in selected_sections.items():
-                auto_instance : JustSerializable = WebAgent.from_yaml_auto(
-                    section_name,
-                    parent_section,
-                    yaml_path
-                )
+                try:
+                    auto_instance : JustSerializable = WebAgent.from_yaml_auto(
+                        section_name,
+                        parent_section,
+                        yaml_path
+                    )
+                except Exception as e:
+                    action.log(
+                        message_type="agent.config_error",
+                        error=f"str(e)"
+                    )
+                    if fail_on_any_error:
+                        raise e
+                    else:
+                        continue
+ 
                 if isinstance(auto_instance,BaseAgent) and isinstance(auto_instance, required_base_class):
                     agent = auto_instance
                     action.log(

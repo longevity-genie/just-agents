@@ -232,6 +232,11 @@ class JustAgentProfileWebMixin(BaseModel):
         description="A List[dict] of model prompt examples, each example is structured as {\"title\":\"Letter counting\", \"prompt\":\"How many letters...\"} "
     )
 
+    hidden: bool = Field(
+        False,
+        description="Whether to hide the agent from the UI")
+    """Whether to hide the agent from the UI"""
+
     def __str__(self):
         name = self.display_name or self.shortname
         return f"{name}"

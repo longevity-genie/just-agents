@@ -42,6 +42,11 @@ class WebAgentConfig(BaseModel):
         description="Parent configuration section for inheritance",
         examples=["base_config", "global_settings"]
     )
+    agent_failfast: bool = Field(
+        default_factory=lambda: os.getenv("AGENT_FAILFAST", "true").lower() == "true",
+        description="Fail multiple agents loading on any error",
+        examples=[True, False]
+    )
     debug: bool = Field(
         default_factory=lambda: os.getenv("AGENT_DEBUG", "true").lower() == "true",
         description="Enable debug mode for additional logging and error details",
@@ -57,6 +62,11 @@ class WebAgentConfig(BaseModel):
         description="Path to the agent configuration file",
         examples=['agent_profiles.yaml', 'config/agent_profiles.yaml']
     )
+    env_keys_path: str = Field(
+        default_factory=lambda: os.getenv('ENV_KEYS_PATH', "env/.env.keys"),
+        description="Path to environment keys file",
+        examples=["env/.env.secrets", "config/.env.keys"]
+    )
 
 
 class ChatUIAgentConfig(WebAgentConfig):
@@ -70,9 +80,10 @@ class ChatUIAgentConfig(WebAgentConfig):
         description="Directory containing model configs",
         examples=["models.d", "configs/models"]
     )
-    env_keys_path: str = Field(
-        default_factory=lambda: os.getenv('ENV_KEYS_PATH', "env/.env.keys"),
-        description="Path to environment keys file",
+
+    env_models_path: str = Field(
+        default_factory=lambda: os.getenv('ENV_MODELS_PATH', "env/.env.local"),
+        description="Path to environment models file specific for Chat-Ui",
         examples=["env/.env.local", "config/.env.models"]
     )
     remove_dd_configs: bool = Field(

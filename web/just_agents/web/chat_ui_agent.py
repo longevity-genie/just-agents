@@ -72,7 +72,7 @@ class ChatUIAgent(WebAgent, JustAgentProfileWebMixin):
             exclude_none=True,
         )
 
-    def write_model_config_to_json(self, models_dir: Union[Path, str], filename: str = None):
+    def write_model_config_to_json(self, models_dir: Union[Path, str], filename: str = None, index_override: int = None):
         """
         Writes a sample ModelConfig instance to a JSON file in the specified test directory.
 
@@ -93,7 +93,7 @@ class ChatUIAgent(WebAgent, JustAgentProfileWebMixin):
 
             # Define the file path
             if filename is None:
-                index = self.assistant_index or 99
+                index = index_override or self.assistant_index or 99
                 filename = f"{index:02d}_{self.shortname}_config.json"
             file_path = models_dir / filename
 

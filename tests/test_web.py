@@ -10,7 +10,7 @@ from just_agents.web.chat_ui_agent import ChatUIAgent
 from just_agents.web.web_agent import WebAgent
 from just_agents.web.chat_ui import ModelConfig
 from just_agents.web.run_agent import validate_agent_config
-from just_agents.web.rest_api import ChatUIAgentRestAPI
+from just_agents.web.chat_ui_rest_api import ChatUIAgentRestAPI
 from just_agents.web.config import ChatUIAgentConfig, BaseModel
 
 
@@ -77,7 +77,7 @@ def test_agent_config(load_env):
     os.environ["REMOVE_DD_CONFIGS"] = "test"
     os.environ["AGENT_CONFIG_PATH"] = "testt.yaml"
     os.environ["MODELS_DIR"] = str(Path(TESTS_DIR) / "models.d")
-    os.environ["ENV_KEYS_PATH"] = str(Path(TESTS_DIR) / "env" / ".env.keys")
+    os.environ["ENV_MODELS_PATH"] = str(Path(TESTS_DIR) / "env" / ".env.local")
     env_config = ChatUIAgentConfig()
     assert env_config.remove_dd_configs == False
     assert env_config.agent_config_path == "testt.yaml"
