@@ -26,7 +26,7 @@ def load_env():
 def test_web_agent_profile(load_env, tmp_path):
 
     config_path = Path(TESTS_DIR)   / "profiles" / "web_agent.yaml"
-
+    os.environ["TMP_DIR"] = str(tmp_path)
     agent: WebAgent = WebAgent.from_yaml_auto(file_path=config_path, section_name="example_web_agent", parent_section="agent_profiles")
     agent.save_to_yaml()
 

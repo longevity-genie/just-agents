@@ -67,6 +67,16 @@ class WebAgentConfig(BaseModel):
         description="Path to environment keys file",
         examples=["env/.env.secrets", "config/.env.keys"]
     )
+    tmp_dir: str = Field(
+        default_factory=lambda: os.getenv('TMP_DIR', "tmp"),
+        description="Path to temporary directory",
+        examples=["tmp", "/temp"]
+    )
+    log_dir: str = Field(
+        default_factory=lambda: os.getenv('LOG_DIR', "logs"),
+        description="Path to log directory",
+        examples=["logs", "/app/logs"]
+    )
 
 
 class ChatUIAgentConfig(WebAgentConfig):

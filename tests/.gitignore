@@ -1,2 +1,4 @@
 models.d/*
+logs/*
+tmp/*
 data/open_genes.sqlite

@@ -18,7 +18,7 @@ packages = [
 license = "MIT"
 
 [tool.poetry.dependencies]
-python = ">=3.10,<4.0"
+python = ">=3.10,<3.15"
 just-agents-core = ">=0.5.2"
 llm-sandbox = ">=0.2.0"
 

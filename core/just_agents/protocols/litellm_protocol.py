@@ -77,8 +77,6 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         
         # Check if Langfuse credentials are set
         if os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY"):
-            litellm.success_callback = ["langfuse"]
-            litellm.failure_callback = ["langfuse"]  # logs errors to langfuse
             callbacks.append("langfuse")
             
         # Check if Opik credentials are set    
@@ -87,6 +85,8 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
             
         # Set unified callbacks if any integrations are enabled
         if callbacks:
+            litellm.success_callback = callbacks
+            litellm.failure_callback = callbacks
             litellm.callbacks = callbacks
 
     def debug_enabled(self) -> bool:

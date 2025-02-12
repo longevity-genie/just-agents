@@ -1,5 +1,6 @@
 
 import uuid
+import os
 from datetime import datetime
 from pathlib import Path
 from typing import ClassVar, Optional, Dict, Any, Callable, Literal, Type
@@ -9,7 +10,7 @@ from pydantic import Field,BaseModel,PrivateAttr
 import yaml
 from eliot import start_action,start_task, Action, to_file, add_destinations, remove_destination
 from just_agents.just_bus import SingletonMeta
-
+from pycomfort.logging import to_nice_file, to_nice_stdout
 
 LogDestinations = Literal["stdout","file","both","print_fallback"]
 class EliotLogger(metaclass=SingletonMeta):
@@ -26,26 +27,33 @@ class EliotLogger(metaclass=SingletonMeta):
         if kwargs:
             print(kwargs)
 
-    def __init__(self, logdir: Path, logger_output: LogDestinations):
-        if not logdir:
-            logdir = Path("logs")
-        self._logdir = logdir
+    def __init__(self, log_dir: Path, temp_dir: Path, logger_output: LogDestinations):
+        if not log_dir or not temp_dir:
+            raise ValueError("logdir is not set")
+        self._logdir = log_dir
         self._logdir.mkdir(exist_ok=True)
 
         if not logger_output:
-            logger_output = "both"
+            logger_output: LogDestinations = "both"
         self._logger_output = logger_output
         # Generate unique log filename if not provided
        
         timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
         unique_id = uuid.uuid4().hex[:4]
-        uniqname = f"{timestamp}_{unique_id}"
-        self.log_path = self._logdir / f"{uniqname}.log"
-
+        uniq_name = f"{timestamp}_{unique_id}"
+        self.log_path = self._logdir / f"{uniq_name}.log"
+        json_path = self._logdir / f"{uniq_name}.json.log"
         if self._logger_output == "stdout" or self._logger_output == "both":
-            add_destinations(self.stdout_logger)
+            to_nice_stdout(
+                output_file=temp_dir / f"{uniq_name}.json"
+            )
+            # add_destinations(self.stdout_logger)
         if self._logger_output == "file" or self._logger_output == "both":
-            to_file(open(self.log_path, "ab"))
+            to_nice_file(
+                output_file=json_path,
+                rendered_file=self.log_path
+            )
+            # to_file(open(self.log_path, "ab"))
 
 
 
@@ -56,7 +64,8 @@ class WebAgentEliotLoggerMixin(BaseModel):
 
     logger_output: LogDestinations = Field(default="both",description="The output destination for Eliot logs")
     _logger: EliotLogger = PrivateAttr(default=None)
-    _logdir: Path = PrivateAttr(default=None)
+    _logdir: Path = PrivateAttr(default_factory=lambda: Path(os.getenv('LOG_DIR', 'logs')))
+    _tempdir: Path = PrivateAttr(default_factory=lambda: Path(os.getenv('TMP_DIR', 'tmp')))
     _log_function: LogFunction = PrivateAttr(default=None)
     _task : Action = PrivateAttr(default_factory=lambda: start_task(action_type="WebAgent"))
     
@@ -90,11 +99,10 @@ class WebAgentEliotLoggerMixin(BaseModel):
     
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
-        if  self._logdir is None:
-            self._logdir = Path("logs").resolve().absolute()
-            self._logdir.mkdir(exist_ok=True)
+        self._logdir.mkdir(exist_ok=True)
+        self._tempdir.mkdir(exist_ok=True)
 
-        self._logger = EliotLogger(self._logdir, self.logger_output)
+        self._logger = EliotLogger(self._logdir, self._tempdir, self.logger_output)
 
         if self.logger_output == "stdout":
             self._log_function=self.log_action

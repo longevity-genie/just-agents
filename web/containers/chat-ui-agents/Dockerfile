@@ -35,7 +35,7 @@ RUN chmod +x /app/scripts/init.py
 ### 5) Install main Python dependencies
 RUN poetry config virtualenvs.create false && \
     poetry install --without dev
-RUN poetry add langfuse>=2.59.2 opik>=1.4.12 numpy>=2.2 pandas>=2.2
+RUN poetry add langfuse>=2.59.2 opik>=1.4.12 numpy>=2.2
 
 ### 6) Expose ports and set environment variables
 EXPOSE 8088
