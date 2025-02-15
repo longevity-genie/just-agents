@@ -39,6 +39,7 @@ rich = ">=13.9.4"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.4"
+poetry-dynamic-versioning = ">=1.0.0,<2.0.0"
 
 
 [tool.poetry.urls]
@@ -48,7 +49,7 @@ Documentation = "https://just-agents.readthedocs.io/"
 
 [build-system]
 requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
-build-backend = "poetry-dynamic-versioning.backend"
+build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry-dynamic-versioning]
 enable = true

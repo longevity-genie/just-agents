@@ -58,6 +58,8 @@ else \
     # Non-conda configuration
     export POETRY_HOME="/opt/poetry"; \
 fi && \
+git config --global --add safe.directory /app && \
+git config --global --add safe.directory /app/core && \
 /root/.local/bin/poetry config virtualenvs.create false && \
 /root/.local/bin/poetry install --without dev
 
