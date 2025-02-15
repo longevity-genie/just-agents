@@ -5,7 +5,8 @@ description = "Just Agents - A lightweight, straightforward library for LLM agen
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",
     "Newton Winter <isoutthere@gmail.com>",
-    "Anton Kulaga <antonkulaga@gmail.com>"
+    "Anton Kulaga <antonkulaga@gmail.com>",
+    "Livia Zaharia <liviazaharia2020@gmail.com>"
 ]
 maintainers = [
     "Anton Kulaga <antonkulaga@gmail.com>",
@@ -18,25 +19,23 @@ packages = [{include = "just_agents"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
-just-agents-core = { path = "core", develop = true }
-just-agents-tools = { path = "tools", develop = true }
-just-agents-coding = { path = "coding", develop = true }
-just-agents-web = { path = "web", develop = true }
-just-agents-router = { path = "router", develop = true }
-just-agents-examples = { path = "examples", develop = true }
-aiofiles = "^24.1.0"
-langfuse = "^2.59.2"
-pycomfort = "^0.0.17"
-
-[tool.poetry.group.publish.dependencies]
 just-agents-core = "0.5.3"
 just-agents-tools = "0.5.3"
 just-agents-coding = "0.5.3"
 just-agents-web = "0.5.3"
 just-agents-router = "0.5.3"
 just-agents-examples = "0.5.3"
+aiofiles = "^24.1.0"
+langfuse = "^2.59.2"
+pycomfort = "^0.0.17"
 
 [tool.poetry.group.dev.dependencies]
+just-agents-core = { path = "core", develop = true }
+just-agents-tools = { path = "tools", develop = true }
+just-agents-coding = { path = "coding", develop = true }
+just-agents-web = { path = "web", develop = true }
+just-agents-router = { path = "router", develop = true }
+just-agents-examples = { path = "examples", develop = true }
 pytest = ">=8.3.4"
 python-dotenv = "*"
 

@@ -11,12 +11,16 @@ RUN apt-get update && apt-get install -y \
     curl \
     && rm -rf /var/lib/apt/lists/*
 
-### 2) Create a non-root user, with UID/GID passed in at build time
-#    The defaults here (1000:1000) can be overridden by docker build arguments
-ARG UID=1000
-ARG GID=1000
-RUN groupadd -g $GID appgroup \
- && useradd -u $UID -g appgroup -m -s /bin/bash appuser
+### 2) Create a non-root user, with optional UID/GID
+ARG UID
+ARG GID
+RUN if [ ! -z "$UID" ] && [ ! -z "$GID" ]; then \
+    groupadd -g $GID appgroup && \
+    useradd -u $UID -g appgroup -m -s /bin/bash appuser; \
+    else \
+    groupadd appgroup && \
+    useradd -m -s /bin/bash -g appgroup appuser; \
+    fi
 
 
 ### 3) Install Poetry (still as root)

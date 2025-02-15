@@ -21,6 +21,11 @@ docker = ">=7.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.4"
+just-agents-core = {path = "../core", develop = true}
+just-agents-tools = {path = "../tools", develop = true}
+just-agents-coding = {path = "../coding", develop = true}
+just-agents-web = {path = "../web", develop = true}
+just-agents-router = {path = "../router", develop = true}
 
 [build-system]
 requires = ["poetry-core"]

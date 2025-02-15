@@ -20,7 +20,11 @@ license = "MIT"
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
 just-agents-core = ">=0.5.2"
-llm-sandbox = ">=0.2.0"
+llm-sandbox = ">=0.2.2"
+
+# Add this section for development
+[tool.poetry.group.dev.dependencies]
+just-agents-core = {path = "../core", develop = true}
 
 [build-system]
 requires = ["poetry-core"]

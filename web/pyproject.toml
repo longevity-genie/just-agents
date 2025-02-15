@@ -37,6 +37,7 @@ fastapi = ">=0.115.6"
 uvicorn = ">=0.34.0"
 
 [tool.poetry.group.dev.dependencies]
+just-agents-core = { path = "../core", develop = true }
 
 [tool.poetry.scripts]
 run-agent = "just_agents.web.run_agent:app"
