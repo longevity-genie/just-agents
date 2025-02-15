@@ -28,9 +28,10 @@ RUN mkdir -p /app/models.d /app/agent_tools /app/scripts /app/data /app/logs /ap
 
 ### 4) Copy entrypoint script and make it executable
 COPY ./web/containers/chat-ui-agents/entrypoint.sh /usr/local/bin/entrypoint.sh
-RUN echo 'print("Preparation complete!")' > /app/scripts/init.py
+RUN echo '#!/usr/bin/env bash' >> /app/init.py
+RUN echo 'print("Preparation complete!")' >> /app/init.py
 RUN chmod +x /usr/local/bin/entrypoint.sh
-RUN chmod +x /app/scripts/init.py
+RUN chmod +x /app/init.py
 
 ### 5) Install main Python dependencies
 RUN poetry config virtualenvs.create false && \
