@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-router"
-version = "0.5.4"  # This will be replaced by poetry-dynamic-versioning
+version = "0.5.5"  # This will be replaced by poetry-dynamic-versioning
 description = "Just Agents - Router Components"
 authors = [
     "Newton Winter <isoutthere@gmail.com>",
