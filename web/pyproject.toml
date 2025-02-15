@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-web"
-version = "0.0.0"  # This will be replaced by poetry-dynamic-versioning
+version = "0.5.4"  # This will be replaced by poetry-dynamic-versioning
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 
 authors = [
@@ -31,7 +31,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
-just-agents-core = ">=0.5.3"
+just-agents-core = "*"
 pycomfort = ">=0.0.17"
 fastapi = ">=0.115.6"
 uvicorn = ">=0.34.0"
@@ -50,4 +50,5 @@ build-backend = "poetry.core.masonry.api"
 [tool.poetry-dynamic-versioning]
 enable = true
 vcs = "git"
-style = "semver"
+style = "pep440"
+strict = true

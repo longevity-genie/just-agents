@@ -14,17 +14,10 @@ else
 fi
 
 # Function to build and publish a package
-publish_package() (
+publish_package() {
     local dir=$1
     echo "Publishing $dir..."
     cd $dir
-    
-    # Update poetry.lock file
-    if ! poetry lock --no-update; then
-        echo "Error: Failed to update poetry.lock in $dir"
-        cd ..
-        return 1
-    fi
     
     # Verify package can be built before attempting publish
     if ! poetry build; then
@@ -41,7 +34,7 @@ publish_package() (
     
     cd ..
     return 0
-)
+}
 
 # Check if PyPI token is configured
 if [ -z "$PYPI_TOKEN" ]; then
@@ -49,17 +42,24 @@ if [ -z "$PYPI_TOKEN" ]; then
     exit 1
 fi
 
+# Configure Poetry to use the PyPI token
 poetry config pypi-token.pypi $PYPI_TOKEN
 
-# Verify all packages have consistent versions
-version=$(cd core && poetry version -s)
-echo "Publishing version $version"
+# Verify all packages have consistent versions and clean them
+base_version=$(cd core && poetry version -s | sed -E 's/([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?).*/\1/')
+echo "Publishing version $base_version"
 
-# Add just-agents to the package list
+# First set clean versions for all packages
+for pkg in "core" "tools" "coding" "web" "router" "examples" "."; do
+    echo "Setting clean version $base_version for $pkg"
+    (cd $pkg && poetry version $base_version) || exit 1
+done
+
+# Verify all packages have consistent versions
 for pkg in "tools" "coding" "web" "router" "examples" "."; do
     pkg_version=$(cd $pkg && poetry version -s)
-    if [ "$pkg_version" != "$version" ]; then
-        echo "Error: Version mismatch in $pkg ($pkg_version != $version)"
+    if [ "$pkg_version" != "$base_version" ]; then
+        echo "Error: Version mismatch in $pkg ($pkg_version != $base_version)"
         exit 1
     fi
 done
@@ -92,15 +92,15 @@ CURRENT_DIR=$(pwd)
 # Temporarily modify pyproject.toml to use published versions and update package mode
 echo "Updating dependencies and package mode in pyproject.toml..."
 cp pyproject.toml pyproject.toml.bak
-# sed -i \
-#     -e "s|{ path = \"core\", develop = true }|\"$version\"|g" \
-#     -e "s|{ path = \"tools\", develop = true }|\"$version\"|g" \
-#     -e "s|{ path = \"coding\", develop = true }|\"$version\"|g" \
-#     -e "s|{ path = \"web\", develop = true }|\"$version\"|g" \
-#     -e "s|{ path = \"router\", develop = true }|\"$version\"|g" \
-#     -e "s|{ path = \"examples\", develop = true }|\"$version\"|g" \
-#     -e 's/package-mode = false/packages = [{include = "just_agents"}]/' \
-#     pyproject.toml
+sed -i \
+    -e "s|{ path = \"core\", develop = true }|\"$base_version\"|g" \
+    -e "s|{ path = \"tools\", develop = true }|\"$base_version\"|g" \
+    -e "s|{ path = \"coding\", develop = true }|\"$base_version\"|g" \
+    -e "s|{ path = \"web\", develop = true }|\"$base_version\"|g" \
+    -e "s|{ path = \"router\", develop = true }|\"$base_version\"|g" \
+    -e "s|{ path = \"examples\", develop = true }|\"$base_version\"|g" \
+    -e 's/package-mode = false/packages = [{include = "just_agents"}]/' \
+    pyproject.toml
 
 # Finally publish the meta-package
 if ! publish_package "."; then

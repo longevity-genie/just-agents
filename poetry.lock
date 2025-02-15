@@ -1073,7 +1073,7 @@ files = []
 develop = true
 
 [package.dependencies]
-just-agents-core = ">=0.5.2"
+just-agents-core = "*"
 llm-sandbox = ">=0.2.2"
 
 [package.source]
@@ -1115,11 +1115,10 @@ develop = true
 
 [package.dependencies]
 docker = ">=7.1.0"
-just-agents-coding = {path = "../coding", develop = true}
-just-agents-core = {path = "../core", develop = true}
-just-agents-router = {path = "../router", develop = true}
-just-agents-tools = {path = "../tools", develop = true}
-just-agents-web = {path = "../web", develop = true}
+just-agents-coding = "*"
+just-agents-router = "*"
+just-agents-tools = "*"
+just-agents-web = "*"
 
 [package.source]
 type = "directory"
@@ -1136,7 +1135,7 @@ files = []
 develop = true
 
 [package.dependencies]
-just-agents-core = ">=0.5.3"
+just-agents-core = "*"
 
 [package.source]
 type = "directory"
@@ -1172,7 +1171,7 @@ develop = true
 
 [package.dependencies]
 fastapi = ">=0.115.6"
-just-agents-core = ">=0.5.3"
+just-agents-core = "*"
 pycomfort = ">=0.0.17"
 uvicorn = ">=0.34.0"
 
