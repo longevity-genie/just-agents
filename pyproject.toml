@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "just-agents"
-version = "0.5.3"
-description = "Just Agents - A lightweight, straightforward library for LLM agents that focuses on simplicity over unnecessary abstractions."
+version = "0.0.0"
+description = "Just Agents"
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",
     "Newton Winter <isoutthere@gmail.com>",
@@ -19,23 +19,17 @@ packages = [{include = "just_agents"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
-just-agents-core = "0.5.3"
-just-agents-tools = "0.5.3"
-just-agents-coding = "0.5.3"
-just-agents-web = "0.5.3"
-just-agents-router = "0.5.3"
-just-agents-examples = "0.5.3"
+just-agents-core = {path = "core", develop = true}
+just-agents-tools = {path = "tools", develop = true}
+just-agents-coding = {path = "coding", develop = true}
+just-agents-web = {path = "web", develop = true}
+just-agents-router = {path = "router", develop = true}
+just-agents-examples = {path = "examples", develop = true}
 aiofiles = "^24.1.0"
 langfuse = "^2.59.2"
 pycomfort = "^0.0.17"
 
 [tool.poetry.group.dev.dependencies]
-just-agents-core = { path = "core", develop = true }
-just-agents-tools = { path = "tools", develop = true }
-just-agents-coding = { path = "coding", develop = true }
-just-agents-web = { path = "web", develop = true }
-just-agents-router = { path = "router", develop = true }
-just-agents-examples = { path = "examples", develop = true }
 pytest = ">=8.3.4"
 python-dotenv = "*"
 
@@ -44,5 +38,10 @@ run-agent = "just_agents.web.run_agent:app"
 deploy-agent = "just_agents.web.deploy_agent:app"
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "semver"

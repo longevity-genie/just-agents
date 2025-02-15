@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-tools"
-version = "0.5.3"
+version = "0.0.0"
 description = "Just Agents - Tools Components"
 authors = ["Alex Karmazin <karmazinalex@gmail.com>", "Anton Kulaga <antonkulaga@gmail.com>", "Newton Winter <isoutthere@gmail.com>"]
 maintainers = ["Anton Kulaga <antonkulaga@gmail.com>", "Newton Winter <isoutthere@gmail.com>"]
@@ -19,5 +19,10 @@ typer = ">=0.13.0"
 just-agents-core = { path = "../core", develop = true }
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "semver"

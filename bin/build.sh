@@ -13,6 +13,7 @@ build_package() {
         exit 1
     fi
     cd "$dir" || exit 1
+    poetry lock || exit 1
     poetry build || exit 1
     cd ..
 }

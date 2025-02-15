@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-examples"
-version = "0.5.3"
+version = "0.0.0"
 description = "Just Agents - Examples code"
 authors = ["Alex Karmazin <karmazinalex@gmail.com>"]
 maintainers = ["Anton Kulaga <antonkulaga@gmail.com>"]
@@ -12,21 +12,21 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
-just-agents-core = ">=0.5.3"
-just-agents-tools = ">=0.5.3"
-just-agents-coding = ">=0.5.3"
-just-agents-web = ">=0.5.3"
-just-agents-router = ">=0.5.3"
+just-agents-core = { path = "../core", develop = true }
+just-agents-tools = { path = "../tools", develop = true }
+just-agents-coding = { path = "../coding", develop = true }
+just-agents-web = { path = "../web", develop = true }
+just-agents-router = { path = "../router", develop = true }
 docker = ">=7.1.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.4"
-just-agents-core = {path = "../core", develop = true}
-just-agents-tools = {path = "../tools", develop = true}
-just-agents-coding = {path = "../coding", develop = true}
-just-agents-web = {path = "../web", develop = true}
-just-agents-router = {path = "../router", develop = true}
 
 [build-system]
-requires = ["poetry-core"]
-build-backend = "poetry.core.masonry.api"
+requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
+build-backend = "poetry_dynamic_versioning.backend"
+
+[tool.poetry-dynamic-versioning]
+enable = true
+vcs = "git"
+style = "semver"

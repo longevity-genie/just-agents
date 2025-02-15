@@ -14,10 +14,17 @@ else
 fi
 
 # Function to build and publish a package
-publish_package() {
+publish_package() (
     local dir=$1
     echo "Publishing $dir..."
     cd $dir
+    
+    # Update poetry.lock file
+    if ! poetry lock --no-update; then
+        echo "Error: Failed to update poetry.lock in $dir"
+        cd ..
+        return 1
+    fi
     
     # Verify package can be built before attempting publish
     if ! poetry build; then
@@ -34,7 +41,7 @@ publish_package() {
     
     cd ..
     return 0
-}
+)
 
 # Check if PyPI token is configured
 if [ -z "$PYPI_TOKEN" ]; then
@@ -85,15 +92,15 @@ CURRENT_DIR=$(pwd)
 # Temporarily modify pyproject.toml to use published versions and update package mode
 echo "Updating dependencies and package mode in pyproject.toml..."
 cp pyproject.toml pyproject.toml.bak
-sed -i \
-    -e "s|{ path = \"core\", develop = true }|\"$version\"|g" \
-    -e "s|{ path = \"tools\", develop = true }|\"$version\"|g" \
-    -e "s|{ path = \"coding\", develop = true }|\"$version\"|g" \
-    -e "s|{ path = \"web\", develop = true }|\"$version\"|g" \
-    -e "s|{ path = \"router\", develop = true }|\"$version\"|g" \
-    -e "s|{ path = \"examples\", develop = true }|\"$version\"|g" \
-    -e 's/package-mode = false/packages = [{include = "just_agents"}]/' \
-    pyproject.toml
+# sed -i \
+#     -e "s|{ path = \"core\", develop = true }|\"$version\"|g" \
+#     -e "s|{ path = \"tools\", develop = true }|\"$version\"|g" \
+#     -e "s|{ path = \"coding\", develop = true }|\"$version\"|g" \
+#     -e "s|{ path = \"web\", develop = true }|\"$version\"|g" \
+#     -e "s|{ path = \"router\", develop = true }|\"$version\"|g" \
+#     -e "s|{ path = \"examples\", develop = true }|\"$version\"|g" \
+#     -e 's/package-mode = false/packages = [{include = "just_agents"}]/' \
+#     pyproject.toml
 
 # Finally publish the meta-package
 if ! publish_package "."; then
