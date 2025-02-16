@@ -67,22 +67,24 @@ LLAMA3_2_VISION: LLMOptions = {
     #supports both text and vision
     "model": "groq/llama-3.2-90b-vision-preview",
     "api_base": "https://api.groq.com/openai/v1",
-    "temperature": 0.0,
-    "tools": []
+    "temperature": 0.0
 }
 
 LLAMA3_3: dict[str, Any] = {
     "model": "groq/llama-3.3-70b-versatile",
     "api_base": "https://api.groq.com/openai/v1",
-    "temperature": 0.0,
-    "tools": []
+    "temperature": 0.0
 }
 
 LLAMA3_3_specdec: dict[str, Any] = {
     "model": "groq/llama-3.3-70b-specdec",
     "api_base": "https://api.groq.com/openai/v1",
-    "temperature": 0.0,
-    "tools": []
+    "temperature": 0.0
+}
+
+CERABRAS_LLAMA3_3_70B: LLMOptions = {
+    "model": "cerebras/meta/llama3-70b-instruct",
+    "temperature": 0.0
 }
 
 GROQ_DEEPSEEK_R1_DISTILL: LLMOptions = {
@@ -157,22 +159,15 @@ GEMINI_2_FLASH_EXP: LLMOptions = {
     "temperature": 0.0
 }
 
-OPEN_ROUTER_Qwen_2_5_CODER_32B_Instruct: LLMOptions = {
-    "model": "openrouter/qwen/qwen-2.5-coder-32b-instruct",
-    "temperature": 0.0,
-    "tools": []
-}
 
 DEEPSEEK_CODER: LLMOptions = {
     "model": "deepseek/deepseek-coder",
-    "temperature": 0.0,
-    "tools": []
+    "temperature": 0.0
 }
 
 DEEPSEEK_CHAT: LLMOptions = {
     "model": "deepseek/deepseek-chat",
-    "temperature": 0.0,
-    "tools": []
+    "temperature": 0.0
 }
 
 DEEPSEEK_R1: LLMOptions = {
@@ -184,6 +179,5 @@ def local_vllm_model(model: str = "models/granite-7b-lab.Q4_K_M.gguf", host: str
     return {
         "model": f"hosted_vllm/{model}",
         "temperature": 0.0,
-        "api_base": host,
-        "tools": []
+        "api_base": host
     }
