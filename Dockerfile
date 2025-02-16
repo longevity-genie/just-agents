@@ -83,6 +83,19 @@ ENV AGENT_REMOVE_SYSTEM_PROMPT="false"
 ENV AGENT_CONFIG="agent_profiles.yaml"
 ENV TRAP_CHAT_NAMES="True"
 
+# Declare the extra dependency argument (defaults to empty)
+ARG EXTRA_DEPENDENCY=""
+
+# Use Bash to add the extra dependency if it is provided.
+RUN /bin/bash -c '\
+    if [ -n "$EXTRA_DEPENDENCY" ]; then \
+      echo "Adding extra dependency: $EXTRA_DEPENDENCY"; \
+      /root/.local/bin/poetry config virtualenvs.create false; \
+      /root/.local/bin/poetry add --no-interaction --no-cache "$EXTRA_DEPENDENCY"; \
+    else \
+      echo "No extra dependency provided"; \
+    fi'
+
 ### 7) Switch to non-root user
 USER appuser
 
@@ -93,6 +106,7 @@ ENV PATH="/home/appuser/.local/bin:${PATH}"
 RUN if [ -f "/opt/conda/bin/python" ]; then \
     echo "export PATH=/opt/conda/bin:\$PATH" >> /home/appuser/.bashrc ; \
     fi
+
 
 #ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 # we will copy but not activate entrypoint script in the container as in docker-compose we will:

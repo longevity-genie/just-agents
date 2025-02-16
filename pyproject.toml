@@ -40,6 +40,16 @@ just-agents-web = {path = "web", develop = true}
 just-agents-router = {path = "router", develop = true}
 just-agents-examples = {path = "examples", develop = true}
 
+[[tool.poetry.source]]
+name = "cu124"
+url = "https://download.pytorch.org/whl/cu124"
+priority = "explicit"
+
+[[tool.poetry.source]]
+name = "cu118"
+url = "https://download.pytorch.org/whl/cu118"
+priority = "explicit"
+
 
 [tool.poetry.scripts]
 run-agent = "just_agents.web.run_agent:app"

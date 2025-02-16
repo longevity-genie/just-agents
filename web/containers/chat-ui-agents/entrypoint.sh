@@ -46,10 +46,10 @@ if [ -f "$REQUIREMENTS_FILE" ]; then
         REQS=$(grep -vE '^(#|[[:space:]]*$)' "$REQUIREMENTS_FILE")
 
         # Print out the full poetry command that will be executed for debugging purposes
-        echo "Executing command: poetry add --no-interaction --no-cache $REQS"
+        echo "Executing command: poetry config virtualenvs.create false && poetry add --no-interaction --no-cache $REQS"
 
-        # Run poetry add with the filtered dependencies
-        if poetry add $REQS; then
+        # Configure poetry to not use virtualenv and run poetry add with the filtered dependencies
+        if poetry config virtualenvs.create false && poetry add $REQS; then
             # On successful installation, update (or create) the flag file with the current hash
             echo "$CURRENT_HASH" > "$INSTALL_FLAG"
             echo "Dependencies installation completed successfully"

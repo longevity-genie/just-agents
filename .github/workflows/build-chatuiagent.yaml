@@ -64,3 +64,4 @@ jobs:
           cache-to: type=gha,mode=max
           build-args: |
             BASE_IMAGE=${{ matrix.variant == 'gpu' && 'pytorch/pytorch:2.6.0-cuda12.4-cudnn9-runtime' || 'python:3.11-slim' }}
+            deps=${{ matrix.variant == 'gpu' && 'torch = \"==2.6.0+cu124\"' || '' }}
