@@ -16,34 +16,6 @@ fi
 
 echo "Detected container runtime: $CONTAINER_RUNTIME"
 
-# Initialize GOSU variable
-GOSU=""
-
-# If running as root on Docker, perform setup and set GOSU to drop privileges.
-if [ "$(id -u)" = "0" ] && [ "$CONTAINER_RUNTIME" != "podman" ]; then
-    echo "Running as root on Docker. Setting up user, group, and chown operations..."
-
-    # Ensure the group exists
-    if ! getent group appgroup >/dev/null; then
-        groupadd --gid "$GROUP_ID" appgroup
-    fi
-
-    # Ensure the user exists
-    if ! id -u appuser >/dev/null 2>&1; then
-        useradd --uid "$USER_ID" --gid appgroup --create-home appuser
-    fi
-
-    # Fix permissions for mounted volumes
-    chown -R appuser:appgroup /app /app/data /app/logs /app/agent_tools /app/env /app/models.d /app/tmp
-
-    # Set GOSU variable for subsequent commands
-    GOSU="gosu appuser:appgroup"
-else
-    echo "Running in Podman rootless mode or already non-root. Skipping user creation."
-    #chown -R $(id -u):$(id -g) /app /app/data /app/logs /app/agent_tools /app/env /app/models.d /app/tmp
-
-fi
-
 # Handle additional dependencies safely via Poetry if requirements.txt is present
 REQUIREMENTS_FILE="/app/agent_tools/requirements.txt"
 INSTALL_FLAG="/app/tmp/.requirements_installed"
@@ -74,7 +46,7 @@ if [ -f "$REQUIREMENTS_FILE" ]; then
         REQS=$(grep -vE '^(#|[[:space:]]*$)' "$REQUIREMENTS_FILE")
 
         # Print out the full poetry command that will be executed for debugging purposes
-        echo "Executing command: poetry add $REQS"
+        echo "Executing command: poetry add --no-interaction --no-cache $REQS"
 
         # Run poetry add with the filtered dependencies
         if poetry add $REQS; then
@@ -89,6 +61,34 @@ if [ -f "$REQUIREMENTS_FILE" ]; then
         echo "Hash of '$REQUIREMENTS_FILE' file exists and has not changed: $CURRENT_HASH"
         echo "Dependencies already installed, skipping..."
     fi
+fi
+
+# Initialize GOSU variable
+GOSU=""
+
+# If running as root on Docker, perform setup and set GOSU to drop privileges.
+if [ "$(id -u)" = "0" ] && [ "$CONTAINER_RUNTIME" != "podman" ]; then
+    echo "Running as root on Docker. Setting up user, group, and chown operations..."
+
+    # Ensure the group exists
+    if ! getent group appgroup >/dev/null; then
+        groupadd --gid "$GROUP_ID" appgroup
+    fi
+
+    # Ensure the user exists
+    if ! id -u appuser >/dev/null 2>&1; then
+        useradd --uid "$USER_ID" --gid appgroup --create-home appuser
+    fi
+
+    # Fix permissions for mounted volumes
+    chown -R appuser:appgroup /app /app/data /app/logs /app/agent_tools /app/env /app/models.d /app/tmp
+
+    # Set GOSU variable for subsequent commands
+    GOSU="gosu appuser:appgroup"
+else
+    echo "Running in Podman rootless mode or already non-root. Skipping user creation."
+    #chown -R $(id -u):$(id -g) /app /app/data /app/logs /app/agent_tools /app/env /app/models.d /app/tmp
+
 fi
 
 # Run initialization script if it exists, using hash comparison to ensure idempotency

@@ -11,14 +11,15 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 ### 2) Install Poetry (still as root)
-RUN mkdir -p /opt/poetry && \
+#Bug https://github.com/python-poetry/poetry/issues/10184 regression
+RUN export POETRY_VERSION="2.0.1" && \
+    mkdir -p /opt/poetry && \
     curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python3 - && \
     ln -s /opt/poetry/bin/poetry /usr/local/bin/poetry && \
     # Add poetry to system-wide PATH and for new users
     echo 'export PATH="/opt/poetry/bin:$PATH"' >> /etc/profile && \
     echo 'export PATH="/opt/poetry/bin:$PATH"' >> /etc/bash.bashrc && \
     export POETRY_HOME="/opt/poetry" && \
-    export POETRY_VERSION="2.0.1" && \
     export PATH="/opt/poetry/bin:$PATH"
 
 ### 3) Create app directory, copy project files in
@@ -33,10 +34,10 @@ RUN echo 'print("Preparation complete!")' >> /app/init.py
 RUN chmod +x /usr/local/bin/entrypoint.sh
 RUN chmod +x /app/init.py
 
-### 5) Install main Python dependencies
+### 5) Install main Python dependenciesv
 RUN poetry config virtualenvs.create false && \
-    poetry install --without dev
-RUN poetry add langfuse>=2.59.2 opik>=1.4.12 numpy>=2.2
+    poetry install --without dev && \
+    poetry add langfuse>=2.59.2 opik>=1.4.12 numpy>=2.2
 
 ### 6) Expose ports and set environment variables
 EXPOSE 8088
