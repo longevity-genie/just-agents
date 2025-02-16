@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-coding"
-version = "0.5.5"  # This will be replaced by poetry-dynamic-versioning
+version = "0.5.6"  # This will be replaced by poetry-dynamic-versioning
 description = "Just Agents - Coding Components"
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",
