@@ -92,7 +92,7 @@ else
 fi
 
 # Run initialization script if it exists, using hash comparison to ensure idempotency
-INIT_SCRIPT="/app/scripts/init.py"
+INIT_SCRIPT="/app/init.py"
 INIT_FLAG="/app/tmp/.init_completed"
 
 if [ -f "$INIT_SCRIPT" ]; then
