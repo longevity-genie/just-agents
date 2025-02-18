@@ -1,4 +1,6 @@
-from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator
+from pyexpat.errors import messages
+from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator, Generator
+import time
 
 from pydantic import Field, PrivateAttr, BaseModel
 from functools import singledispatchmethod
@@ -11,10 +13,8 @@ from litellm.litellm_core_utils.get_supported_openai_params import get_supported
 
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
-from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
-from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol
 from just_agents.data_classes import Role, ToolCall, FinishReason
-
+from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.types import MessageDict
 
 SupportedResponse=Union[ModelResponse, ModelResponseStream, MessageDict]
@@ -44,8 +44,8 @@ class LiteLLMFunctionCall(ToolCall, IFunctionCall[MessageDict]):
 
 class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, CustomStreamWrapper]):
     #Class that describes function convention
+
     function_convention: ClassVar[Type[IFunctionCall[MessageDict]]] = LiteLLMFunctionCall
-    _output_streaming: IAbstractStreamingProtocol = PrivateAttr(default_factory=OpenaiStreamingProtocol)
 
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
@@ -183,3 +183,39 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
     def get_supported_params(self, model_name: str) -> Optional[list]:
         return get_supported_openai_params(model_name)  # type: ignore
 
+    def message_as_chunk(self, index: int, delta: Union[MessageDict,Delta, str], model: str, role: Optional[str] = None) -> MessageDict:
+        if isinstance(delta,str):
+            message : dict = {"content": delta}
+        elif isinstance(delta, Delta):
+            message : dict = {"content": self.content_from_delta(delta)}
+        else:
+            message : dict = delta
+        if role:
+            message["role"] = role
+        chunk : dict = {
+            "id": index,
+            "object": "chat.completion.chunk",
+            "created": time.time(),
+            "model": model,
+            "choices": [{"delta": message}],
+        }
+        return chunk
+
+    @staticmethod
+    def content_from_stream(self, stream_generator: Generator, stop: str) -> str:
+        response_content = ""
+        for chunk in stream_generator:
+            try:
+                # Parse the SSE data
+                data = SSE.sse_parse(chunk)
+                json_data = data.get("data", "{}")
+                if json_data == stop:
+                    break
+                print(json_data)
+                if "choices" in json_data and len(json_data["choices"]) > 0:
+                    delta = json_data["choices"][0].get("delta", {})
+                    if "content" in delta:
+                        response_content += delta["content"]
+            except Exception as e:
+                continue
+        return response_content

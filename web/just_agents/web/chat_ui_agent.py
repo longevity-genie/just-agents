@@ -5,7 +5,6 @@ from pydantic import Field,BaseModel,PrivateAttr
 import json
 import os
 from eliot import start_action
-from just_agents.protocols.openai_streaming import DEFAULT_OPENAI_STOP
 from just_agents.web.chat_ui import ModelParameters, ModelEndpoint, ModelConfig
 from just_agents.just_profile import JustAgentProfileWebMixin
 from just_agents.web.web_agent import WebAgent
@@ -42,7 +41,7 @@ class ChatUIAgent(WebAgent, JustAgentProfileWebMixin):
         params = ModelParameters(
             temperature=self.llm_options.get("temperature", 0.0),
             max_new_tokens=self.llm_options.get("max_new_tokens", 4096),
-            stop=self.llm_options.get("stop", [DEFAULT_OPENAI_STOP]),
+            stop=self.llm_options.get("stop", [self._protocol.stop]),
         )
         # Create a default list of endpoints
         if proxy_address:

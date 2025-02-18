@@ -23,9 +23,9 @@ class ProtocolAdapterFactory:
         if mode == StreamingMode.openai:
             from just_agents.protocols.litellm_protocol import LiteLLMAdapter
             return LiteLLMAdapter(**kwargs)
-        elif mode == StreamingMode.echo:
-            from just_agents.protocols.echo_protocol import EchoProtocolAdapter
-            return EchoProtocolAdapter(**kwargs)
+        # elif mode == StreamingMode.echo:
+        #     from just_agents.protocols.echo_protocol import EchoProtocolAdapter
+        #     return EchoProtocolAdapter(**kwargs)
         else:
             raise ValueError("Unknown streaming method")
 

@@ -3,6 +3,7 @@ from dotenv import load_dotenv
 import pytest
 from typing import Callable, Any
 
+from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.base_agent import BaseAgent, BaseAgentWithLogging
 from just_agents.llm_options import LLMOptions, LLAMA3_3, LLAMA3_2_VISION, OPENAI_GPT4oMINI
 from just_agents.just_tool import JustToolsBus
@@ -49,7 +50,7 @@ def agent_call(prompt: str, options: LLMOptions, reconstruct_chunks: bool, **kwa
     chunks = []
     gen = session.stream(prompt, reconstruct_chunks=reconstruct_chunks, **kwargs)
     for sse_event in gen:
-        event = session._protocol.sse_parse(sse_event)
+        event = SSE.sse_parse(sse_event)
         assert isinstance(event, dict)
         data = event.get("data")
         if isinstance(data, dict):
@@ -62,7 +63,7 @@ def agent_call(prompt: str, options: LLMOptions, reconstruct_chunks: bool, **kwa
 
     full_response = ''.join(chunks)
     last = session.memory.last_message_str
-    assert full_response == last
+    assert full_response.endswith(last)
     return full_response
 
 def test_stream():

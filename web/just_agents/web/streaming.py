@@ -5,8 +5,8 @@ import sys
 from uuid import uuid4
 
 from typing import Union, Optional, Any, AsyncGenerator, Generator
-from just_agents.protocols.openai_streaming import OpenaiStreamingProtocol, DEFAULT_OPENAI_STOP
 from just_agents.data_classes import Role
+from just_agents.protocols.litellm_protocol import LiteLLMAdapter
 from just_agents.base_agent import BaseAgent
 from just_agents.web.models import (
     ChatCompletionRequest, ChatCompletionChoice, ChatCompletionUsage,
@@ -74,11 +74,13 @@ async def async_wrap(response: Generator) -> AsyncGenerator[Any, None]:
     yield f"\n\n"
 
 
-def response_from_stream(stream_generator: Generator, stop: Optional[str] = DEFAULT_OPENAI_STOP) -> str:
-    return OpenaiStreamingProtocol(stop=stop).response_from_stream(stream_generator)
+def response_from_stream(stream_generator: Generator, stop: Optional[str]) -> str:
+    return (
+        LiteLLMAdapter.content_from_stream(stream_generator, stop or LiteLLMAdapter.stop)
+    )
 
 # generator function to mimic yield ChatCompletionChunk chunks
-async def generate_response_chunks(response: ChatCompletionResponse, stop: Optional[str] = DEFAULT_OPENAI_STOP) -> \
+async def generate_response_chunks(response: ChatCompletionResponse, stop: Optional[str] = LiteLLMAdapter.stop) -> \
         AsyncGenerator[str, None]:
     # logger.info("Imitating generation")
     # logger.trace(f"Given {str(response)}")

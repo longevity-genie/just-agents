@@ -1,7 +1,7 @@
 from abc import ABC, abstractmethod
 from pydantic import BaseModel
 from typing import Callable, Coroutine, Union, AsyncGenerator, List, Sequence, ClassVar, Type, TypeVar, Generic, Any, Optional
-from just_agents.interfaces.streaming_protocol import IAbstractStreamingProtocol
+
 from just_agents.interfaces.function_call import IFunctionCall
 
 BaseModelResponse = TypeVar('BaseModelResponse', bound=BaseModel)
@@ -13,12 +13,12 @@ ModelResponseCallback=Callable[...,BaseModelResponse]
 MessageUnpackCallback=Callable[[BaseModelResponse], AbstractMessage]
 ExecuteToolCallback=Callable[[Sequence[IFunctionCall]],List[AbstractMessage]]
 
-class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelResponse, AbstractMessage, BaseModelStreamResponse]):
+class IProtocolAdapter(ABC, Generic[BaseModelResponse, AbstractMessage, BaseModelStreamResponse]):
     """
     Class that is required to wrap the model protocol
     """
+    stop: ClassVar[str] = "[DONE]"
     function_convention: ClassVar[Type[IFunctionCall[Any]]]
-    _output_streaming: IAbstractStreamingProtocol
 
     @abstractmethod
     def completion(self, *args, **kwargs) -> BaseModelResponse:
@@ -49,6 +49,10 @@ class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelRespons
         raise NotImplementedError("You need to implement message_from_deltas first!")
 
     @abstractmethod
+    def message_as_chunk(self, index: int, delta: AbstractMessage, model: str, role: Optional[str] = None) -> AbstractMessage:
+        raise NotImplementedError("You need to implement message_as_chunk first!")
+
+    @abstractmethod
     def get_supported_params(self, model_name: str) -> Optional[list]:
         raise NotImplementedError("You need to implement get_supported_params first!")
 
@@ -68,9 +72,3 @@ class IProtocolAdapter(IAbstractStreamingProtocol, ABC, Generic[BaseModelRespons
     @abstractmethod
     def disable_logging(self) -> None:
         raise NotImplementedError("You need to implement disable_logging first!")
-
-    def get_chunk(self, index:int, delta:str, options:dict) -> AbstractMessage:
-        return self._output_streaming.get_chunk(index, delta, options)
-
-    def done(self) -> str:
-        return self._output_streaming.done()

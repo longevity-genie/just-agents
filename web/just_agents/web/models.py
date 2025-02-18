@@ -55,7 +55,7 @@ class ChatCompletionChoice(BaseModel):
 
 class ChatCompletionChoiceChunk(ChatCompletionChoice):
     delta: ResponseMessage = Field(default=None)
-    message: Optional[ResponseMessage] = Field(default=None, exclude=True) #hax
+    message: Optional[ResponseMessage] = Field(default=None, exclude=True) # removed, delta is used instead
 
 class CompletionTokensDetails(BaseModel):
     accepted_prediction_tokens: Optional[int] = Field(None,

@@ -12,6 +12,7 @@ from just_agents.interfaces.agent import IAgentWithInterceptors, QueryListener, 
 from just_agents.base_memory import IBaseMemory, BaseMemory, OnToolCallable, OnMessageCallable
 from just_agents.just_profile import JustAgentProfile, JustAgentProfileChatMixin
 from just_agents.rotate_keys import RotateKeys
+from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.protocols.protocol_factory import StreamingMode, ProtocolAdapterFactory
 from just_agents.just_tool import SubscriberCallback
 
@@ -336,6 +337,7 @@ class BaseAgent(
             continue_conversation: Optional[bool] = None,
             remember_query: Optional[bool] = None,
             reconstruct_chunks : bool = False,
+            restream_tools: Optional[bool] = None,
             **kwargs
     ) -> Generator[Union[BaseModelResponse, SupportedMessages],None,None]:
         memory = self._preprocess_input(
@@ -354,19 +356,19 @@ class BaseAgent(
                 msg: SupportedMessages = self._protocol.message_from_response(part)
                 delta = self._protocol.content_from_delta(msg)
                 finish_reason: FinishReason = self._protocol.finish_reason_from_response(part)
-                if delta:  # stream content as is
+                if delta or restream_tools:  # stream content as is
                     yielded = True
                     if reconstruct_chunks:
-                        yield self._protocol.get_chunk(i, delta, options={'model': part["model"]})
+                        yield SSE.sse_wrap(self._protocol.message_as_chunk(i, delta, part["model"], msg.get("role", None)))
                     else:
-                        yield self._protocol.sse_wrap(part.model_dump(mode='json'))
+                        yield SSE.sse_wrap(part.model_dump(mode='json'))
                 elif finish_reason == FinishReason.function_call:
                     raise NotImplementedError("Function calls are deprecated, use Tool calls instead")
                 elif finish_reason == FinishReason.tool_calls:
                     pass #processed separately
                 else:
                     yielded = True
-                    yield self._protocol.sse_wrap(part.model_dump(mode='json'))
+                    yield SSE.sse_wrap(part.model_dump(mode='json'))
 
             if len(self._partial_streaming_chunks) > 0:
                 assembly = self._protocol.response_from_deltas(self._partial_streaming_chunks)
@@ -377,17 +379,18 @@ class BaseAgent(
 
                 tool_calls = self._protocol.tool_calls_from_message(msg)
                 if not tool_calls and not yielded:
-                    yield self._protocol.sse_wrap(
-                        assembly.model_dump(mode='json'))  # not delta and not tool, pass as is
+                    yield SSE.sse_wrap(
+                        assembly.model_dump(mode='json')
+                    )  # not delta and not tool, pass as is
 
             if not self.tools or self._tool_fuse_broken or not tool_calls:
                 self._tool_fuse_broken = False
                 break  # If there are no tool calls or tools available, exit the loop
             else:
-                self._process_function_calls(
-                    tool_calls,
-                    memory
-                )
+                tool_messages = self._process_function_calls(tool_calls,memory)
+                if restream_tools:
+                    for i, tool_message in enumerate(tool_messages):
+                        yield SSE.sse_wrap(self._protocol.message_as_chunk(i, tool_message, part["model"]))
             if step == self.max_tool_calls - 2:  # special case where we ran out of tool calls or stuck in a loop
                 self._tool_fuse_broken = True  # one last attempt at graceful response without tools
 
@@ -395,7 +398,7 @@ class BaseAgent(
             memory,
             remember_query=remember_query,
         )
-        yield self._protocol.done()
+        yield SSE.sse_wrap(self._protocol.stop)
 
     @property
     def model_supported_parameters(self) -> list[str]:

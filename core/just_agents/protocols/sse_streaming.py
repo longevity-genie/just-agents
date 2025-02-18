@@ -1,8 +1,7 @@
 from typing import Any, Union, Optional, Dict
 import json
-from abc import ABC, abstractmethod
 
-class IAbstractStreamingProtocol(ABC):
+class ServerSentEventsStream:
     # https://developer.mozilla.org/en-US/docs/Web/API/Server-sent_events/Using_server-sent_events#event_stream_format
 
     @staticmethod
@@ -118,11 +117,3 @@ class IAbstractStreamingProtocol(ABC):
             "event": event,
             "data": parsed_data,
         }
-
-    @abstractmethod
-    def get_chunk(self, index:int, delta:str, options:dict) -> Any:
-        raise NotImplementedError("You need to implement get_chunk() first!")
-
-    @abstractmethod
-    def done(self) -> str:
-        raise NotImplementedError("You need to implement done() first!")
