@@ -43,12 +43,12 @@ just-agents-examples = {path = "examples", develop = true}
 [[tool.poetry.source]]
 name = "cu124"
 url = "https://download.pytorch.org/whl/cu124"
-priority = "explicit"
+priority = "supplemental"
 
 [[tool.poetry.source]]
 name = "cu118"
 url = "https://download.pytorch.org/whl/cu118"
-priority = "explicit"
+priority = "supplemental"
 
 
 [tool.poetry.scripts]

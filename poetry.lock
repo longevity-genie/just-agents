@@ -1064,7 +1064,7 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "just-agents-coding"
-version = "0.5.6-post.3+77e2dfb"
+version = "0.5.6-post.5+88b3afe"
 description = "Just Agents - Coding Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1082,7 +1082,7 @@ url = "coding"
 
 [[package]]
 name = "just-agents-core"
-version = "0.5.6-post.3+77e2dfb"
+version = "0.5.6-post.5+88b3afe"
 description = "Just Agents - Base Package"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1092,7 +1092,7 @@ develop = true
 
 [package.dependencies]
 Deprecated = ">=1.2.15"
-litellm = ">=1.61.3"
+litellm = ">=1.61.8"
 numpydoc = "*"
 pydantic = ">=2.0.0,<3.0.0"
 python-dotenv = ">=1.0.1"
@@ -1105,7 +1105,7 @@ url = "core"
 
 [[package]]
 name = "just-agents-examples"
-version = "0.5.6-post.3+77e2dfb"
+version = "0.5.6-post.5+88b3afe"
 description = "Just Agents - Examples code"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1126,7 +1126,7 @@ url = "examples"
 
 [[package]]
 name = "just-agents-router"
-version = "0.5.6-post.3+77e2dfb"
+version = "0.5.6-post.5+88b3afe"
 description = "Just Agents - Router Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1143,7 +1143,7 @@ url = "router"
 
 [[package]]
 name = "just-agents-tools"
-version = "0.5.6-post.3+77e2dfb"
+version = "0.5.6-post.5+88b3afe"
 description = "Just Agents - Tools Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1152,7 +1152,7 @@ files = []
 develop = true
 
 [package.dependencies]
-semanticscholar = ">=0.8.4"
+semanticscholar = ">=0.10.0"
 typer = ">=0.13.0"
 
 [package.source]
@@ -1161,7 +1161,7 @@ url = "tools"
 
 [[package]]
 name = "just-agents-web"
-version = "0.5.6-post.3+77e2dfb"
+version = "0.5.6-post.5+88b3afe"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1208,14 +1208,14 @@ openai = ["openai (>=0.27.8)"]
 
 [[package]]
 name = "litellm"
-version = "1.61.5"
+version = "1.61.8"
 description = "Library to easily interface with LLM API providers"
 optional = false
 python-versions = "!=2.7.*,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,!=3.7.*,>=3.8"
 groups = ["main", "dev"]
 files = [
-    {file = "litellm-1.61.5-py3-none-any.whl", hash = "sha256:0f842fe96d8354fce71bdb50b7b8d86b329653161885a047de4a9c78e0cfbe82"},
-    {file = "litellm-1.61.5.tar.gz", hash = "sha256:0fda7698e64933e100398d2b3ed5d1dc096021adf699c885f8baf5a7b0d7589c"},
+    {file = "litellm-1.61.8-py3-none-any.whl", hash = "sha256:da895efefb86b71d2213257d2b57ed38c42c48c590c474c65473cdc4791e8b32"},
+    {file = "litellm-1.61.8.tar.gz", hash = "sha256:efebcafeb014c76ca992a5a49f5f2c6c8a944723c6a91b0cc70442911c3a656f"},
 ]
 
 [package.dependencies]
@@ -1513,14 +1513,14 @@ test = ["matplotlib", "pytest", "pytest-cov"]
 
 [[package]]
 name = "openai"
-version = "1.63.0"
+version = "1.63.2"
 description = "The official Python library for the openai API"
 optional = false
 python-versions = ">=3.8"
 groups = ["main", "dev"]
 files = [
-    {file = "openai-1.63.0-py3-none-any.whl", hash = "sha256:a664dfc78f0a05ca46c3e21f344f840cf6bf7174f13cfa9de214ed28bfca1dda"},
-    {file = "openai-1.63.0.tar.gz", hash = "sha256:597d7a1b35b113e5a09fcb953bdb1eef44f404a39985f3d7573b3ab09221fd66"},
+    {file = "openai-1.63.2-py3-none-any.whl", hash = "sha256:1f38b27b5a40814c2b7d8759ec78110df58c4a614c25f182809ca52b080ff4d4"},
+    {file = "openai-1.63.2.tar.gz", hash = "sha256:aeabeec984a7d2957b4928ceaa339e2ead19c61cfcf35ae62b7c363368d26360"},
 ]
 
 [package.dependencies]
@@ -2386,14 +2386,14 @@ files = [
 
 [[package]]
 name = "semanticscholar"
-version = "0.9.0"
+version = "0.10.0"
 description = "Unofficial Python client library for Semantic Scholar APIs."
 optional = false
 python-versions = ">=3.8"
 groups = ["main", "dev"]
 files = [
-    {file = "semanticscholar-0.9.0-py3-none-any.whl", hash = "sha256:f895099684de3de01747bb8467887370d3c3bc014ba12c0e0118afee25059b6b"},
-    {file = "semanticscholar-0.9.0.tar.gz", hash = "sha256:d4791f70cefeef1121265f07fd3eea2593e7e93a582878c2f17b7787069b77ce"},
+    {file = "semanticscholar-0.10.0-py3-none-any.whl", hash = "sha256:28a572eb8504d493ab5671bc3ce76f84ae70534a5828ec0cd38a26f27e66bd02"},
+    {file = "semanticscholar-0.10.0.tar.gz", hash = "sha256:82f907265aebcb1d9432b1cdd880d706230444515a4b94017358b938d007dbec"},
 ]
 
 [package.dependencies]

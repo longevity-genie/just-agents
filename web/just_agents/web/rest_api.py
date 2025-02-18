@@ -49,6 +49,7 @@ class AgentRestAPI(FastAPI):
         terms_of_service: Optional[str] = None,
         contact: Optional[Dict[str, Union[str, Any]]] = None,
         license_info: Optional[Dict[str, Union[str, Any]]] = None,
+        agents: Optional[Dict[str, BaseAgent]] = None, # We can set up agents explicetly here instead of loading them from yaml
 
     ) -> None:
         """Initialize the AgentRestAPI with FastAPI parameters.
@@ -86,7 +87,7 @@ class AgentRestAPI(FastAPI):
         # Initialize WebAgentConfig
         self._initialize_config()
         
-        self.agents = {}  # Dictionary to store multiple agents
+        self.agents = {} if agents is None else agents # Dictionary to store multiple agents
         self._agent_related_config(agent_config, agent_section, agent_parent_section, self.AGENT_CLASS)
         self._routes_config()
 
@@ -103,7 +104,6 @@ class AgentRestAPI(FastAPI):
             agent_class: Optional[Type[BaseAgent]] = None
         ):
         with start_task(action_type="agent_related_configs") as action:
-            
             if agent_class is None:
                 agent_class = WebAgent
 
@@ -111,20 +111,38 @@ class AgentRestAPI(FastAPI):
                 # Load from environment variable or use default
                 agent_config = self.config.agent_config_path
             
-            # Load all agents using from_yaml_dict
+            # Store loaded agents separately
+            loaded_agents: Dict[str, BaseAgent] = {}
+            
+            # Check if config file exists - handle both string and Path types
+            agent_path = agent_config if isinstance(agent_config, Path) else Path(agent_config)
+            agent_path = agent_path.resolve()
+            if not agent_path.exists():
+                action.log(
+                    message_type="Config file not found",
+                    path=str(agent_path),
+                    action="config_not_found"
+                )
+                if self.agents == {}:
+                    action.log(
+                        message_type="No agents loaded",
+                        action="error_no_agents_loaded"
+                    )
+                    raise ValueError("No agents loaded neither from config file nor from explicit agents")
+                return  # Return early if no config file exists
            
             if agent_section:
                 # Load single agent
-                self.agents: Dict[str, BaseAgent] = agent_class.from_yaml_dict(
+                loaded_agents = agent_class.from_yaml_dict(
                     agent_config, 
                     agent_parent_section, 
                     section=agent_section,
                     fail_on_any_error=self.config.agent_failfast
-                ) # requirements-aware autoload
+                )
 
-                if agent_section in self.agents:
-                    self.agent = self.agents[agent_section]
-                    self.agents = {agent_section:self.agent}
+                if agent_section in loaded_agents:
+                    self.agent = loaded_agents[agent_section]
+                    loaded_agents = {agent_section: self.agent}
                     action.log(
                         message_type=f"Single agent successfully loaded and selected",
                         name=self.agent.shortname,
@@ -136,31 +154,33 @@ class AgentRestAPI(FastAPI):
                         name=agent_section,
                         action="agent_load_error",
                     )
-                raise ValueError(f"Requested agent {agent_section} not loaded due to errors")
+                    raise ValueError(f"Requested agent {agent_section} not loaded due to errors")
             else:
-                self.agents: Dict[str, BaseAgent] = agent_class.from_yaml_dict(
+                loaded_agents = agent_class.from_yaml_dict(
                     agent_config, 
                     agent_parent_section,
                     fail_on_any_error=self.config.agent_failfast
-                ) # requirements-aware autoload
-                if not self.agents:
+                )
+                if not loaded_agents:
                     action.log(
                         message_type="No agents loaded",
                         action="error_no_agents_loaded"
                     )
                     raise ValueError("No agents loaded successfully")
 
-                for agent in self.agents.values():
-                    #agent.enforce_agent_prompt = self.remove_system_prompt
+                for agent in loaded_agents.values():
                     action.log(
                         message_type=f"Added agent",
                         name=agent.shortname,
                         action="agent_load_success"
                     )
 
-                # Set the first agent as default if any were loaded
-                if self.agents:
-                    self.agent = next(iter(self.agents.values()))
+            # Merge loaded agents with existing agents
+            self.agents.update(loaded_agents)
+
+            # Set the first agent as default if no default agent exists
+            if not hasattr(self, 'agent') and self.agents:
+                self.agent = next(iter(self.agents.values()))
 
 
 
@@ -179,15 +199,15 @@ class AgentRestAPI(FastAPI):
         self.post("/v1/chat/completions", description="OpenAI compatible chat completions")(self.chat_completions)
 
 
-    def default(self):
+    def default(self) -> str:
         return f"This is default page for the {self.title}"
 
-    def sha256sum(self, content_str: str):
+    def sha256sum(self, content_str: str) -> str:
         hash = hashlib.sha256()
         hash.update(content_str.encode('utf-8'))
         return hash.hexdigest()
 
-    def save_files(self, request: dict):
+    def save_files(self, request: dict) -> None:
         for file in request.get("file_params", []):
             file_name = file.get("name")
             file_content_base64 = file.get("content")

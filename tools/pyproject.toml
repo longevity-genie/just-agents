@@ -12,7 +12,7 @@ license = "MIT"
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
-semanticscholar = ">=0.8.4"
+semanticscholar = ">=0.10.0"
 typer = ">=0.13.0"
 
 [tool.poetry.group.dev.dependencies]
