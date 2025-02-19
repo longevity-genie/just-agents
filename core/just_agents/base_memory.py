@@ -81,7 +81,7 @@ class MessageFormatter(IMessageFormatter):
             panel = self.pretty_print_message(msg)
             console.print(panel)
 
-OnMessageCallable = Callable[[Role,MessageDict], None]
+OnMessageCallable = Callable[[MessageDict], None]
 OnToolCallable = Callable[[ToolCall], None]
 
 class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC):
@@ -137,7 +137,7 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC)
         Adds a handler to track function calls.
         """
 
-        def tool_handler(role: Role, message: MessageDict) -> None:
+        def tool_handler(message: MessageDict) -> None:
             tool_calls = message.get('tool_calls', [])
             for call in tool_calls:
                 fun(ToolCall(**call))
@@ -242,7 +242,7 @@ class BaseMemory(IBaseMemory, MessageFormatter):
         if role is None:
             raise ValueError("Message does not have a role")
         for handler in self._on_message.get(role, []):
-            handler(role,message)
+            handler(message)
 
     # Overriding add_message with specific implementations
     @singledispatchmethod

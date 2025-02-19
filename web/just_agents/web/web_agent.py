@@ -3,8 +3,8 @@ import uuid
 import os
 from datetime import datetime
 from pathlib import Path
-from typing import ClassVar, Optional, Dict, Any, Callable, Literal, Type
-from just_agents.base_agent import BaseAgent, BaseAgentWithLogging, VariArgs, LogFunction
+from typing import ClassVar, Optional, Dict, Any, Callable, Literal, Type, Generator, Union
+from just_agents.base_agent import BaseAgent, BaseAgentWithLogging, VariArgs, LogFunction, BaseModelResponse, SupportedMessages
 from just_agents.just_serialization import JustSerializable
 from pydantic import Field,BaseModel,PrivateAttr
 import yaml
@@ -142,6 +142,10 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
         default=False,
         description="Add new query messages to memory")
 
+    restream_tool_calls: bool = Field(
+        default=False,
+        description="Whether to echo tool calls outputs to query source, not only to LLM")
+
     def __str__(self):
         name = self.description or self.shortname
         return f"{name}"
@@ -248,3 +252,17 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
                 )
 
             return agents
+        
+    def stream(
+        self,
+        query_input: SupportedMessages,
+        **kwargs
+    ) -> Generator[Union[BaseModelResponse, SupportedMessages],None,None]:
+        restream_tools = kwargs.pop('restream_tools', None)
+        
+        if restream_tools is not None:
+            kwargs['restream_tools'] = restream_tools or self.restream_tool_calls
+        else:
+            kwargs['restream_tools'] = self.restream_tool_calls
+        
+        return super().stream(query_input, **kwargs)

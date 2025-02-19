@@ -578,15 +578,14 @@ class BaseAgentWithLogging(BaseAgent):
         self._log_function(tool_call.name, action="memory.add", source="tool_call")
         self._log_function(f"{str(tool_call.arguments)}", action="memory.add", source=tool_call.name)
 
-    def memory_handler(self, role: Role, message: MessageDict) -> None:
+    def memory_handler(self, message: MessageDict) -> None:
         """Handler for messages. Implements OnMessageCallable protocol.
         
         Args:
-            role: The role associated with the message.
             message: The message dictionary to handle
         """
         if message:
-            self._log_function(str(message), action="memory.add", source=role)
+            self._log_function(str(message), action="memory.add", source=message.get("role","Error"))
 
 
 class ChatAgent(BaseAgent, JustAgentProfileChatMixin):
