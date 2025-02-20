@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-core"
-version = "0.5.6"  # This will be replaced by poetry-dynamic-versioning
+version = "0.5.7"  # This will be replaced by poetry-dynamic-versioning
 description = "Just Agents - Base Package"
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",
@@ -29,7 +29,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
-litellm = ">=1.61.8"
+litellm = ">=1.61.11"
 pydantic = ">=2.0.0,<3.0.0"
 Deprecated = ">=1.2.15"
 requests = "*"
@@ -48,7 +48,7 @@ Homepage = "https://github.com/longevity-genie/just-agents"
 Documentation = "https://just-agents.readthedocs.io/"
 
 [build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
+requires = ["poetry-core>=2.0.0", "poetry-dynamic-versioning>=1.4.1"]
 build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry-dynamic-versioning]

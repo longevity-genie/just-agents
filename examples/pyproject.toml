@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-examples"
-version = "0.5.6"
+version = "0.5.7"
 description = "Just Agents - Examples code"
 authors = ["Alex Karmazin <karmazinalex@gmail.com>"]
 maintainers = ["Anton Kulaga <antonkulaga@gmail.com>"]
@@ -26,7 +26,7 @@ just-agents-web = { path = "../web", develop = true }
 just-agents-router = { path = "../router", develop = true }
 
 [build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
+requires = ["poetry-core>=2.0.0", "poetry-dynamic-versioning>=1.4.1"]
 build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry-dynamic-versioning]

@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents"
-version = "0.5.6"
+version = "0.5.7"
 description = "Just Agents"
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",
@@ -56,7 +56,7 @@ run-agent = "just_agents.web.run_agent:app"
 deploy-agent = "just_agents.web.deploy_agent:app"
 
 [build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
+requires = ["poetry-core>=2.0.0", "poetry-dynamic-versioning>=1.4.1"]
 build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry-dynamic-versioning]

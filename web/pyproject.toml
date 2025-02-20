@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-web"
-version = "0.5.6"  # This will be replaced by poetry-dynamic-versioning
+version = "0.5.7"  # This will be replaced by poetry-dynamic-versioning
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 
 authors = [
@@ -44,7 +44,7 @@ run-agent = "just_agents.web.run_agent:app"
 deploy-agent = "just_agents.web.deploy_agent:app"
 
 [build-system]
-requires = ["poetry-core>=1.0.0", "poetry-dynamic-versioning>=1.0.0"]
+requires = ["poetry-core>=2.0.0", "poetry-dynamic-versioning>=1.4.1"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry-dynamic-versioning]

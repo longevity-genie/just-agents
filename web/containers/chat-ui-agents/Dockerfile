@@ -11,8 +11,7 @@ RUN apt-get update && apt-get install -y \
     && rm -rf /var/lib/apt/lists/*
 
 ### 2) Install Poetry (still as root)
-#Bug https://github.com/python-poetry/poetry/issues/10184 regression
-RUN export POETRY_VERSION="2.0.1" && \
+RUN export POETRY_VERSION="2.1.1" && \
     mkdir -p /opt/poetry && \
     curl -sSL https://install.python-poetry.org | POETRY_HOME=/opt/poetry python3 - && \
     ln -s /opt/poetry/bin/poetry /usr/local/bin/poetry && \
