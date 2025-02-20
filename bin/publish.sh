@@ -3,6 +3,9 @@
 # Exit on any error
 set -e
 
+# Disable keyring to avoid DBus/SecretService issues
+export PYTHON_KEYRING_BACKEND=keyring.backends.null.Keyring
+
 # Load environment variables from .env file
 if [ -f .env ]; then
     export $(grep -v '^#' .env | xargs)

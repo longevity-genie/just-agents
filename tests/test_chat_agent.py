@@ -3,7 +3,7 @@ from time import sleep, time
 from dotenv import load_dotenv
 from just_agents.base_agent import ChatAgent
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
-from just_agents.llm_options import LLAMA3_3, OPENAI_GPT4oMINI
+from just_agents.llm_options import LLAMA3_3, OPENAI_GPT4oMINI, GEMINI_2_FLASH_EXP
 from pprint import pprint
 
 from just_agents.tools.db import sqlite_query
@@ -48,17 +48,8 @@ def open_genes_db() -> Path:
     return db_path
 
 
-def test_quering(open_genes_db):
-    load_dotenv(override = True)
-
-    agent = ChatAgent(role="helpful agent which knows how operate with databases",
-                    goal=f"help users by using SQL syntax to form comands to work with the {open_genes_db} sqlite database",
-                    task="formulate appropriate comands to operate in the given database and always include the table names in your response.",
-                    tools=[sqlite_query],
-                    llm_options=LLAMA3_3,
-                    key_list_env="GROQ_API_KEY"
-                    )
-
+def _test_database_tables(agent: ChatAgent, open_genes_db: Path):
+    """Helper function to test database table queries with different agents"""
     response = agent.query("Show me all tables in the database")
     agent.memory.pretty_print_all_messages()
     assert response is not None, "Response should not be None"
@@ -76,6 +67,27 @@ def test_quering(open_genes_db):
         assert table.lower() in response.lower(), f"Expected table '{table}' not found in agent response"
     
     sleep(sleep_time)
+
+def test_quering(open_genes_db):
+    load_dotenv(override = True)
+    agent = ChatAgent(role="helpful agent which knows how operate with databases",
+                    goal=f"help users by using SQL syntax to form comands to work with the {open_genes_db} sqlite database",
+                    task="formulate appropriate comands to operate in the given database and always include the table names in your response.",
+                    tools=[sqlite_query],
+                    llm_options=LLAMA3_3,
+                    key_list_env="GROQ_API_KEY"
+                    )
+    _test_database_tables(agent, open_genes_db)
+
+def test_quering_gemini(open_genes_db):
+    load_dotenv(override = True)
+    agent = ChatAgent(role="helpful agent which knows how operate with databases",
+                    goal=f"help users by using SQL syntax to form comands to work with the {open_genes_db} sqlite database",
+                    task="formulate appropriate comands to operate in the given database and always include the table names in your response.",
+                    tools=[sqlite_query],
+                    llm_options=GEMINI_2_FLASH_EXP
+                    )
+    _test_database_tables(agent, open_genes_db)
 
 
 
@@ -104,7 +116,7 @@ def test_delegation():
                     goal=f"help users by using SQL syntax to form comands to work with the {db_path} sqlite database",
                     task="formulate appropriate comands to operate in the given database.",
                     tools=[sqlite_query],
-                    llm_options=OPENAI_GPT4oMINI
+                    llm_options=GEMINI_2_FLASH_EXP
                     )
 
     ponder_agent = ChatAgent(
