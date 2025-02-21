@@ -15,7 +15,7 @@ jobs:
   build:
     strategy:
       matrix:
-        variant: [cpu, gpu]
+        variant: [cpu] #, gpu]
     runs-on: ubuntu-latest
     permissions:
       contents: read
