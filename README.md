@@ -7,10 +7,14 @@ A lightweight, straightforward library for LLM agents - no over-engineering, jus
 ## Quick Start
 ```bash
 pip install just-agents-core # for core library
-pip install just-agents-web # in case if you want to serve agent as web service
-pip 
 ```
 
+You can also install:
+```bash
+pip install just-agents-web # in case if you want to serve agent as web service
+pip install just-agents-coding # for coding, allows you to execute code in save docker sandbox
+pip install just-agents-tools # for extra tools (like web search)
+```
 
 ## 🎯 Motivation
 
