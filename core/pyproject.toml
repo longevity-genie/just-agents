@@ -29,7 +29,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
-litellm = ">=1.61.11"
+litellm = ">=1.61.13"
 pydantic = ">=2.0.0,<3.0.0"
 Deprecated = ">=1.2.15"
 requests = "*"

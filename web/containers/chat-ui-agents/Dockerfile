@@ -33,10 +33,10 @@ RUN echo 'print("Preparation complete!")' >> /app/init.py
 RUN chmod +x /usr/local/bin/entrypoint.sh
 RUN chmod +x /app/init.py
 
-### 5) Install main Python dependenciesv
+### 5) Install main Python dependencies
 RUN poetry config virtualenvs.create false && \
     poetry install --without dev && \
-    poetry add langfuse>=2.59.2 opik>=1.4.12 numpy>=2.2
+    poetry add langfuse>=2.59.2 opik>=1.4.12 numpy>=2.2 just-agents-tools
 
 ### 6) Expose ports and set environment variables
 EXPOSE 8088

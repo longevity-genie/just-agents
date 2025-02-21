@@ -159,6 +159,11 @@ GEMINI_2_FLASH_EXP: LLMOptions = {
     "temperature": 0.0
 }
 
+GROK_3: LLMOptions = {
+    "model": "xai/grok-3-latest",
+    "temperature": 0.0
+}
+
 
 DEEPSEEK_CODER: LLMOptions = {
     "model": "deepseek/deepseek-coder",
