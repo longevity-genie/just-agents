@@ -147,6 +147,19 @@ check_github_version() {
     return 0
 }
 
+# Function to normalize URLs for comparison
+normalize_url() {
+    local url=$1
+    # Remove .git suffix if present
+    url=${url%.git}
+    # Convert SSH URL to HTTPS format for comparison
+    if [[ $url == git@* ]]; then
+        # Convert SSH format to HTTPS and fix path separator
+        url=$(echo "$url" | sed -e 's|^git@|https://|' -e 's|:\([^/]\)|/\1|')
+    fi
+    echo "$url"
+}
+
 # Function to check if the local repository is clean, up-to-date, and on the main branch
 check_git_status() {
     # Ensure we are on the main branch
@@ -156,17 +169,46 @@ check_git_status() {
         return 1
     fi
 
+    # Normalize the REPO_URL for comparison
+    normalized_repo_url=$(normalize_url "$REPO_URL")
+    echo "Normalized REPO_URL: $normalized_repo_url"  # Debug statement
+
+    # Find the remote that matches the normalized REPO_URL
+    echo "Checking all remotes:" >&2
+    git remote -v >&2
+
+    matching_remote=""
+    while read -r name url rest; do
+        echo "Processing remote: $name with URL: $url" >&2
+        normalized_url=$(normalize_url "$url")
+        if [ "$normalized_url" = "$normalized_repo_url" ]; then
+            matching_remote="$name"
+            echo "Matching remote found: $matching_remote"
+            break
+        fi
+    done < <(git remote -v | grep "(fetch)")
+
+    if [ -z "$matching_remote" ]; then
+        echo "Error: No remote found matching the repository URL ($REPO_URL)."
+        echo "Expected URL: $normalized_repo_url" >&2
+        echo "Available remotes:" >&2
+        git remote -v >&2
+        return 1
+    fi
+
+ 
+
     # Check for uncommitted changes
     if ! git diff-index --quiet HEAD --; then
         echo "Error: Uncommitted changes found. Please commit or stash them before publishing."
         return 1
     fi
 
-    # Check if local branch is up-to-date with remote
-    git fetch origin main
+    # Check if local branch is up-to-date with the correct remote
+    git fetch "$matching_remote" main
 
     local_commit=$(git rev-parse HEAD)
-    remote_commit=$(git rev-parse origin/main)
+    remote_commit=$(git rev-parse "$matching_remote/main")
 
     if [ "$local_commit" != "$remote_commit" ]; then
         echo "Error: Local main branch is not up-to-date with remote. Please pull the latest changes."
@@ -174,7 +216,7 @@ check_git_status() {
     fi
 
     # Check if local and remote branches point to the same commit
-    if [ "$(git rev-parse --abbrev-ref --symbolic-full-name @{u})" != "origin/main" ]; then
+    if [ "$(git rev-parse --abbrev-ref --symbolic-full-name @{u})" != "$matching_remote/main" ]; then
         echo "Error: Local main branch does not match the remote main branch. Please ensure they are synchronized."
         return 1
     fi
