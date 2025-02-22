@@ -24,7 +24,8 @@ RUN export POETRY_VERSION="2.1.1" && \
 ### 3) Create app directory, copy project files in
 WORKDIR /app
 COPY . /app
-RUN mkdir -p /app/models.d /app/agent_tools /app/scripts /app/data /app/logs /app/tmp
+RUN mkdir -p /app/models.d /app/agent_tools /app/scripts /app/data /app/logs /app/tmp /app/env
+RUN chmod 777 /app/env /app/models.d /app/agent_tools /app/scripts /app/data /app/logs /app/tmp /app
 
 ### 4) Copy entrypoint script and make it executable
 COPY ./web/containers/chat-ui-agents/entrypoint.sh /usr/local/bin/entrypoint.sh

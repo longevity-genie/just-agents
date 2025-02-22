@@ -174,9 +174,6 @@ check_git_status() {
     echo "Normalized REPO_URL: $normalized_repo_url"  # Debug statement
 
     # Find the remote that matches the normalized REPO_URL
-    echo "Checking all remotes:" >&2
-    git remote -v >&2
-
     matching_remote=""
     while read -r name url rest; do
         echo "Processing remote: $name with URL: $url" >&2
@@ -196,8 +193,6 @@ check_git_status() {
         return 1
     fi
 
- 
-
     # Check for uncommitted changes
     if ! git diff-index --quiet HEAD --; then
         echo "Error: Uncommitted changes found. Please commit or stash them before publishing."
@@ -211,13 +206,7 @@ check_git_status() {
     remote_commit=$(git rev-parse "$matching_remote/main")
 
     if [ "$local_commit" != "$remote_commit" ]; then
-        echo "Error: Local main branch is not up-to-date with remote. Please pull the latest changes."
-        return 1
-    fi
-
-    # Check if local and remote branches point to the same commit
-    if [ "$(git rev-parse --abbrev-ref --symbolic-full-name @{u})" != "$matching_remote/main" ]; then
-        echo "Error: Local main branch does not match the remote main branch. Please ensure they are synchronized."
+        echo "Error: Local main branch is not up-to-date with $matching_remote/main. Please pull the latest changes."
         return 1
     fi
 
