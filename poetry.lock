@@ -1064,7 +1064,7 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "just-agents-coding"
-version = "0.5.9-post.1+89ea567"
+version = "0.5.9-post.2+a751539"
 description = "Just Agents - Coding Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1074,7 +1074,7 @@ develop = true
 
 [package.dependencies]
 just-agents-core = "*"
-llm-sandbox = ">=0.2.2"
+llm-sandbox = {version = ">=0.2.3", extras = ["podman"]}
 
 [package.source]
 type = "directory"
@@ -1082,7 +1082,7 @@ url = "coding"
 
 [[package]]
 name = "just-agents-core"
-version = "0.5.9-post.1+89ea567"
+version = "0.5.9-post.2+a751539"
 description = "Just Agents - Base Package"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1105,7 +1105,7 @@ url = "core"
 
 [[package]]
 name = "just-agents-examples"
-version = "0.5.9-post.1+89ea567"
+version = "0.5.9-post.2+a751539"
 description = "Just Agents - Examples code"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1126,7 +1126,7 @@ url = "examples"
 
 [[package]]
 name = "just-agents-router"
-version = "0.5.9-post.1+89ea567"
+version = "0.5.9-post.2+a751539"
 description = "Just Agents - Router Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1143,7 +1143,7 @@ url = "router"
 
 [[package]]
 name = "just-agents-tools"
-version = "0.5.9-post.1+89ea567"
+version = "0.5.9-post.2+a751539"
 description = "Just Agents - Tools Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1161,7 +1161,7 @@ url = "tools"
 
 [[package]]
 name = "just-agents-web"
-version = "0.5.9-post.1+89ea567"
+version = "0.5.9-post.2+a751539"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1237,15 +1237,18 @@ proxy = ["PyJWT (>=2.8.0,<3.0.0)", "apscheduler (>=3.10.4,<4.0.0)", "backoff", "
 
 [[package]]
 name = "llm-sandbox"
-version = "0.2.2"
+version = "0.2.3"
 description = "Lightweight and portable LLM sandbox runtime (code interpreter) Python library"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "llm_sandbox-0.2.2-py3-none-any.whl", hash = "sha256:4bc0f3333f6dbae0573c824ab2711639ff3ab742c02c92d3d305dd101161cc19"},
-    {file = "llm_sandbox-0.2.2.tar.gz", hash = "sha256:0860b10c50e87f790361e09a64715c902462ca251ccc88fd1804412ef15d2d24"},
+    {file = "llm_sandbox-0.2.3-py3-none-any.whl", hash = "sha256:98d65e2c28e6feebc2a0d29848f02cca7ab7e716aac33278d0ed19e3cd207566"},
+    {file = "llm_sandbox-0.2.3.tar.gz", hash = "sha256:d5a7c7d5abe6d9bdfd1e0ca35a163b066bb6526f058ec0c9b8a9ad80e2caecf1"},
 ]
+
+[package.dependencies]
+podman = {version = ">=5.2.0,<6.0.0", optional = true, markers = "extra == \"podman\""}
 
 [package.extras]
 docker = ["docker (>=7.1.0,<8.0.0)"]
@@ -1654,6 +1657,28 @@ files = [
 [package.extras]
 dev = ["pre-commit", "tox"]
 testing = ["pytest", "pytest-benchmark"]
+
+[[package]]
+name = "podman"
+version = "5.4.0.1"
+description = "Bindings for Podman RESTful API"
+optional = false
+python-versions = ">=3.9"
+groups = ["main", "dev"]
+files = [
+    {file = "podman-5.4.0.1-py3-none-any.whl", hash = "sha256:abd32e49a66bf18a680d9a0ac3989a3f4a3cc7293bc2a5060653276d8ee712f4"},
+    {file = "podman-5.4.0.1.tar.gz", hash = "sha256:ee537aaa44ba530fad7cd939d886a7632f9f7018064e7831e8cb614c54cb1789"},
+]
+
+[package.dependencies]
+requests = ">=2.24"
+tomli = {version = ">=1.2.3", markers = "python_version < \"3.11\""}
+urllib3 = "*"
+
+[package.extras]
+docs = ["sphinx"]
+progress-bar = ["rich (>=12.5.1)"]
+test = ["coverage", "fixtures", "pytest", "requests-mock", "tox"]
 
 [[package]]
 name = "propcache"

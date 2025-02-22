@@ -4,7 +4,7 @@ import time
 import sys
 from uuid import uuid4
 
-from typing import Union, Optional, Any, AsyncGenerator, Generator
+from typing import Optional, Any, AsyncGenerator, Generator
 from just_agents.data_classes import Role
 from just_agents.protocols.litellm_protocol import LiteLLMAdapter
 from just_agents.base_agent import BaseAgent
@@ -14,7 +14,7 @@ from just_agents.web.models import (
     ChatCompletionResponse, ResponseMessage
 )
 from fastapi.responses import StreamingResponse
-from eliot import log_message, start_task, log_call
+from eliot import start_task
 
 def messages_content_to_text(request: ChatCompletionRequest) -> ChatCompletionRequest:
     modified_request = request.model_copy(deep=True)

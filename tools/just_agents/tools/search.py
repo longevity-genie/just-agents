@@ -9,6 +9,7 @@ import requests
 from semanticscholar import SemanticScholar
 from semanticscholar.PaginatedResults import PaginatedResults
 
+
 def get_semantic_paper(query: str):
     """
     Search for academia papers by keyword.
@@ -74,59 +75,24 @@ def get_semantic_paper(query: str):
     return results
 
 
-def just_semantic_search(query: str, index: str):
-    """
-    Search for academic papers using semantic search.
 
-    :param str query: The search query.
-    :param str index: The index to search in.    
+def list_search_indexes(non_empty: bool = True) -> List[str]:
     """
-    # SEMANTIC_RATIO: The ratio of semantic search to use (default: 0.5)
-    try:
-        semantic_ratio = float(os.getenv('SEMANTIC_RATIO', '0.5'))
-    except (ValueError, TypeError):
-        semantic_ratio = 0.5
+    Get list of available search indexes.
     
-    # EMBEDDING_MODEL: The embedding model to use (default: "jinaai/jina-embeddings-v3")
-    embedding_model = os.getenv('EMBEDDING_MODEL') or 'jinaai/jina-embeddings-v3'
-    
+    :param bool non_empty: If True, only return non-empty indexes
+    :return: List of index names
+    """
     # SEARCH_DB_URL: The database URL to query (default: "http://localhost:9200")
-    db = os.getenv('SEARCH_DB_URL') or 'http://localhost:9200'
+    db = os.getenv('SEARCH_DB_URL') or 'http://localhost:8090'
     
-    # SEARCH_LIMIT: The maximum number of results to return (default: 10)
-    try:
-        limit = int(os.getenv('SEARCH_LIMIT', '10'))
-    except (ValueError, TypeError):
-        limit = 10
-    
-    # SEARCH_OFFSET: The offset to start the search from (default: 0)
-    try:
-        offset = int(os.getenv('SEARCH_OFFSET', '0'))
-    except (ValueError, TypeError):
-        offset = 0
-    
-    # SEARCH_RERANKER: The reranker to use (default: None)
-    reranker = os.getenv('SEARCH_RERANKER') or None
-
-    # Prepare the parameters
-    params = {
-        "query": query,
-        "index": index,
-        "semantic_ratio": semantic_ratio,
-        "limit": limit,
-        "offset": offset,
-        "embedding_model": embedding_model
-    }
-    
-    if reranker:
-        params["reranker"] = reranker
-
-    # Make the GET request
-    response = requests.get(f"{db}/search", params=params)
-    response.raise_for_status()  # Raise exception for bad status codes
+    response = requests.post(
+        f"{db}/list_indexes",
+        json={"non_empty": non_empty}
+    )
+    response.raise_for_status()
     
     return response.json()
-
 
 
 def hybrid_opensearch(text: str,
