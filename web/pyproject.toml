@@ -39,6 +39,16 @@ uvicorn = ">=0.34.0"
 [tool.poetry.group.dev.dependencies]
 just-agents-core = { path = "../core", develop = true }
 
+[[tool.poetry.source]]
+name = "torch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+[[tool.poetry.source]]
+name = "torch-gpu"
+url = "https://download.pytorch.org/whl/cu124"
+priority = "explicit"
+
 [tool.poetry.scripts]
 run-agent = "just_agents.web.run_agent:app"
 deploy-agent = "just_agents.web.deploy_agent:app"

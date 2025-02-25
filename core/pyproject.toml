@@ -29,7 +29,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
-litellm = ">=1.61.13"
+litellm = ">=1.61.16"
 pydantic = ">=2.0.0,<3.0.0"
 Deprecated = ">=1.2.15"
 requests = "*"
@@ -41,6 +41,15 @@ rich = ">=13.9.4"
 pytest = ">=8.3.4"
 poetry-dynamic-versioning = ">=1.0.0,<2.0.0"
 
+[[tool.poetry.source]]
+name = "torch-cpu"
+url = "https://download.pytorch.org/whl/cpu"
+priority = "explicit"
+
+[[tool.poetry.source]]
+name = "torch-gpu"
+url = "https://download.pytorch.org/whl/cu124"
+priority = "explicit"
 
 [tool.poetry.urls]
 Homepage = "https://github.com/longevity-genie/just-agents"
