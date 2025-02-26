@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-web"
-version = "0.6.0"  # This will be replaced by poetry-dynamic-versioning
+version = "0.6.1"  # This will be replaced by poetry-dynamic-versioning
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 
 authors = [

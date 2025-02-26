@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-examples"
-version = "0.6.0"
+version = "0.6.1"
 description = "Just Agents - Examples code"
 authors = ["Alex Karmazin <karmazinalex@gmail.com>"]
 maintainers = ["Anton Kulaga <antonkulaga@gmail.com>"]
