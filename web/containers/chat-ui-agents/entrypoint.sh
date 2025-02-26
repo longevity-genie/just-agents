@@ -117,6 +117,7 @@ if [ -f "$INIT_SCRIPT" ]; then
         echo "20 lines of $INIT_SCRIPT:"
         echo "--------------------------------"
         cat "$INIT_SCRIPT" | head -n 20
+        echo
         echo "--------------------------------"
 
         # Ensure the script is executable

@@ -67,6 +67,11 @@ class WebAgentConfig(BaseModel):
         description="Path to environment keys file",
         examples=["env/.env.secrets", "config/.env.keys"]
     )
+    app_dir: str = Field(
+        default_factory=lambda: os.getenv('APP_DIR', "/app"),
+        description="Path to temporary directory",
+        examples=["/app", "/opt/app"]
+    )
     tmp_dir: str = Field(
         default_factory=lambda: os.getenv('TMP_DIR', "tmp"),
         description="Path to temporary directory",
@@ -76,6 +81,11 @@ class WebAgentConfig(BaseModel):
         default_factory=lambda: os.getenv('LOG_DIR', "logs"),
         description="Path to log directory",
         examples=["logs", "/app/logs"]
+    )
+    data_dir: str = Field(
+        default_factory=lambda: os.getenv('DATA_DIR', "data"),
+        description="Path to log directory",
+        examples=["logs", "/app/data"]
     )
 
 
