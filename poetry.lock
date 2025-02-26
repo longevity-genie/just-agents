@@ -1064,7 +1064,7 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "just-agents-coding"
-version = "0.6.0"
+version = "0.5.9-post.9+15a9088"
 description = "Just Agents - Coding Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1082,7 +1082,7 @@ url = "coding"
 
 [[package]]
 name = "just-agents-core"
-version = "0.6.0"
+version = "0.5.9-post.9+15a9088"
 description = "Just Agents - Base Package"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1105,7 +1105,7 @@ url = "core"
 
 [[package]]
 name = "just-agents-examples"
-version = "0.6.0"
+version = "0.5.9-post.9+15a9088"
 description = "Just Agents - Examples code"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1126,7 +1126,7 @@ url = "examples"
 
 [[package]]
 name = "just-agents-router"
-version = "0.6.0"
+version = "0.5.9-post.9+15a9088"
 description = "Just Agents - Router Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1143,7 +1143,7 @@ url = "router"
 
 [[package]]
 name = "just-agents-tools"
-version = "0.6.0"
+version = "0.5.9-post.9+15a9088"
 description = "Just Agents - Tools Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1161,7 +1161,7 @@ url = "tools"
 
 [[package]]
 name = "just-agents-web"
-version = "0.6.0"
+version = "0.5.9-post.9+15a9088"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1208,14 +1208,14 @@ openai = ["openai (>=0.27.8)"]
 
 [[package]]
 name = "litellm"
-version = "1.61.16"
+version = "1.61.17"
 description = "Library to easily interface with LLM API providers"
 optional = false
 python-versions = "!=2.7.*,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,!=3.7.*,>=3.8"
 groups = ["main", "dev"]
 files = [
-    {file = "litellm-1.61.16-py3-none-any.whl", hash = "sha256:d241436ac0edf64ec57fb5686f8d84a25998a7e52213d9063adf87df8432701f"},
-    {file = "litellm-1.61.16.tar.gz", hash = "sha256:02df5865f98ea9734a4d27ac7c33aad9a45c4015403d5c0797d3292ade3c5cb5"},
+    {file = "litellm-1.61.17-py3-none-any.whl", hash = "sha256:ff9137c008cdb421db32defb1fbd1ed546a95167de6d276c61b664582ed4ff60"},
+    {file = "litellm-1.61.17.tar.gz", hash = "sha256:eaab989c090ccc094b41c3fdf27d1df7f6fb25e091ab0ce48e0f3079f1e51ff5"},
 ]
 
 [package.dependencies]

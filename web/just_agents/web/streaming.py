@@ -74,9 +74,9 @@ async def async_wrap(response: Generator) -> AsyncGenerator[Any, None]:
     yield f"\n\n"
 
 
-def response_from_stream(stream_generator: Generator, stop: Optional[str]) -> str:
+def response_from_stream(stream_generator: Generator, stop: Optional[str] = None) -> str:
     return (
-        LiteLLMAdapter.content_from_stream(stream_generator, stop or LiteLLMAdapter.stop)
+        LiteLLMAdapter.content_from_stream(stream_generator, (stop or LiteLLMAdapter.stop))
     )
 
 # generator function to mimic yield ChatCompletionChunk chunks

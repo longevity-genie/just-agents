@@ -4,11 +4,13 @@ on:
   push:
     branches: [ "main", "development" ]
     paths:
-      - 'web/containers/chat-ui-agents/**'
+      - 'core/**'
+      - 'web/**'
   pull_request:
     branches: [ "main", "development" ]
     paths:
-      - 'web/containers/chat-ui-agents/**'
+      - 'core/**'
+      - 'web/**'
   workflow_dispatch:
 
 env:

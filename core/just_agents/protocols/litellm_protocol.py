@@ -202,7 +202,8 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         return chunk
 
     @staticmethod
-    def content_from_stream(self, stream_generator: Generator, stop: str) -> str:
+    def content_from_stream(stream_generator: Generator, stop: str = None) -> str:
+        stop = stop or IProtocolAdapter.stop
         response_content = ""
         for chunk in stream_generator:
             try:

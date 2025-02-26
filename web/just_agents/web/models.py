@@ -12,7 +12,7 @@ class ChatCompletionRequest(ModelOptions):
     ]])
     n: Optional[int] = Field(1, ge=1)
     stream: Optional[bool] = Field(default=False, examples=[True])
-    stop: Optional[Union[str, List[str]]] = None
+    stop: Optional[Union[str, List[str]]] = Field(default=None, examples=[None, "[STOP]"])
     max_tokens: Optional[int] = Field(None, ge=1)
     logit_bias: Optional[dict] = Field(None, examples=[None])
     user: Optional[str] = Field(None, examples=[None])

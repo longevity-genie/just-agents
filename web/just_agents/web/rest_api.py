@@ -296,7 +296,7 @@ class AgentRestAPI(FastAPI):
                     )
                 else:
                     # Collect all chunks into final response
-                    response_content = response_from_stream(stream_generator)
+                    response_content = response_from_stream(stream_generator, request.stop)
                     return get_completion_response(
                         model=request.model,
                         text=response_content,
