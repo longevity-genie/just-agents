@@ -181,7 +181,6 @@ GEMINI_2_FLASH: LLMOptions = {
     "temperature": 0.0
 }
 
-
 GROK_3: LLMOptions = {
     "model": "xai/grok-3-latest",
     "temperature": 0.0

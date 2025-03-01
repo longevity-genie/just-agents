@@ -2,10 +2,11 @@ import pprint
 from time import sleep, time
 from dotenv import load_dotenv
 
+from just_agents import llm_options
 from just_agents.base_agent import ChatAgent
 from just_agents.data_classes import ImageContent, Message, Role, TextContent
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
-from just_agents.llm_options import LLAMA3_3, OPENAI_GPT4oMINI, GEMINI_2_FLASH
+from just_agents.llm_options import LLAMA3_3, OPENAI_GPT4oMINI, GEMINI_2_FLASH, GEMINI_2_FLASH_EXP, OPENAI_GPT4o
 from pprint import pprint
 
 from just_agents.tools.db import sqlite_query
@@ -104,7 +105,7 @@ def test_query_structural():
                       "question": "",
                       "final_answer": "your complete answer to the user's question"
                     }""",
-                    llm_options=GEMINI_2_FLASH
+                    llm_options=GEMINI_2_FLASH_EXP
                     )
     
     # Ask the agent a question that doesn't require SQL or tool use
@@ -146,20 +147,23 @@ class AgentResponse(BaseModel):
 
 def test_vision():
     agent = ChatAgent(role="helpful agent that can see",
-                    goal="help users by providing a description of the image",
-                    task="analyze the image and provide a description of the image",
-                    tools=[],
-                    llm_options=OPENAI_GPT4oMINI
-                    )
-    result = agent.query(Message(
+                goal="help users by providing a description of the image",
+                task="analyze the image and provide a description of the image",
+                llm_options=OPENAI_GPT4o
+                )
+    message = Message(
         role=Role.user,
         content=[
         TextContent(text="What is in this image?"),
-        ImageContent(image_url="https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg")
-        ]))
-    #print('vision tested')
-    # TODO: add additional checks
-    print(result)
+        ImageContent(image_url="https://upload.wikimedia.org/wikipedia/commons/4/4d/Cat_November_2010-1a.jpg", use_nested_format=True)
+        ]
+    )
+    pprint(message)
+    result = agent.query(message)
+    #https://arxiv.org/pdf/2410.05780
+    assert "cat" in result
+
+
 
 
 @pytest.mark.skip(reason="needs to be rewritten as it exceeds the context window")

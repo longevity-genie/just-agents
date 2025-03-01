@@ -24,15 +24,7 @@ RUN if [ ! -z "$UID" ] && [ ! -z "$GID" ]; then \
 
 
 ### 3) Install Poetry (still as root)
-# Check if conda Python exists and set Python path accordingly
-RUN if [ -f "/opt/conda/bin/python" ]; then \
-    echo "Using conda Python" && \
-    export PATH="/opt/conda/bin:${PATH}" && \
-    curl -sSL https://install.python-poetry.org | /opt/conda/bin/python3 - ; \
-    else \
-    echo "Using system Python" && \
-    curl -sSL https://install.python-poetry.org | python3 - ; \
-    fi
+RUN curl -sSL https://install.python-poetry.org | python3 -
 
 ### 4) Create app directory, copy project files in, fix ownership
 WORKDIR /app
@@ -49,19 +41,11 @@ RUN chown -R appuser:appgroup /app
 
 ### 6) Install your main Python dependencies using Poetry (system-wide)
 #    We disable virtualenv creation so Poetry installs into system site-packages.
-RUN if [ -f "/opt/conda/bin/python" ]; then \
-    # Conda-specific configuration
-    export PATH="/opt/conda/bin:${PATH}" && \
-    export PYTHON=$(which python) && \
-    export POETRY_PYTHON=$(which python); \
-else \
-    # Non-conda configuration
-    export POETRY_HOME="/opt/poetry"; \
-fi && \
-git config --global --add safe.directory /app && \
-git config --global --add safe.directory /app/core && \
-/root/.local/bin/poetry config virtualenvs.create false && \
-/root/.local/bin/poetry install --without dev
+RUN export POETRY_HOME="/opt/poetry" && \
+    git config --global --add safe.directory /app && \
+    git config --global --add safe.directory /app/core && \
+    /root/.local/bin/poetry config virtualenvs.create false && \
+    /root/.local/bin/poetry install --without dev
 
 # Add verification step
 RUN python -c "import torch; print(f'PyTorch version: {torch.__version__}')" || echo "PyTorch not found"
@@ -101,12 +85,6 @@ USER appuser
 
 # Ensure that ~/.local/bin is in PATH, so 'pip --user' installs are runnable
 ENV PATH="/home/appuser/.local/bin:${PATH}"
-
-# Add conda to PATH if it exists
-RUN if [ -f "/opt/conda/bin/python" ]; then \
-    echo "export PATH=/opt/conda/bin:\$PATH" >> /home/appuser/.bashrc ; \
-    fi
-
 
 #ENTRYPOINT ["/usr/local/bin/entrypoint.sh"]
 # we will copy but not activate entrypoint script in the container as in docker-compose we will:

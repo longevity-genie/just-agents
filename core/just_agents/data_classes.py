@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List, Union, Optional
-from pydantic import HttpUrl, Field, BaseModel, ConfigDict, AliasPath, field_validator
+from pydantic import HttpUrl, Field, BaseModel, ConfigDict, AliasPath, field_validator, field_serializer
 from pydantic_core import from_json
 
 """ Common OpenAI-compatible data structures """
@@ -56,6 +56,10 @@ class TextContent(BaseModel):
 class ImageContent(BaseModel):
     type: str = Field("image_url", examples=["image_url"])
     image_url: HttpUrl = Field(..., examples=["https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg"])
+    
+    @field_serializer('image_url')
+    def serialize_image_url(self, image_url: HttpUrl) -> dict:
+        return {"url": str(image_url)}
 
 #
 class Message(BaseModel):
