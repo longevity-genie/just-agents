@@ -1,9 +1,11 @@
 import pprint
 from time import sleep, time
 from dotenv import load_dotenv
+
 from just_agents.base_agent import ChatAgent
+from just_agents.data_classes import ImageContent, Message, Role, TextContent
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
-from just_agents.llm_options import LLAMA3_3, OPENAI_GPT4oMINI, GEMINI_2_FLASH_EXP
+from just_agents.llm_options import LLAMA3_3, OPENAI_GPT4oMINI, GEMINI_2_FLASH
 from pprint import pprint
 
 from just_agents.tools.db import sqlite_query
@@ -12,7 +14,7 @@ import requests
 import os
 from pathlib import Path
 from pycomfort.logging import to_nice_stdout
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from typing import Optional
 
 
@@ -85,10 +87,41 @@ def test_quering_gemini(open_genes_db):
                     goal=f"help users by using SQL syntax to form comands to work with the {open_genes_db} sqlite database",
                     task="formulate appropriate comands to operate in the given database and always include the table names in your response.",
                     tools=[sqlite_query],
-                    llm_options=GEMINI_2_FLASH_EXP
+                    llm_options=GEMINI_2_FLASH
                     )
     _test_database_tables(agent, open_genes_db)
 
+
+def test_query_structural():
+    agent = ChatAgent(role="helpful agent that provides structured information",
+                    goal="help users by providing structured information in JSON format",
+                    task="analyze user questions and provide comprehensive responses in a structured format",
+                    format="""all your answers should be represented as a JSON object with the following structure:
+                    {
+                      "user_question": "the original question asked by the user",
+                      "answer": "your analysis of the question",
+                      "delegate_to": "",
+                      "question": "",
+                      "final_answer": "your complete answer to the user's question"
+                    }""",
+                    llm_options=GEMINI_2_FLASH
+                    )
+    
+    # Ask the agent a question that doesn't require SQL or tool use
+    response = agent.query_structural("What are the main factors that contribute to aging?", parser=AgentResponse, enforce_validation=True)
+    
+    print("RESPONSE 1 =======================================")
+    pprint(response)
+
+    # Validate response structure
+    assert isinstance(response, AgentResponse), "Response should be an AgentResponse instance"
+    assert response.user_question == "What are the main factors that contribute to aging?"
+    # Check that the response follows the expected structure
+    assert hasattr(response, "user_question")
+    assert hasattr(response, "answer")
+    assert hasattr(response, "delegate_to")
+    assert hasattr(response, "question")
+    #assert hasattr(response, "final_answer")
 
 
 class AgentResponse(BaseModel):
@@ -98,8 +131,8 @@ class AgentResponse(BaseModel):
     question: Optional[str] = Field(default="", description="Question to delegate to another agent, empty if no delegation")
     final_answer: Optional[str] = Field(default="", description="Final answer to the user's question, empty if pending delegation")
 
-    class Config:
-        json_schema_extra = {
+    model_config = ConfigDict(
+        json_schema_extra={
             "example": {
                 "user_question": "What genes extend lifespan?",
                 "answer": "This requires database access to analyze lifespan data",
@@ -108,6 +141,26 @@ class AgentResponse(BaseModel):
                 "final_answer": ""
             }
         }
+    )
+
+
+def test_vision():
+    agent = ChatAgent(role="helpful agent that can see",
+                    goal="help users by providing a description of the image",
+                    task="analyze the image and provide a description of the image",
+                    tools=[],
+                    llm_options=OPENAI_GPT4oMINI
+                    )
+    result = agent.query(Message(
+        role=Role.user,
+        content=[
+        TextContent(text="What is in this image?"),
+        ImageContent(image_url="https://upload.wikimedia.org/wikipedia/commons/thumb/d/dd/Gfp-wisconsin-madison-the-nature-boardwalk.jpg/2560px-Gfp-wisconsin-madison-the-nature-boardwalk.jpg")
+        ]))
+    #print('vision tested')
+    # TODO: add additional checks
+    print(result)
+
 
 @pytest.mark.skip(reason="needs to be rewritten as it exceeds the context window")
 def test_delegation():
@@ -116,8 +169,9 @@ def test_delegation():
                     goal=f"help users by using SQL syntax to form comands to work with the {db_path} sqlite database",
                     task="formulate appropriate comands to operate in the given database.",
                     tools=[sqlite_query],
-                    llm_options=GEMINI_2_FLASH_EXP
+                    llm_options=GEMINI_2_FLASH
                     )
+    agent_db.query("What is in this image?")
 
     ponder_agent = ChatAgent(
         role="helpful agent which will only distribute the tasks to it's calling list and make minimal suggestions",
@@ -137,7 +191,8 @@ def test_delegation():
     for i in range(2):
         result = ponder_agent.query_structural(
             "Interventions on which genes extended mice lifespan most of all? Search all the relevant tables in the open-genes sqlite and only for mouse", 
-            parser=AgentResponse
+            parser=AgentResponse, 
+            enforce_validation=False
         )
         if result.delegate_to == "agent_db":
             result = agent_db.query(result.question)

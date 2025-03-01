@@ -58,8 +58,14 @@ class LLMOptionsExt(ModelOptions):
     tool_choice : Optional[str] = None
 
 
+
+ANTHROPIC_CLAUDE_3_7_SONNET: LLMOptions = {
+    "model": "claude-3-7-sonnet",
+    "temperature": 0.0
+}
+
 ANTHROPIC_CLAUDE_3_5_SONNET: LLMOptions = {
-    "model": "claude-3-5-sonnet-20240620",
+    "model": "claude-3-5-sonnet",
     "temperature": 0.0
 }
 
@@ -87,6 +93,11 @@ CERABRAS_LLAMA3_3_70B: LLMOptions = {
     "temperature": 0.0
 }
 
+CERABRAS_LLAMA3_3_70B_INSTRUCT: LLMOptions = {
+    "model": "cerebras/deepseek-r1-distill-llama-70b",
+    "temperature": 0.0
+}
+
 GROQ_DEEPSEEK_R1_DISTILL: LLMOptions = {
     "model": "groq/deepseek-r1-distill-llama-70b",
     "api_base": "https://api.groq.com/openai/v1",
@@ -103,6 +114,12 @@ OPENAI_GPT4o: LLMOptions = {
     "model": "gpt-4o",
     "temperature": 0.0
 }
+
+OPENAI_GPT4_5_PREVIEW: LLMOptions = {
+    "model": "gpt-4-5-preview",
+    "temperature": 0.0
+}
+
 
 OPENAI_GPT4oMINI: LLMOptions = {
     "model": "gpt-4o-mini",

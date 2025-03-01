@@ -32,8 +32,8 @@ classifiers = [
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
 just-agents-core = "*"
-pycomfort = ">=0.0.17"
-fastapi = ">=0.115.6"
+pycomfort = ">=0.0.18"
+fastapi = ">=0.115.10"
 uvicorn = ">=0.34.0"
 
 [tool.poetry.group.dev.dependencies]

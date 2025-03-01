@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 import ast
 import json
+import re
 from typing import Type, Union, Generator, AsyncGenerator, Any, TypeVar, Generic, List, Optional, Callable, Coroutine, \
     Protocol, ParamSpec, ParamSpecArgs, ParamSpecKwargs
 from pydantic import BaseModel, ConfigDict
@@ -34,23 +35,59 @@ StreamingResponseFunction = Callable[...,AbstractStreamingGeneratorResponseType]
 class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, AbstractStreamingChunkType]):
 
     @abstractmethod
-    def query(self, query_input: AbstractQueryInputType, **kwargs) -> Optional[AbstractQueryResponseType]:
+    def query(self, query_input: AbstractQueryInputType, response_format: Optional[str] = None, **kwargs) -> Optional[AbstractQueryResponseType]:
         raise NotImplementedError("You need to implement query() abstract method first!")
+    
+
+    def _clean_fallback_result(self, raw: str) -> str:
+        """
+        Remove any markdown code fences from the fallback JSON response.
+        This regex checks if the entire string is enclosed within triple-backticks with an
+        optional "json" language tag, and if so, returns just the content.
+        """
+        raw = raw.strip()
+        pattern = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)
+        match = pattern.match(raw)
+        if match:
+            return match.group(1)
+        return raw
+
     
     def query_structural(
         self, 
         query_input: AbstractQueryInputType, 
         parser: Type[BaseModel] = BaseModel,
+        response_format: Optional[str] = None,
+        enforce_validation: bool = False,
         **kwargs
     ) -> Union[dict, BaseModel]:
         """
         Query the agent and parse the response according to the provided parser.
         Attempts multiple parsing strategies in the following order:
         1. Direct dict usage if already a dict
-        2. Standard json parsing
-        3. AST literal eval as final fallback
+        2. Clean markdown code fences if present
+        3. Standard json parsing
+        4. AST literal eval as final fallback
+        
+        If no response_format is provided and parser is a Pydantic model,
+        automatically generates and sends a JSON schema to guide the response format.
         """
-        raw_response = self.query(query_input, **kwargs)
+        
+        # Check if we should auto-generate response format from parser
+        if response_format is None and parser is not dict and issubclass(parser, BaseModel) and enforce_validation:
+            schema = self._get_response_schema(parser)
+            
+            # Check if this is a Gemini model to add enforce_validation
+            #provider = getattr(self.llm_options, "provider", None) if hasattr(self, "llm_options") else None
+            #model_name = getattr(self.llm_options, "model", "") if hasattr(self, "llm_options") else ""
+            
+            response_format_obj = {"type": "json_object", "response_schema": schema}
+            
+            response_format_obj["enforce_validation"] = enforce_validation
+            
+            response_format = response_format_obj
+        
+        raw_response = self.query(query_input, response_format=response_format, **kwargs)
 
         # If already a dict, no parsing needed
         if isinstance(raw_response, dict):
@@ -59,36 +96,96 @@ class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, Abs
         if not isinstance(raw_response, str):
             raw_response = str(raw_response)
 
-        # Check for and fix common double-escaping issues
-        if '\\\\' in raw_response:
-            raw_response = raw_response.replace('\\\\', '\\')
-
         parsing_errors = []
         
-        # Try standard json first
+        # Try standard json first on the raw response
         try:
             response_dict = json.loads(raw_response)
             return response_dict if parser == dict else parser.model_validate(response_dict)
         except json.JSONDecodeError as e:
             parsing_errors.append(f"Standard JSON parsing failed: {str(e)}")
+            
+            # Only clean markdown code blocks if initial parsing failed
+            cleaned_response = self._clean_fallback_result(raw_response)
 
-        # Final fallback: AST literal eval
-        try:
-            response_dict = ast.literal_eval(raw_response)
-            if isinstance(response_dict, dict):
+            # Check for and fix common double-escaping issues
+            if '\\\\' in cleaned_response:
+                cleaned_response = cleaned_response.replace('\\\\', '\\')
+                
+            # Try parsing the cleaned response
+            try:
+                response_dict = json.loads(cleaned_response)
                 return response_dict if parser == dict else parser.model_validate(response_dict)
-            parsing_errors.append("AST parsing succeeded but result was not a dict")
-        except (ValueError, SyntaxError) as e:
-            parsing_errors.append(f"AST literal_eval parsing failed: {str(e)}")
+            except json.JSONDecodeError as e:
+                parsing_errors.append(f"Cleaned JSON parsing failed: {str(e)}")
+
+            # Final fallback: AST literal eval
+            try:
+                response_dict = ast.literal_eval(cleaned_response)
+                if isinstance(response_dict, dict):
+                    return response_dict if parser == dict else parser.model_validate(response_dict)
+                parsing_errors.append("AST parsing succeeded but result was not a dict")
+            except (ValueError, SyntaxError) as e:
+                parsing_errors.append(f"AST literal_eval parsing failed: {str(e)}")
 
         # If all parsing attempts failed, raise detailed error
         raise ValueError(
             f"Failed to parse response using multiple methods:\n"
             f"{chr(10).join(parsing_errors)}\n"
-            f"Original response:\n{raw_response}"
+            f"Original response:\n{raw_response}\n"
+            f"Cleaned response:\n{cleaned_response}"
         )
 
-    
+    def _get_response_schema(self, parser: Type[BaseModel]) -> dict:
+        """
+        Extract JSON schema from a Pydantic model for use with LLM response formatting.
+        This is an internal helper method used by query_structural.
+        
+        Args:
+            parser: A Pydantic model class to extract schema from
+            
+        Returns:
+            A dictionary representing the JSON schema
+        """
+        # Get the JSON schema from the Pydantic model
+        schema = parser.model_json_schema()
+        
+        def clean_schema_recursively(schema_obj):
+            """Recursively remove Pydantic-specific fields that cause issues with LLM APIs"""
+            if isinstance(schema_obj, dict):
+                # Remove problematic fields at current level
+                for field in ["default", "title", "$defs"]:
+                    if field in schema_obj:
+                        del schema_obj[field]
+                
+                # Handle nested properties
+                if "properties" in schema_obj:
+                    for prop_name, prop_value in schema_obj["properties"].items():
+                        clean_schema_recursively(prop_value)
+                
+                # Handle items in arrays
+                if "items" in schema_obj:
+                    clean_schema_recursively(schema_obj["items"])
+                
+                # Handle additional properties
+                if "additionalProperties" in schema_obj and isinstance(schema_obj["additionalProperties"], dict):
+                    clean_schema_recursively(schema_obj["additionalProperties"])
+        
+        # Clean the schema recursively
+        clean_schema_recursively(schema)
+        
+        # Make sure required fields are specified for Gemini
+        # Gemini seems to need this reinforced
+        if "properties" in schema and not "required" in schema:
+            # Add all non-optional fields as required
+            schema["required"] = [
+                field_name for field_name, field in schema["properties"].items() 
+                if not field.get("nullable", False) and not "None" in str(field.get("type", ""))
+            ]
+        
+        return schema
+
+
     @abstractmethod
     def stream(self, query_input: AbstractQueryInputType) -> Optional[AbstractStreamingGeneratorResponseType]:
         raise NotImplementedError("You need to implement stream() abstract method first!")

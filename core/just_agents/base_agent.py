@@ -198,6 +198,7 @@ class BaseAgent(
             self,
             messages: SupportedMessages,
             stream: bool,
+            response_format: Optional[str] = None,
             **kwargs
     ) -> BaseModelResponse:
         
@@ -215,7 +216,7 @@ class BaseAgent(
             for _ in range(max_tries):
                 opt["api_key"] = self._key_getter()
                 try:
-                    return self._protocol.completion(messages=messages, stream=stream, **opt)
+                    return self._make_completion_call(messages, stream, response_format, **opt)
                 except Exception as e:
                     last_exception = e
                     if self.completion_remove_key_on_error:
@@ -223,14 +224,27 @@ class BaseAgent(
 
             if self.backup_options:
                 opt = self._prepare_options(self.backup_options)
-                return self._protocol.completion(messages=self.memory.messages, stream=stream, **opt)
+                return self._make_completion_call(messages, stream, response_format, **opt)
             if last_exception:
                 raise last_exception
             else:
                 raise Exception(
                     f"Run out of tries to execute completion. Check your keys! Keys {self._key_getter.len()} left.")
         else:
-            return self._protocol.completion(messages=self.memory.messages, stream=stream, **opt)
+            return self._make_completion_call(messages, stream, response_format, **opt)
+
+    def _make_completion_call(
+            self,
+            messages: SupportedMessages,
+            stream: bool,
+            response_format: Optional[str] = None,
+            **opt
+    ) -> BaseModelResponse:
+        """Helper method to make the actual completion call with proper parameters"""
+        if self.supports_response_format and response_format is not None:
+            return self._protocol.completion(messages=messages, stream=stream, response_format=response_format, **opt)
+        else:
+            return self._protocol.completion(messages=messages, stream=stream, **opt)
 
 
     def _process_function_calls(
@@ -292,6 +306,7 @@ class BaseAgent(
             enforce_agent_prompt: Optional[bool] = None,
             continue_conversation: Optional[bool] = None,
             remember_query: Optional[bool] = None,
+            response_format: Optional[str] = None,
             **kwargs
     ) -> str:
         """
@@ -305,7 +320,7 @@ class BaseAgent(
 
         for step in range(self.max_tool_calls):
             # individual llm call, unpacking the message, processing handlers
-            response = self._execute_completion(memory.messages ,stream=False, **kwargs)
+            response = self._execute_completion(memory.messages ,stream=False, response_format=response_format, **kwargs)
             msg: SupportedMessage = self._protocol.message_from_response(response) # type: ignore
             self.handle_on_response(msg, action='response', source='llm')
             self.add_to_memory(msg, memory)
@@ -338,6 +353,7 @@ class BaseAgent(
             remember_query: Optional[bool] = None,
             reconstruct_chunks : bool = False,
             restream_tools: Optional[bool] = None,
+            response_format: Optional[str] = None,
             **kwargs
     ) -> Generator[Union[BaseModelResponse, SupportedMessages],None,None]:
         memory = self._preprocess_input(
@@ -348,7 +364,7 @@ class BaseAgent(
 
         for step in range(self.max_tool_calls):
             self._partial_streaming_chunks.clear()
-            response = self._execute_completion(memory.messages, stream=True, **kwargs)
+            response = self._execute_completion(memory.messages, stream=True, response_format=response_format, **kwargs)
             yielded = False
             tool_calls = []
             for i, part in enumerate(response):
@@ -407,6 +423,11 @@ class BaseAgent(
         if not model:
             return []
         return self._protocol.get_supported_params(model)
+    
+    @property
+    def supports_vision(self) -> bool:
+        """Checks if the current model supports streaming"""
+        return "vision" in self.model_supported_parameters
     
     
     @property

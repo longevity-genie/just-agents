@@ -28,7 +28,7 @@ just-agents-examples = "*"
 
 aiofiles = "^24.1.0"
 langfuse = "^2.59.2"
-pycomfort = "^0.0.17"
+pycomfort = "^0.0.18"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.4"
