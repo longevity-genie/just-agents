@@ -7,7 +7,6 @@ from just_agents.interfaces.function_call import IFunctionCall
 BaseModelResponse = TypeVar('BaseModelResponse', bound=BaseModel)
 BaseModelStreamResponse = TypeVar('BaseModelStreamResponse', bound=BaseModel)
 AbstractMessage = TypeVar("AbstractMessage")
-ResponseTypes=Union[AbstractMessage,BaseModelResponse, BaseModelStreamResponse]
 
 ModelResponseCallback=Callable[...,BaseModelResponse]
 MessageUnpackCallback=Callable[[BaseModelResponse], AbstractMessage]
@@ -18,6 +17,7 @@ class IProtocolAdapter(ABC, Generic[BaseModelResponse, AbstractMessage, BaseMode
     Class that is required to wrap the model protocol
     """
     stop: ClassVar[str] = "[DONE]"
+    
     function_convention: ClassVar[Type[IFunctionCall[Any]]]
 
     @abstractmethod
@@ -29,11 +29,11 @@ class IProtocolAdapter(ABC, Generic[BaseModelResponse, AbstractMessage, BaseMode
         raise NotImplementedError("You need to implement async_completion first!")
 
     @abstractmethod
-    def finish_reason_from_response(self, response: ResponseTypes) -> Any:
+    def finish_reason_from_response(self, response: Union[AbstractMessage, BaseModelResponse, BaseModelStreamResponse]) -> Any:
         raise NotImplementedError("You need to implement finish_reason_from_response first!")
 
     @abstractmethod
-    def message_from_response(self, response: ResponseTypes) -> AbstractMessage:
+    def message_from_response(self, response: Union[AbstractMessage, BaseModelResponse, BaseModelStreamResponse]) -> AbstractMessage:
         raise NotImplementedError("You need to implement message_from_response first!")
 
     @abstractmethod

@@ -1,0 +1,27 @@
+[project]
+name = "chat-ui-agents"
+version = "0.1.0"
+description = "Docker image of just-agents nightly build"
+authors = [
+    {name = "winternewt",email = "isoutthere@gmail.com"}
+]
+license = {text = "Apache 2.0"}
+readme = "README.md"
+requires-python = ">=3.10,<3.15"
+package-mode = false
+
+[tool.poetry.dependencies]
+just-agents-core = { path = '/opt/just-agents/core'}
+just-agents-tools = { path = '/opt/just-agents/tools'}
+just-agents-coding = { path = '/opt/just-agents/coding'}
+just-agents-web = { path = '/opt/just-agents/web'}
+just-agents-router = { path = '/opt/just-agents/router'}
+just-agents-examples = { path = '/opt/just-agents/examples'}
+just-agents = { path = '/opt/just-agents'}
+
+[tool.poetry]
+package-mode = false
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"

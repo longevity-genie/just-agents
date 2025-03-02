@@ -216,7 +216,8 @@ class BaseAgent(
             for _ in range(max_tries):
                 opt["api_key"] = self._key_getter()
                 try:
-                    return self._make_completion_call(messages, stream, response_format, **opt)
+                    # Directly use the protocol's completion method
+                    return self._protocol.completion(messages=messages, stream=stream, response_format=response_format, **opt)
                 except Exception as e:
                     last_exception = e
                     if self.completion_remove_key_on_error:
@@ -224,28 +225,14 @@ class BaseAgent(
 
             if self.backup_options:
                 opt = self._prepare_options(self.backup_options)
-                return self._make_completion_call(messages, stream, response_format, **opt)
+                return self._protocol.completion(messages=messages, stream=stream, response_format=response_format, **opt)
             if last_exception:
                 raise last_exception
             else:
                 raise Exception(
                     f"Run out of tries to execute completion. Check your keys! Keys {self._key_getter.len()} left.")
         else:
-            return self._make_completion_call(messages, stream, response_format, **opt)
-
-    def _make_completion_call(
-            self,
-            messages: SupportedMessages,
-            stream: bool,
-            response_format: Optional[str] = None,
-            **opt
-    ) -> BaseModelResponse:
-        """Helper method to make the actual completion call with proper parameters"""
-        if self.supports_response_format and response_format is not None:
             return self._protocol.completion(messages=messages, stream=stream, response_format=response_format, **opt)
-        else:
-            return self._protocol.completion(messages=messages, stream=stream, **opt)
-
 
     def _process_function_calls(
             self,
@@ -426,7 +413,7 @@ class BaseAgent(
     
     @property
     def supports_vision(self) -> bool:
-        """Checks if the current model supports streaming"""
+        """Checks if the current model supports vision"""
         return "vision" in self.model_supported_parameters
     
     

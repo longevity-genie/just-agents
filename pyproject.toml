@@ -26,9 +26,8 @@ just-agents-web = "*"
 just-agents-router = "*"
 just-agents-examples = "*"
 
-aiofiles = "^24.1.0"
-langfuse = "^2.59.2"
-pycomfort = "^0.0.18"
+
+
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.4"
@@ -39,7 +38,7 @@ just-agents-coding = {path = "coding", develop = true}
 just-agents-web = {path = "web", develop = true}
 just-agents-router = {path = "router", develop = true}
 just-agents-examples = {path = "examples", develop = true}
-ipykernel = "^6.29.5"
+
 
 [[tool.poetry.source]]
 name = "torch-cpu"

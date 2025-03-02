@@ -3,8 +3,8 @@ script_dir=$(dirname "$(readlink -f "$0")")
 project_root=$(realpath "${script_dir}/../../../")
 
 # Run the project's build script first
-echo "Running project build script..."
-${project_root}/bin/build.sh
+#echo "Running project build script..."
+#${project_root}/bin/build.sh
 
 # Build the Docker container
 echo "Building Docker container..."

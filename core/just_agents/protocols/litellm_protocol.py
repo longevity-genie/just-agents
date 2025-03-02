@@ -50,12 +50,35 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
 
-    def completion(self, *args, **kwargs) -> Union[ModelResponse, CustomStreamWrapper]: # for the stream it is CustomStreamWrapper
+    def sanitize_args(self, *args, **kwargs) -> tuple:
+        """
+        Synchronous method to sanitize and preprocess arguments.
+        """
+        # Extract and preprocess the model from kwargs
+        model = kwargs.get('model', None)
+        if model is None:
+            raise ValueError("model is required")
+        
+        supported_params = self.get_supported_params(model) or []
+        if not "response_format" in supported_params:
+            kwargs.pop("response_format", None)
+        if not litellm.supports_function_calling(model):
+            kwargs.pop("tools", None)
+            kwargs.pop("tool_choice", None)            
+
+        # Return sanitized arguments
+        return args, kwargs
+
+    def completion(self, *args, **kwargs) -> Union[ModelResponse, CustomStreamWrapper]:
+        # Sanitize arguments before calling the completion method
+        args, kwargs = self.sanitize_args(*args, **kwargs)
         return completion(*args, **kwargs)
 
     async def async_completion(self, *args, **kwargs) \
             -> Coroutine[Any, Any, Union[ModelResponse, CustomStreamWrapper, AsyncGenerator]]:
-        return acompletion(*args, **kwargs)
+        # Sanitize arguments before calling the async_completion method
+        args, kwargs = self.sanitize_args(*args, **kwargs)
+        return await acompletion(*args, **kwargs)
     
     # TODO: use https://docs.litellm.ai/docs/providers/custom_llm_server as mock for tests
 

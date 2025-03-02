@@ -35,6 +35,8 @@ just-agents-core = "*"
 pycomfort = ">=0.0.18"
 fastapi = ">=0.115.10"
 uvicorn = ">=0.34.0"
+aiofiles = ">=24.1.0"
+python-dotenv = ">=1.0.1"
 
 [tool.poetry.group.dev.dependencies]
 just-agents-core = { path = "../core", develop = true }

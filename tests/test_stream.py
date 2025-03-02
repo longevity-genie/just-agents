@@ -114,6 +114,6 @@ def test_stream_tool():
     validate_tool_call(agent_call, OPENAI_GPT4oMINI, False)
 
 def test_stream_tool_grok():
-    validate_tool_call(agent_call, LLAMA3_3, False)
+    validate_tool_call(agent_call, LLAMA3_2_VISION, False)
 
 

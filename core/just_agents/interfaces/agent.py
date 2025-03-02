@@ -35,9 +35,12 @@ StreamingResponseFunction = Callable[...,AbstractStreamingGeneratorResponseType]
 class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, AbstractStreamingChunkType]):
 
     @abstractmethod
-    def query(self, query_input: AbstractQueryInputType, response_format: Optional[str] = None, **kwargs) -> Optional[AbstractQueryResponseType]:
+    def query(self, query_input: AbstractQueryInputType, **kwargs) -> Optional[AbstractQueryResponseType]:
         raise NotImplementedError("You need to implement query() abstract method first!")
     
+    @abstractmethod
+    def stream(self, query_input: AbstractQueryInputType) -> Optional[AbstractStreamingGeneratorResponseType]:
+        raise NotImplementedError("You need to implement stream() abstract method first!")
 
     def _clean_fallback_result(self, raw: str) -> str:
         """
@@ -184,11 +187,6 @@ class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, Abs
             ]
         
         return schema
-
-
-    @abstractmethod
-    def stream(self, query_input: AbstractQueryInputType) -> Optional[AbstractStreamingGeneratorResponseType]:
-        raise NotImplementedError("You need to implement stream() abstract method first!")
 
 
 VariArgs = ParamSpec('VariArgs')
