@@ -8,7 +8,7 @@ from just_agents.base_agent import BaseAgent, BaseAgentWithLogging, VariArgs, Lo
 from just_agents.just_serialization import JustSerializable
 from pydantic import Field,BaseModel,PrivateAttr
 import yaml
-from eliot import start_action,start_task, Action, to_file, add_destinations, remove_destination
+from eliot import start_action,start_task, Action
 from just_agents.just_bus import SingletonMeta
 from pycomfort.logging import to_nice_file, to_nice_stdout
 
@@ -45,15 +45,15 @@ class EliotLogger(metaclass=SingletonMeta):
         json_path = self._logdir / f"{uniq_name}.json.log"
         if self._logger_output == "stdout" or self._logger_output == "both":
             to_nice_stdout(
-                output_file=temp_dir / f"{uniq_name}.json"
+               output_file=temp_dir / f"{uniq_name}.json"
             )
-            # add_destinations(self.stdout_logger)
+            #add_destinations(self.stdout_logger)
         if self._logger_output == "file" or self._logger_output == "both":
             to_nice_file(
-                output_file=json_path,
-                rendered_file=self.log_path
+               output_file=json_path,
+               rendered_file=self.log_path
             )
-            # to_file(open(self.log_path, "ab"))
+            #to_file(open(self.log_path, "ab"))
 
 
 

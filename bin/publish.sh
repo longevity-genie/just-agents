@@ -4,10 +4,10 @@
 set -e
 
 # Check for --dry-run option
-DRY_RUN=false
+DRY_RUN=""
 for arg in "$@"; do
     if [ "$arg" == "--dry-run" ]; then
-        DRY_RUN=true
+        DRY_RUN="--dry-run"
         echo "Running in dry-run mode. No changes will be made."
     fi
 done
@@ -38,15 +38,8 @@ publish_package() {
         cd ..
         return 1
     fi
-    
-    # Skip publishing if dry-run is enabled
-    if [ "$DRY_RUN" = true ]; then
-        echo "Dry-run: Skipping publish for $dir"
-        cd ..
-        return 0
-    fi
 
-    if ! poetry publish --skip-existing; then
+    if ! poetry publish --skip-existing $DRY_RUN; then
         echo "Error: Failed to publish $dir"
         cd ..
         return 1
@@ -62,10 +55,7 @@ if [ -z "$PYPI_TOKEN" ]; then
     exit 1
 fi
 
-# Configure Poetry to use the PyPI token
-if [ "$DRY_RUN" = false ]; then
-    poetry config pypi-token.pypi $PYPI_TOKEN
-fi
+poetry config pypi-token.pypi $PYPI_TOKEN
 
 # Verify all packages have consistent versions and clean them
 base_version=$(poetry version -s | sed -E 's/([0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?).*/\1/')
@@ -100,11 +90,11 @@ echo "Verifying PyPI versions..."
 for pkg in "core" "tools" "coding" "web" "router" "examples" "."; do
     echo "Checking $pkg"
     if [ $(cd $pkg && poetry version -s) \< "$base_version" ]; then
-        echo "Subpackage $pkg version is behind. Setting clean version $base_version"
-        (cd $pkg && poetry version $base_version) || exit 1
+        echo "Subpackage $pkg version is behind."
+        exit 1
     fi
     if ! check_pypi_version "$pkg" "$base_version"; then
-        echo "Version check failed. Please ensure your local version is up to date with PyPI."
+        echo "Version check failed. Please ensure your local version is up to date with PyPI or newer."
         exit 1
     fi
     echo "Subpackage $pkg version is up to date with PyPI or newer"

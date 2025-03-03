@@ -75,7 +75,7 @@ def run_agent_server(
         api_class: AgentRestAPI or ChatUIAgentRestAPI
 
     """
-    to_nice_stdout()
+    #to_nice_stdout()
 
     # Initialize the API class with the updated configuration
     api = api_class(

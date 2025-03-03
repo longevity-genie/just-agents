@@ -49,7 +49,7 @@ if [ -f "$REQUIREMENTS_FILE" ]; then
         echo "Executing command: poetry config virtualenvs.create false && poetry add --no-interaction --no-cache $REQS"
 
         # Configure poetry to not use virtualenv and run poetry add with the filtered dependencies
-        if poetry config virtualenvs.create false && poetry add $REQS --group overcast --lock && poetry install --only overcast; then
+        if poetry config virtualenvs.create false && poetry add --no-interaction --no-cache $REQS; then
             # On successful installation, update (or create) the flag file with the current hash
             echo "$CURRENT_HASH" > "$INSTALL_FLAG"
             echo "Dependencies installation completed successfully"
