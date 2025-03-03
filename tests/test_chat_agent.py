@@ -74,8 +74,8 @@ def _test_database_tables(agent: ChatAgent, open_genes_db: Path):
 def test_quering(open_genes_db):
     load_dotenv(override = True)
     agent = ChatAgent(role="helpful agent which knows how operate with databases",
-                    goal=f"help users by using SQL syntax to form comands to work with the {open_genes_db} sqlite database",
-                    task="formulate appropriate comands to operate in the given database and always include the table names in your response.",
+                    goal=f"help users by using SQL syntax to form commands to work with the {open_genes_db} sqlite database",
+                    task="formulate appropriate commands to operate in the given database and always include the table names in your response.",
                     tools=[sqlite_query],
                     llm_options=LLAMA3_3,
                     key_list_env="GROQ_API_KEY"
@@ -85,8 +85,8 @@ def test_quering(open_genes_db):
 def test_quering_gemini(open_genes_db):
     load_dotenv(override = True)
     agent = ChatAgent(role="helpful agent which knows how operate with databases",
-                    goal=f"help users by using SQL syntax to form comands to work with the {open_genes_db} sqlite database",
-                    task="formulate appropriate comands to operate in the given database and always include the table names in your response.",
+                    goal=f"help users by using SQL syntax to form commands to work with the {open_genes_db} sqlite database",
+                    task="formulate appropriate commands to operate in the given database using 'sqlite_query' tool and always include the table names in your response.",
                     tools=[sqlite_query],
                     llm_options=GEMINI_2_FLASH
                     )

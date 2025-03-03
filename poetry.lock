@@ -212,6 +212,18 @@ tests = ["cloudpickle", "hypothesis", "mypy (>=1.11.1)", "pympler", "pytest (>=4
 tests-mypy = ["mypy (>=1.11.1)", "pytest-mypy-plugins"]
 
 [[package]]
+name = "backoff"
+version = "2.2.1"
+description = "Function decoration for backoff and retry"
+optional = false
+python-versions = ">=3.7,<4.0"
+groups = ["dev"]
+files = [
+    {file = "backoff-2.2.1-py3-none-any.whl", hash = "sha256:63579f9a0628e06278f7e47b7d7d5b6ce20dc65c5e96a6f3ca99a6adca0396e8"},
+    {file = "backoff-2.2.1.tar.gz", hash = "sha256:03f829f5bb1923180821643f8753b0502c3b682293992485b0eef2807afa5cba"},
+]
+
+[[package]]
 name = "boltons"
 version = "25.0.0"
 description = "When they're not builtins, they're boltons."
@@ -1013,7 +1025,7 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "just-agents-coding"
-version = "0.6.2-post.2+6e8371e"
+version = "0.6.3"
 description = "Just Agents - Coding Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1031,7 +1043,7 @@ url = "coding"
 
 [[package]]
 name = "just-agents-core"
-version = "0.6.2-post.2+6e8371e"
+version = "0.6.3"
 description = "Just Agents - Base Package"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1053,7 +1065,7 @@ url = "core"
 
 [[package]]
 name = "just-agents-examples"
-version = "0.6.2-post.2+6e8371e"
+version = "0.6.3"
 description = "Just Agents - Examples code"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1074,7 +1086,7 @@ url = "examples"
 
 [[package]]
 name = "just-agents-router"
-version = "0.6.2-post.2+6e8371e"
+version = "0.6.3"
 description = "Just Agents - Router Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1091,7 +1103,7 @@ url = "router"
 
 [[package]]
 name = "just-agents-tools"
-version = "0.6.2-post.2+6e8371e"
+version = "0.6.3"
 description = "Just Agents - Tools Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1109,7 +1121,7 @@ url = "tools"
 
 [[package]]
 name = "just-agents-web"
-version = "0.6.2-post.2+6e8371e"
+version = "0.6.3"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1128,6 +1140,33 @@ uvicorn = ">=0.34.0"
 [package.source]
 type = "directory"
 url = "web"
+
+[[package]]
+name = "langfuse"
+version = "2.59.6"
+description = "A client library for accessing langfuse"
+optional = false
+python-versions = "<4.0,>=3.9"
+groups = ["dev"]
+files = [
+    {file = "langfuse-2.59.6-py3-none-any.whl", hash = "sha256:1a97a8ee34f4b4b96efff9a5c9e3f094ad22874fcbe07a865bf21e5f9a465a7a"},
+    {file = "langfuse-2.59.6.tar.gz", hash = "sha256:ba602a098183e19b5e2f3a8872dda3d1eb487f99dea4bd1d9d39d82a2cd700ed"},
+]
+
+[package.dependencies]
+anyio = ">=4.4.0,<5.0.0"
+backoff = ">=1.10.0"
+httpx = ">=0.15.4,<1.0"
+idna = ">=3.7,<4.0"
+packaging = ">=23.2,<25.0"
+pydantic = ">=1.10.7,<3.0"
+requests = ">=2,<3"
+wrapt = ">=1.14,<2.0"
+
+[package.extras]
+langchain = ["langchain (>=0.0.309)"]
+llama-index = ["llama-index (>=0.10.12,<2.0.0)"]
+openai = ["openai (>=0.27.8)"]
 
 [[package]]
 name = "litellm"
@@ -2951,4 +2990,4 @@ testing = ["coverage[toml]", "zope.event", "zope.testing"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.10,<3.15"
-content-hash = "31a32787f0b042197dc85fae29371dd79a338d90c5b7e24ad537e67d674090f9"
+content-hash = "decb0e3a7ef53fe9cef8e41229b1f674f9dc7427cd01029a72338510224921be"

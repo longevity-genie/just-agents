@@ -1,6 +1,7 @@
 import json
 import litellm
 import pytest
+from just_agents.just_tool import JustTool
 from dotenv import load_dotenv
 
 def get_current_weather(location: str):
@@ -24,7 +25,8 @@ def load_env():
         {"role": "user", "content": "What's the weather like in San Francisco, Tokyo, and Paris?"}
     ]
     tools = [{"type": "function",
-              "function": litellm.utils.function_to_dict(get_current_weather)}]
+          "function": JustTool.function_to_llm_dict(get_current_weather)}]
+    #          "function": litellm.utils.function_to_dict(get_current_weather)}]
     OPENAI_GPT4oMINI = {
         "messages": messages,
         "model": "gpt-4o-mini",

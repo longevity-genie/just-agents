@@ -60,7 +60,7 @@ class JustTool(LiteLLMDescription):
         return __wrapper
 
     @staticmethod
-    def _function_to_dict(input_function: Callable) -> Dict[str, Any]:
+    def function_to_llm_dict(input_function: Callable) -> Dict[str, Any]:
         """
         Extract function metadata for function calling format without external dependencies.
         
@@ -216,7 +216,7 @@ class JustTool(LiteLLMDescription):
         """
         package = input_function.__module__
         # Use our own implementation instead of litellm's function_to_dict
-        litellm_description = cls._function_to_dict(input_function)
+        litellm_description = cls.function_to_llm_dict(input_function)
         
         # Get function name from the description
         function_name = input_function.__name__
@@ -309,7 +309,7 @@ class JustTool(LiteLLMDescription):
             func = getattr(import_module(self.package), self.name)
             
             # Use our own implementation to get function metadata
-            litellm_description = self._function_to_dict(func)
+            litellm_description = self.function_to_llm_dict(func)
             
             # Update the description
             self.description = litellm_description.get("description")
