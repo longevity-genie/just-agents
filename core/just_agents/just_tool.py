@@ -1,6 +1,6 @@
 from typing import Callable, Optional, List, Dict, Any, Sequence, Union, Literal, TypeVar
 from pydantic import BaseModel, Field, PrivateAttr
-from just_agents.just_bus import JustEventBus, VariArgs, SubscriberCallback
+from just_agents.just_bus import JustToolsBus, JustLogBus, VariArgs, SubscriberCallback
 from importlib import import_module
 import inspect
 from docstring_parser import parse
@@ -15,18 +15,12 @@ if sys.version_info >= (3, 11):
 else:
     Self = TypeVar('Self', bound='JustTool')
 
-class JustToolsBus(JustEventBus):
-    """
-    A simple singleton tools bus.
-    Inherits from JustEventBus with no additional changes.
-    """
-    pass
+
 
 
 class LiteLLMDescription(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
-    
     name: Optional[str] = Field(..., validation_alias='function', description="The name of the function")
     description: Optional[str] = Field(None, description="The docstring of the function.")
     parameters: Optional[Dict[str,Any]]= Field(None, description="Parameters of the function.")
@@ -34,6 +28,7 @@ class LiteLLMDescription(BaseModel):
 class JustTool(LiteLLMDescription):
     package: str = Field(..., description="The name of the module where the function is located.")
     auto_refresh: bool = Field(True, description="Whether to automatically refresh the tool after initialization.")
+    use_fallback_implementation: bool = Field(False, description="Whether to use the fallback to LiteLLM implementation for function metadata extraction.")
     _callable: Optional[Callable] = PrivateAttr(default=None)
 
     def model_post_init(self, __context: Any) -> None:
@@ -60,24 +55,46 @@ class JustTool(LiteLLMDescription):
         return __wrapper
 
     @staticmethod
-    def function_to_llm_dict(input_function: Callable) -> Dict[str, Any]:
+    def function_to_llm_dict(input_function: Callable, use_fallback: bool = False) -> Dict[str, Any]:
         """
         Extract function metadata for function calling format without external dependencies.
         
         Args:
             input_function: The function to extract metadata from
+            use_fallback: Whether to use the fallback LiteLLM implementation
             
         Returns:
             Dict with function name, description and parameters
         """
-        # Import docstring_parser instead of relying on NumpyDocString
-        
-        
         # For validation during refactoring - will compare our result with litellm's
-        #from litellm.utils import function_to_dict
-        #litellm_result = function_to_dict(input_function) 
-        # # TODO: reliably replace huge numpydoc/sphynx deps and litellm call. #decoupling #dependencies
-
+        if use_fallback:
+            try:
+                our_result = JustTool.function_to_llm_dict(input_function, use_fallback=False)
+                JustLogBus().log_message(
+                    f"Built-in implementation for {input_function.__name__}", 
+                    source="just_tool.llm_dict",
+                    our_result=our_result
+                    )
+                JustLogBus().log_message(
+                    "Attempting to use fallback LiteLLM implementation",
+                    source="just_tool.import"
+                )
+                from litellm.utils import function_to_dict
+                lllm_result = function_to_dict(input_function)
+                JustLogBus().log_message(
+                    f"LiteLLM implementation for {input_function.__name__}", 
+                    source="just_tool.llm_dict_fallback",
+                    lllm_result=lllm_result
+                ) 
+                return lllm_result
+            except (ImportError) as e:
+                JustLogBus().log_message(
+                    f"Warning: Failed to use fallback LiteLLM implementation",
+                    source="just_tool.error",
+                    error=e
+                )
+                # Continue with our implementation
+        
         # Map Python types to JSON schema types
         python_to_json_schema_types: Dict[str, str] = {
             str.__name__: "string",
@@ -101,8 +118,8 @@ class JustTool(LiteLLMDescription):
         
         # Get the function description from the short description or empty string if none
         description: str = parsed_docstring.short_description if parsed_docstring else ""
-        if parsed_docstring and parsed_docstring.long_description:
-            description += "\n" + parsed_docstring.long_description
+        #if parsed_docstring and parsed_docstring.long_description:
+        #    description += "\n" + parsed_docstring.long_description
         
         # Initialize parameters and required parameters
         parameters: Dict[str, Dict[str, Any]] = {}
@@ -199,12 +216,12 @@ class JustTool(LiteLLMDescription):
             by_alias=False,
             exclude_none=True,
             serialize_as_any=False,
-            include=set(super().model_fields)
+            include=set(self.__class__.__bases__[0].model_fields) #Deprecated until v3, but already weren't working properly for instance
         )
         return dump
 
     @classmethod
-    def from_callable(cls, input_function: Callable) -> Self:
+    def from_callable(cls, input_function: Callable, use_fallback: bool = False) -> Self:
         """
         Create a JustTool instance from a callable.
         
@@ -215,8 +232,12 @@ class JustTool(LiteLLMDescription):
             JustTool instance with function metadata
         """
         package = input_function.__module__
-        # Use our own implementation instead of litellm's function_to_dict
-        litellm_description = cls.function_to_llm_dict(input_function)
+     
+        # Use our own implementation or fallback based on the flag
+        litellm_description = cls.function_to_llm_dict(
+            input_function, 
+            use_fallback=use_fallback
+        )
         
         # Get function name from the description
         function_name = input_function.__name__
@@ -230,6 +251,7 @@ class JustTool(LiteLLMDescription):
             **litellm_description,
             package=package,
             _callable=wrapped_callable,
+            use_fallback_implementation=use_fallback
         )
 
     def subscribe(self, callback: SubscriberCallback, type: Optional[str]=None) -> bool:
@@ -309,7 +331,7 @@ class JustTool(LiteLLMDescription):
             func = getattr(import_module(self.package), self.name)
             
             # Use our own implementation to get function metadata
-            litellm_description = self.function_to_llm_dict(func)
+            litellm_description = self.function_to_llm_dict(func, use_fallback=self.use_fallback_implementation)
             
             # Update the description
             self.description = litellm_description.get("description")

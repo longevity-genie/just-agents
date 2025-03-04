@@ -15,7 +15,7 @@ from just_agents.rotate_keys import RotateKeys
 from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.protocols.protocol_factory import StreamingMode, ProtocolAdapterFactory
 from just_agents.just_tool import SubscriberCallback
-
+from just_agents.just_bus import JustLogBus
 
 class BaseAgent(
     JustAgentProfile,
@@ -446,6 +446,8 @@ def log_print(log_string: str, action: str, source: str, *args: VariArgs.args, *
         print(f"{action} from {source}, extra args: {str(kwargs)}")
 
 
+
+
 class BaseAgentWithLogging(BaseAgent):
     default_logging_function: ClassVar[LogFunction] = partial(log_print) #default logging function
     _log_function: LogFunction = PrivateAttr(default=None) #a hook to attach a custom logging function dynamically
@@ -459,6 +461,7 @@ class BaseAgentWithLogging(BaseAgent):
     _log_tool_result: SubscriberCallback = PrivateAttr(default=None)
     _log_tool_error: SubscriberCallback = PrivateAttr(default=None)
 
+    _log_bus: JustLogBus = PrivateAttr(default_factory=lambda: JustLogBus())
 
     @property
     def log_function(self) -> LogFunction:
@@ -470,6 +473,8 @@ class BaseAgentWithLogging(BaseAgent):
             raise ValueError("log_function must be a callable")
         else:
             self._log_function = value
+
+    
 
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
@@ -496,7 +501,8 @@ class BaseAgentWithLogging(BaseAgent):
         self.subscribe_to_tool_result(self._log_tool_result) #using listener to log tool results
         self._log_tool_error = self.tool_error_callback
         self.subscribe_to_tool_error(self._log_tool_error) #using listener to log tool errors
-
+        
+        self._log_bus.subscribe(".*", self.log_event_handler)
         self._log_function(f"Loaded {self.shortname}", "instantiation.success", "BaseAgentWithLogging", class_name=self.__class__)
 
 
@@ -574,8 +580,6 @@ class BaseAgentWithLogging(BaseAgent):
         # Log the event and error
         #self._log_function(event_name, "tool.error", "tools_bus")
         self._log_function(f"{str(error)}", "tool.error", event_name)
-
-
     
     def tool_handler(self, tool_call: ToolCall) -> None:
         """Handler for tool calls. Implements OnToolCallable protocol.
@@ -594,6 +598,17 @@ class BaseAgentWithLogging(BaseAgent):
         """
         if message:
             self._log_function(str(message), action="memory.add", source=message.get("role","Error"))
+
+    def log_event_handler(self, event_name: str, *args: Any, **kwargs: Any) -> None:
+        """Handler for auxiliary log events. 
+        
+        Args:
+            event_name: The name of the event
+            *args: Positional arguments
+            **kwargs: Keyword arguments
+        """
+        message: Optional[str] = kwargs.get("message") or kwargs.get("log_message")
+        self._log_function(message, action="log_bus", source=event_name, **kwargs)
 
 
 class ChatAgent(BaseAgent, JustAgentProfileChatMixin):

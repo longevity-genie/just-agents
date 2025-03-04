@@ -35,6 +35,7 @@ requests = "*"
 docstring_parser = "*"
 python-dotenv = ">=1.0.1"
 rich = ">=13.9.4"
+numpydoc = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.4"

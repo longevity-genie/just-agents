@@ -27,6 +27,11 @@ class JustAgentProfile(JustSerializable):
         description="Short description of what the agent does")
     """Short description of what the agent does."""
 
+    litellm_tool_description: Optional[bool] = Field(
+        False, exclude=True,
+        description="Whether to use the litellm tool description utility fallback, requires numpydoc")
+    """Whether to use the litellm tool description utility fallback, requires numpydoc"""
+
     tools: Optional[JustTools] = Field(
         None,
         description="A List[Callable] of tools s available to the agent and their descriptions")
@@ -36,7 +41,7 @@ class JustAgentProfile(JustSerializable):
         """
         Adds a tool to the agent's tools dictionary.
         """
-        tool = JustTool.from_callable(fun)
+        tool = JustTool.from_callable(fun, use_fallback=self.litellm_tool_description)
         if self.tools is None:
             self.tools = {
                 tool.name: tool
@@ -60,11 +65,12 @@ class JustAgentProfile(JustSerializable):
         new_tools = {}
         for item in self.tools:
             if isinstance(item, JustTool):
+                item.use_fallback_implementation = self.litellm_tool_description
                 if item.auto_refresh:
                     item=item.refresh()
                 new_tools[item.name]= item
             elif callable(item):
-                new_tool = JustTool.from_callable(item)
+                new_tool = JustTool.from_callable(item, use_fallback=self.litellm_tool_description)
                 new_tools[new_tool.name] = new_tool
             else:
                 raise TypeError("Items in 'tools' must be callables or JustTool instances.")

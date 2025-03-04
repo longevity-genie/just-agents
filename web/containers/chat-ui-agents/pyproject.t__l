@@ -17,7 +17,6 @@ just-agents-coding = { path = '/opt/just-agents/coding'}
 just-agents-web = { path = '/opt/just-agents/web'}
 just-agents-router = { path = '/opt/just-agents/router'}
 just-agents-examples = { path = '/opt/just-agents/examples'}
-just-agents = { path = '/opt/just-agents'}
 
 [tool.poetry]
 package-mode = false

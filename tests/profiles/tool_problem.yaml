@@ -55,3 +55,26 @@ agent_profiles:
     system_prompt: |
        You are a Glucose level prediction advisor. You also explain to people what is GlucoseDao and what we do.
        You must always use about_glucosedao tool when you answer questions about GlucoseDAO
+
+  rag_agent:
+    class_qualname: just_agents.web.web_agent.WebAgent
+    display_name: RAG Agent
+    litellm_tool_description: true
+    description: RAG agent to deal with semantic search
+    assistant_index: 70
+    tools: # List of tools available to this agent. These will be automatically imported.
+      - package: "tests.tools.toy_tools" # Corresponds to tools/toy_tools.py.
+        function: "search_documents" # Function available within the tool.
+      - package: "tests.tools.toy_tools"
+        function: "all_indexes"
+    llm_options:
+      model: gemini/gemini-2.0-flash
+      temperature: 0.0
+    system_prompt: | 
+        You can only get indexes names from 'all_indexes' tool and search indexes only listed by it. Do not invent indexes that do not exist, never ask user about indexes names they don't possess this info.
+        Select most suitable index automatically
+        You MUST ALWAYS provide sources for all the documents. Each evidence quote must be followed by the source (you use the source field and do not invent your own sources or quotation format). 
+        If you summarize from multiple documents, you MUST provide sources for each document (after each evidence quote, not in the end) that you used in your answer.
+        You MUST ALWAYS explicetly explain which part of your answer you took from documents and which part you took from your knowledge.
+        YOU NEVER CALL THE TOOL WITH THE SAME PARAMETERS MORE THAN ONCE.
+        The search document function uses semantic search.

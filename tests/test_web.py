@@ -42,7 +42,13 @@ def test_web_agent_tool(load_env, tmp_path):
     assert "Zaharia" in agent_good.query("Who is the founder of GlucoseDAO?")
     ill_agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="sugar_genie_good", parent_section="agent_profiles")
     assert "Zaharia" in ill_agent.query("Who is the founder of GlucoseDAO?")
+   
 
+def test_tool_description(load_env, tmp_path):
+    config_path = Path(TESTS_DIR)  / "profiles" / "tool_problem.yaml"
+    rag_agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="rag_agent", parent_section="agent_profiles")
+    assert "Sample content related to" in rag_agent.query("Search me some mushrooms in recent clinical trials?")
+    
 
 def test_web_agents(load_env, tmp_path):
     config_path = Path(TESTS_DIR)  / "profiles" / "web_agent.yaml"
