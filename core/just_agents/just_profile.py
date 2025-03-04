@@ -1,13 +1,239 @@
 from pathlib import Path
 from pydantic import Field, model_validator, BaseModel
-from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict, Union, Type
+from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict, Union, Type, Any
 
 from just_agents.just_serialization import JustSerializable
 from just_agents.data_classes import ModelPromptExample
-from just_agents.just_tool import JustTool, JustTools, SubscriberCallback
+from just_agents.just_tool import JustTool, JustTools, SubscriberCallback, JustPromptTool, JustPromptTools
 
 
-class JustAgentProfile(JustSerializable):
+class JustAgentProfileToolsetMixin(BaseModel):
+    """
+    A mixin class that provides tool-related functionality for agent profiles.
+    """
+    litellm_tool_description: Optional[bool] = Field(
+        False, exclude=True,
+        description="Whether to use the litellm tool description utility fallback, requires numpydoc")
+    """Whether to use the litellm tool description utility fallback, requires numpydoc"""
+
+    tools: Optional[JustTools] = Field(
+        None,
+        description="A List[Callable] of tools available to the agent and their descriptions")
+    """A List[Callable] of tools available to the agent and their descriptions"""
+
+    prompt_tools: Optional[JustPromptTools] = Field(
+        None,
+        description="A List[Callable] of tools that will be executed to append results to the prompt before completion call")
+    """A List[Callable] of tools that will be executed to append results to the prompt before completion call"""
+
+    def add_tool(self, fun: callable) -> None:
+        """
+        Adds a tool to the agent's tools dictionary.
+
+        Args:
+            fun (callable): The function to add as a tool
+        """
+        tool = JustTool.from_callable(fun)
+
+        if self.tools is None:
+            self.tools = {tool.name: tool}
+        else:
+            self.tools[tool.name] = tool
+
+    def add_prompt_tool(self, fun: callable, input_parameters: Dict[str, Any]) -> None:
+        """
+        Adds a tool to the agent's prompt_tools dictionary with input parameters.
+
+        Args:
+            fun (callable): The function to add as a prompt tool
+            input_parameters (Dict[str, Any]): Parameters to call the function with
+        """
+        # Ensure input parameters are JSON serializable
+        try:
+            import json
+            json.dumps(input_parameters)
+        except (TypeError, OverflowError):
+            raise ValueError("Input parameters must be JSON serializable")
+
+        tool = JustTool.from_callable(fun)
+        prompt_tool = JustPromptTool(
+            **tool.model_dump(),
+            input_parameters=input_parameters
+        )
+
+        if self.prompt_tools is None:
+            self.prompt_tools = {prompt_tool.name: prompt_tool}
+        else:
+            self.prompt_tools[prompt_tool.name] = prompt_tool
+
+    def _process_tools_field(self) -> None:
+        """
+        Process the tools field to convert callables to JustTool instances
+        """
+        if not self.tools:
+            return
+
+        if isinstance(self.tools, dict):
+            return
+        elif not isinstance(self.tools, Sequence):
+            raise TypeError("The 'tools' field must be a sequence of callables or JustTool instances.")
+
+        new_tools = {}
+        for item in self.tools:
+            if isinstance(item, JustTool):
+                if item.auto_refresh:
+                    item = item.refresh()
+                new_tools[item.name] = item
+            elif callable(item):
+                new_tool = JustTool.from_callable(item)
+                new_tools[new_tool.name] = new_tool
+            else:
+                raise TypeError("Items in 'tools' must be callables or JustTool instances.")
+
+        self.tools = new_tools
+
+    def _process_prompt_tools_field(self) -> None:
+        """
+        Process the prompt_tools field to convert callables with input parameters to JustPromptTool instances
+        """
+        if not self.prompt_tools:
+            return
+
+        if isinstance(self.prompt_tools, dict):
+            return
+        elif not isinstance(self.prompt_tools, Sequence):
+            raise TypeError(
+                "The 'prompt_tools' field must be a sequence of (callable, input_params) tuples or JustPromptTool instances.")
+
+        new_prompt_tools = {}
+        for item in self.prompt_tools:
+            if isinstance(item, JustPromptTool):
+                if item.auto_refresh:
+                    item = item.refresh()
+                new_prompt_tools[item.name] = item
+            elif isinstance(item, tuple) and len(item) == 2 and callable(item[0]) and isinstance(item[1], dict):
+                func, input_params = item
+                # Ensure input parameters are JSON serializable
+                try:
+                    import json
+                    json.dumps(input_params)
+                except (TypeError, OverflowError):
+                    raise ValueError(f"Input parameters for {func.__name__} must be JSON serializable")
+
+                tool = JustTool.from_callable(func)
+                prompt_tool = JustPromptTool(
+                    **tool.model_dump(),
+                    input_parameters=input_params
+                )
+                new_prompt_tools[prompt_tool.name] = prompt_tool
+            else:
+                raise TypeError(
+                    "Items in 'prompt_tools' must be (callable, input_params) tuples or JustPromptTool instances.")
+
+        self.prompt_tools = new_prompt_tools
+
+    @model_validator(mode='after')
+    def validate_model(self) -> 'JustAgentProfileToolsetMixin':
+        """
+        Converts callables to JustTool instances and refreshes them before validation.
+
+        Returns:
+            JustAgentProfileToolsetMixin: The validated instance
+        """
+        self._process_tools_field()
+        self._process_prompt_tools_field()
+        return self
+
+    def get_tools_callables(self) -> Optional[List[Callable]]:
+        """
+        Retrieves the list of callables from the tools.
+
+        Returns:
+            Optional[List[Callable]]: List of callable functions or None if no tools
+        """
+        if not self.tools:
+            return None
+        return [tool.get_callable(refresh=tool.auto_refresh) for tool in self.tools.values()]
+
+    def get_prompt_tools_with_inputs(self) -> Optional[List[Tuple[Callable, Dict[str, Any]]]]:
+        """
+        Retrieves the list of callables from the prompt_tools along with their input parameters.
+
+        Returns:
+            Optional[List[Tuple[Callable, Dict[str, Any]]]]: List of (callable, input_params) tuples or None if no prompt_tools
+        """
+        if not self.prompt_tools:
+            return None
+        return [(tool.get_callable(refresh=tool.auto_refresh), tool.input_parameters)
+                for tool in self.prompt_tools.values()]
+
+    def subscribe_to_tool_call(self, callback: SubscriberCallback) -> None:
+        """
+        Subscribe to tool call events.
+
+        Args:
+            callback (SubscriberCallback): The callback function to be called when a tool is called
+        """
+        if self.tools:
+            for tool in self.tools.values():
+                tool.subscribe_to_call(callback)
+
+    def subscribe_to_tool_result(self, callback: SubscriberCallback) -> None:
+        """
+        Subscribe to tool result events.
+
+        Args:
+            callback (SubscriberCallback): The callback function to be called when a tool returns a result
+        """
+        if self.tools:
+            for tool in self.tools.values():
+                tool.subscribe_to_result(callback)
+
+    def subscribe_to_tool_error(self, callback: SubscriberCallback) -> None:
+        """
+        Subscribe to tool error events.
+
+        Args:
+            callback (SubscriberCallback): The callback function to be called when a tool raises an error
+        """
+        if self.tools:
+            for tool in self.tools.values():
+                tool.subscribe_to_error(callback)
+
+    def subscribe_to_prompt_tool_call(self, callback: SubscriberCallback) -> None:
+        """
+        Subscribe to prompt tool call events.
+
+        Args:
+            callback (SubscriberCallback): The callback function to be called when a prompt tool is called
+        """
+        if self.prompt_tools:
+            for tool in self.prompt_tools.values():
+                tool.subscribe_to_call(callback)
+
+    def subscribe_to_prompt_tool_result(self, callback: SubscriberCallback) -> None:
+        """
+        Subscribe to prompt tool result events.
+
+        Args:
+            callback (SubscriberCallback): The callback function to be called when a prompt tool returns a result
+        """
+        if self.prompt_tools:
+            for tool in self.prompt_tools.values():
+                tool.subscribe_to_result(callback)
+
+    def subscribe_to_prompt_tool_error(self, callback: SubscriberCallback) -> None:
+        """
+        Subscribe to prompt tool error events.
+
+        Args:
+            callback (SubscriberCallback): The callback function to be called when a prompt tool raises an error
+        """
+        if self.prompt_tools:
+            for tool in self.prompt_tools.values():
+                tool.subscribe_to_error(callback)
+
+class JustAgentProfile(JustSerializable, JustAgentProfileToolsetMixin):
     """
     A Pydantic model representing an agent profile
     """
@@ -26,77 +252,6 @@ class JustAgentProfile(JustSerializable):
         DEFAULT_DESCRIPTION,
         description="Short description of what the agent does")
     """Short description of what the agent does."""
-
-    litellm_tool_description: Optional[bool] = Field(
-        False, exclude=True,
-        description="Whether to use the litellm tool description utility fallback, requires numpydoc")
-    """Whether to use the litellm tool description utility fallback, requires numpydoc"""
-
-    tools: Optional[JustTools] = Field(
-        None,
-        description="A List[Callable] of tools s available to the agent and their descriptions")
-    """A List[Callable] of tools s available to the agent and their descriptions"""
-
-    def _add_tool(self, fun: callable):
-        """
-        Adds a tool to the agent's tools dictionary.
-        """
-        tool = JustTool.from_callable(fun, use_fallback=self.litellm_tool_description)
-        if self.tools is None:
-            self.tools = {
-                tool.name: tool
-            }
-        else:
-            self.tools[tool.name] = tool
-
-    
-    @model_validator(mode='after')
-    def validate_model(self) -> 'JustAgentProfile':
-        """Converts callables to JustTool instances and refreshes them before validation."""
-        if not self.tools:
-            return self
-        if isinstance(self.tools, Dict):
-            return self
-        elif not isinstance(self.tools, Sequence):
-            raise TypeError("The 'tools' field must be a sequence of callables or JustTool instances.")
-        # elif not {x for x in self.tools if not isinstance(x, JustTool)}: #no items that are not JustTools
-        #     return self
-
-        new_tools = {}
-        for item in self.tools:
-            if isinstance(item, JustTool):
-                item.use_fallback_implementation = self.litellm_tool_description
-                if item.auto_refresh:
-                    item=item.refresh()
-                new_tools[item.name]= item
-            elif callable(item):
-                new_tool = JustTool.from_callable(item, use_fallback=self.litellm_tool_description)
-                new_tools[new_tool.name] = new_tool
-            else:
-                raise TypeError("Items in 'tools' must be callables or JustTool instances.")
-        setattr(self, 'tools', new_tools)
-        return self
-
-    def get_tools_callables(self) -> Optional[List[Callable]]:
-        """Retrieves the list of callables from the tools."""
-        if self.tools is None:
-            return None
-        return [tool.get_callable(refresh=tool.auto_refresh) for tool in self.tools]
-    
-    def subscribe_to_tool_call(self, callback: SubscriberCallback) -> None:
-        if self.tools:
-            for name, tool in self.tools.items():
-                tool.subscribe_to_call(callback)
-
-    def subscribe_to_tool_result(self, callback: SubscriberCallback) -> None:
-        if self.tools:
-            for name, tool in self.tools.items():
-                tool.subscribe_to_result(callback)
-
-    def subscribe_to_tool_error(self, callback: SubscriberCallback) -> None:
-        if self.tools:
-            for name, tool in self.tools.items():
-                tool.subscribe_to_error(callback)
 
     @classmethod
     def auto_load(
@@ -191,6 +346,7 @@ class JustAgentProfile(JustSerializable):
         
         return agent
 
+
 class JustAgentProfileChatMixin(BaseModel):
     role: Optional[str] = Field(
         default=None,
@@ -272,7 +428,7 @@ class JustAgentProfileRagMixin(BaseModel):
         description="A List[str] of of external knowledge sources the agent is capable of accessing, e.g., databases, APIs, etc.")
     """List of external knowledge sources the agent is capable of accessing, e.g., databases, APIs, etc."""
 
-class JustAgentFullProfile(JustAgentProfile, JustAgentProfileChatMixin, JustAgentProfileWebMixin, JustAgentProfileSpecializationMixin, JustAgentProfileRagMixin):
+class JustAgentFullProfile(JustAgentProfile, JustAgentProfileToolsetMixin, JustAgentProfileChatMixin, JustAgentProfileWebMixin, JustAgentProfileSpecializationMixin, JustAgentProfileRagMixin):
     """
     A Pydantic model representing an agent profile with all extended attributes.
     """

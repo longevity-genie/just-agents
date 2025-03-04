@@ -1,6 +1,6 @@
-from typing import Callable, Optional, List, Dict, Any, Sequence, Union, Literal, TypeVar
+from typing import Callable, Optional, List, Dict, Any, Sequence, Union, TypeVar, Type, Tuple
 from pydantic import BaseModel, Field, PrivateAttr
-from just_agents.just_bus import JustToolsBus, JustLogBus, VariArgs, SubscriberCallback
+from just_agents.just_bus import JustToolsBus, VariArgs, SubscriberCallback
 from importlib import import_module
 import inspect
 from docstring_parser import parse
@@ -15,21 +15,22 @@ if sys.version_info >= (3, 11):
 else:
     Self = TypeVar('Self', bound='JustTool')
 
-
-
-
 class LiteLLMDescription(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
-    name: Optional[str] = Field(..., validation_alias='function', description="The name of the function")
+    name: Optional[str] = Field(..., alias='function', description="The name of the function")
     description: Optional[str] = Field(None, description="The docstring of the function.")
     parameters: Optional[Dict[str,Any]]= Field(None, description="Parameters of the function.")
 
 class JustTool(LiteLLMDescription):
     package: str = Field(..., description="The name of the module where the function is located.")
     auto_refresh: bool = Field(True, description="Whether to automatically refresh the tool after initialization.")
-    use_fallback_implementation: bool = Field(False, description="Whether to use the fallback to LiteLLM implementation for function metadata extraction.")
+
+
     _callable: Optional[Callable] = PrivateAttr(default=None)
+    """The callable function wrapped with the JustToolsBus callbacks."""
+    _raw_callable: Optional[Callable] = PrivateAttr(default=None)
+    """The original callable function."""
 
     def model_post_init(self, __context: Any) -> None:
         """Called after the model is initialized. Refreshes the tools metainfo if auto_refresh is True."""
@@ -55,46 +56,16 @@ class JustTool(LiteLLMDescription):
         return __wrapper
 
     @staticmethod
-    def function_to_llm_dict(input_function: Callable, use_fallback: bool = False) -> Dict[str, Any]:
+    def function_to_llm_dict(input_function: Callable) -> Dict[str, Any]:
         """
         Extract function metadata for function calling format without external dependencies.
         
         Args:
             input_function: The function to extract metadata from
-            use_fallback: Whether to use the fallback LiteLLM implementation
             
         Returns:
             Dict with function name, description and parameters
         """
-        # For validation during refactoring - will compare our result with litellm's
-        if use_fallback:
-            try:
-                our_result = JustTool.function_to_llm_dict(input_function, use_fallback=False)
-                JustLogBus().log_message(
-                    f"Built-in implementation for {input_function.__name__}", 
-                    source="just_tool.llm_dict",
-                    our_result=our_result
-                    )
-                JustLogBus().log_message(
-                    "Attempting to use fallback LiteLLM implementation",
-                    source="just_tool.import"
-                )
-                from litellm.utils import function_to_dict
-                lllm_result = function_to_dict(input_function)
-                JustLogBus().log_message(
-                    f"LiteLLM implementation for {input_function.__name__}", 
-                    source="just_tool.llm_dict_fallback",
-                    lllm_result=lllm_result
-                ) 
-                return lllm_result
-            except (ImportError) as e:
-                JustLogBus().log_message(
-                    f"Warning: Failed to use fallback LiteLLM implementation",
-                    source="just_tool.error",
-                    error=e
-                )
-                # Continue with our implementation
-        
         # Map Python types to JSON schema types
         python_to_json_schema_types: Dict[str, str] = {
             str.__name__: "string",
@@ -138,7 +109,7 @@ class JustTool(LiteLLMDescription):
                 param_type = python_to_json_schema_types.get(type_name, "string")
             
             param_description: Optional[str] = None
-            param_enum: Optional[str] = None
+            param_enum: Optional[List[str]] = None
 
             # Find parameter description from docstring
             if parsed_docstring:
@@ -157,7 +128,7 @@ class JustTool(LiteLLMDescription):
                             # Handle enum-like values in curly braces (e.g. "{option1, option2}")
                             elif "{" in docstring_type and "}" in docstring_type:
                                 # Extract content between curly braces
-                                match = re.search(r'\{([^}]+)\}', docstring_type)
+                                match = re.search(r'\{([^}]+)}', docstring_type)
                                 if match:
                                     # Split by comma and clean up whitespace
                                     options = [opt.strip() for opt in match.group(1).split(',')]
@@ -216,12 +187,12 @@ class JustTool(LiteLLMDescription):
             by_alias=False,
             exclude_none=True,
             serialize_as_any=False,
-            include=set(self.__class__.__bases__[0].model_fields) #Deprecated until v3, but already weren't working properly for instance
+            include=set(self.__class__.__bases__[0].model_fields) #Deprecated until v3, blame pydantic for warnings
         )
         return dump
 
     @classmethod
-    def from_callable(cls, input_function: Callable, use_fallback: bool = False) -> Self:
+    def from_callable(cls, input_function: Callable) -> Self:
         """
         Create a JustTool instance from a callable.
         
@@ -232,16 +203,10 @@ class JustTool(LiteLLMDescription):
             JustTool instance with function metadata
         """
         package = input_function.__module__
-     
-        # Use our own implementation or fallback based on the flag
-        litellm_description = cls.function_to_llm_dict(
-            input_function, 
-            use_fallback=use_fallback
-        )
-        
-        # Get function name from the description
         function_name = input_function.__name__
 
+        # Use our own implementation or fallback based on the flag
+        litellm_description = cls.function_to_llm_dict(input_function)
         wrapped_callable = cls._wrap_function(input_function, function_name)
         
         # Ensure function name is in litellm_description
@@ -250,8 +215,7 @@ class JustTool(LiteLLMDescription):
         return cls(
             **litellm_description,
             package=package,
-            _callable=wrapped_callable,
-            use_fallback_implementation=use_fallback
+            _callable=wrapped_callable
         )
 
     def subscribe(self, callback: SubscriberCallback, type: Optional[str]=None) -> bool:
@@ -331,7 +295,7 @@ class JustTool(LiteLLMDescription):
             func = getattr(import_module(self.package), self.name)
             
             # Use our own implementation to get function metadata
-            litellm_description = self.function_to_llm_dict(func, use_fallback=self.use_fallback_implementation)
+            litellm_description = self.function_to_llm_dict(func)
             
             # Update the description
             self.description = litellm_description.get("description")
@@ -341,18 +305,20 @@ class JustTool(LiteLLMDescription):
             
             # Rewrap with the updated callable
             self._callable = self._wrap_function(func, self.name)
-
+            self._raw_callable = func
+            
             return self
         except (ImportError, AttributeError) as e:
             raise ImportError(f"Error refreshing {self.name} from {self.package}: {e}") from e
 
-    def get_callable(self, refresh: bool = False) -> Callable:
+    def get_callable(self, refresh: bool = False, wrap: bool = True) -> Callable:
         """
         Retrieve the callable function.
         
         Args:
             refresh: If True, the callable is refreshed before returning
-            
+            wrap: If True, the callable is wrapped with the JustToolsBus callbacks
+
         Returns:
             Wrapped callable function
             
@@ -361,12 +327,17 @@ class JustTool(LiteLLMDescription):
         """
         if refresh:
             self.refresh()
-        if self._callable is not None:
+        if self._callable is not None and wrap:
             return self._callable
+        if self._callable is not None and not wrap:
+            return self._raw_callable
         try:
-            func = getattr(import_module(self.package), self.name)
-            self._callable = self._wrap_function(func, self.name)
-            return self._callable
+            self._raw_callable = getattr(import_module(self.package), self.name)
+            self._callable = self._wrap_function(self._raw_callable, self.name)
+            if wrap:
+                return self._callable
+            else:
+                return self._raw_callable
         except (ImportError, AttributeError) as e:
             raise ImportError(f"Error importing {self.name} from {self.package}: {e}")
 
@@ -381,12 +352,24 @@ class JustTool(LiteLLMDescription):
         Returns:
             Result of the wrapped function
         """
-        func = self.get_callable()
+        func = self.get_callable(wrap=True)
         return func(*args, **kwargs)
+
+
+class JustPromptTool(JustTool):
+    input_parameters: Optional[Dict[str,Any]] = Field(..., description="Input parameters to call the function with.")
+    """Input parameters to call the function with."""
 
 JustTools = Union[
     Dict[str, JustTool],  # A dictionary where keys are strings and values are JustTool instances.
     Sequence[
         Union[JustTool, Callable]
     ]  # A sequence (like a list or tuple) containing either JustTool instances or callable objects (functions).
+]
+
+JustPromptTools = Union[
+    Dict[str, JustPromptTool],  # A dictionary where keys are strings and values are JustPromptTool instances.
+    Sequence[
+        Union[JustPromptTool, Tuple[Callable, Dict[str,Any]]]
+    ]  # A sequence (like a list or tuple) containing either JustPromptTool instances or callable objects (functions) and input parameters.
 ]

@@ -10,7 +10,7 @@ from just_agents.interfaces.protocol_adapter import IProtocolAdapter, BaseModelR
 from just_agents.interfaces.agent import IAgentWithInterceptors, QueryListener, ResponseListener, VariArgs
 
 from just_agents.base_memory import IBaseMemory, BaseMemory, OnToolCallable, OnMessageCallable
-from just_agents.just_profile import JustAgentProfile, JustAgentProfileChatMixin
+from just_agents.just_profile import JustAgentProfile, JustAgentProfileChatMixin, JustAgentProfileToolsetMixin
 from just_agents.rotate_keys import RotateKeys
 from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.protocols.protocol_factory import StreamingMode, ProtocolAdapterFactory
@@ -188,8 +188,13 @@ class BaseAgent(
     def _prepare_options(self, options: LLMOptions):
         opt = options.copy()
         if self.tools is not None and not self._tool_fuse_broken:  # populate llm_options based on available tools
-            opt["tools"] = [{"type": "function",
-                             "function": self.tools[tool].get_litellm_description()} for tool in self.tools]
+            opt["tools"] = [
+                self._protocol.tool_from_function(
+                    self.tools[tool].get_callable(wrap=False),
+                    function_dict = self.tools[tool].get_litellm_description(),
+                    use_litellm=self.litellm_tool_description
+                ) for tool in self.tools
+            ]
         else:
             opt.pop("tools", None) #Ensure no tools are passed to adapter
         return opt
@@ -607,8 +612,9 @@ class BaseAgentWithLogging(BaseAgent):
             *args: Positional arguments
             **kwargs: Keyword arguments
         """
-        message: Optional[str] = kwargs.get("message") or kwargs.get("log_message")
-        self._log_function(message, action="log_bus", source=event_name, **kwargs)
+        message: Optional[str] = kwargs.pop("message","") or kwargs.pop("log_message","Missing log message!!")
+        action: Optional[str] = kwargs.pop("action", "log_bus.receive")
+        self._log_function(message, action=action, source=event_name, **kwargs)
 
 
 class ChatAgent(BaseAgent, JustAgentProfileChatMixin):

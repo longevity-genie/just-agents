@@ -235,12 +235,13 @@ class JustLogBus(BufferedEventBus):
     """
 
     @staticmethod
-    def log_message(message: str, source: str = 'anonymous_logger', **kwargs: Any) -> None:
+    def log_message(message: str, source: str = 'anonymous_logger', action: str = "log_bus.log_entry", **kwargs: Any) -> None:
         """A helper to log a message from a source via the log bus.
 
         Args:
             message: The message to log
             source: The source of the log message
+            action: The action related to the log message
             **kwargs: Additional parameters to log
         """
-        JustLogBus().publish(source, log_message=message, **kwargs)
+        JustLogBus().publish(source, log_message=message, action=action, **kwargs)

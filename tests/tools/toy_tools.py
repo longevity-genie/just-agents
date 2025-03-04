@@ -36,16 +36,15 @@ list[dict]:
                      It should be one of the allowed list of indexes.
         limit (int): The number of documents to return. 8 by default.
 
-    Example of result:
-    [ {'_rankingScore': 0.718,  # Relevance score of the document
-      '_rankingScoreDetails': {'vectorSort': {'order': 0,  # Ranking order
-                                              'similarity': 0.718}},  # Similarity score
-      'hash': 'e22c1616...',  # Unique document identifier
-      'source': '/path/to/document.txt',  # Source document path
-      'text': 'Ageing as a risk factor...',  # Document content
-      'token_count': None,  # Number of tokens (if applicable)
-      'total_fragments': None},  # Total fragments (if applicable)
-      ]
+    Example results:
+        [ {'_rankingScore': 0.718,  # Relevance score of the document
+          '_rankingScoreDetails': {'vectorSort': {'order': 0,  # Ranking order 'similarity': 0.718}},  # Similarity score
+          'hash': 'e22c1616...',  # Unique document identifier
+          'source': '/path/to/document.txt',  # Source document path
+          'text': 'Ageing as a risk factor...',  # Document content
+          'token_count': None,  # Number of tokens (if applicable)
+          'total_fragments': None},  # Total fragments (if applicable)
+          ]
     """
     # Simulate search results based on the example in the docstring
     
@@ -81,20 +80,24 @@ def search_documents(query: str, index: str, limit: Optional[int] = 30, semantic
 
     Args:
         query (str): The search query string used to find relevant documents.
-        index (str): The name of the index to search within.
-                    It should be one of the allowed list of indexes.
+        index (str): The name of the index to search within. It should be one of the allowed list of indexes.
         limit (int): The number of documents to return. 30 by default.
+        semantic_ratio (float): Semantic ratio
 
-    Example of result:
-    [ {'_rankingScore': 0.718,  # Relevance score of the document
-      '_rankingScoreDetails': {'vectorSort': {'order': 0,  # Ranking order
-                                              'similarity': 0.718}},  # Similarity score
-      'hash': 'e22c1616...',  # Unique document identifier
-      'source': '/path/to/document.txt',  # Source document path
-      'text': 'Ageing as a risk factor...',  # Document content
-      'token_count': None,  # Number of tokens (if applicable)
-      'total_fragments': None},  # Total fragments (if applicable)
-      ]
+    Returns:
+        list[str]: A list of strings containing the search results.
+
+    Example result:
+        [ {'_rankingScore': 0.718,  # Relevance score of the document
+          '_rankingScoreDetails': {'vectorSort': {'order': 0,  # Ranking order
+                                                  'similarity': 0.718}},  # Similarity score
+          'hash': 'e22c1616...',  # Unique document identifier
+          'source': '/path/to/document.txt',  # Source document path
+          'text': 'Ageing as a risk factor...',  # Document content
+          'token_count': None,  # Number of tokens (if applicable)
+          'total_fragments': None},  # Total fragments (if applicable)
+          ]
+
     """
     # Get semantic ratio from environment variable or use default
     semantic_ratio = float(os.getenv("MEILISEARCH_SEMANTIC_RATIO", 0.5))
@@ -113,11 +116,10 @@ def search_documents(query: str, index: str, limit: Optional[int] = 30, semantic
 def all_indexes(non_empty: bool = True) -> List[str]:
     """
     Get all indexes that you can use for search.
-    
+
     Args:
-        non_empty (bool): If True, returns only indexes that contain documents.
-                        If False, returns all available indexes. True by default.
-    
+        non_empty (bool): If True, returns only indexes that contain documents, otherwise returns all available indexes. True by default.
+
     Returns:
         List[str]: A list of index names that can be used for document searches.
     """
@@ -140,35 +142,82 @@ def all_indexes(non_empty: bool = True) -> List[str]:
     print(f"Retrieved {'non-empty' if non_empty else 'all'} indexes: {', '.join(result_indexes)}")
     return result_indexes
 
+def semantic_search(
+    query: str, 
+    index: str, 
+    limit: int = 10, 
+    semantic_ratio: float = 0.5
+) -> list[str]:
+    """
+    Search for documents using semantic search (mock implementation).
 
-# def generate_random_matrix(rows: int, cols: int) -> np.ndarray:
-#     """
-#     Generate a random matrix of given dimensions.
-#
-#     Args:
-#         rows (int): Number of rows.
-#         cols (int): Number of columns.
-#
-#     Returns:
-#         np.ndarray: A matrix filled with random values.
-#     """
-#     matrix = np.random.rand(rows, cols)
-#     matrix[0][0]=0.2323232323232 #to discern between tool output and hallucinations
-#     print("Random Matrix:\n", matrix)
-#
-#     return matrix
-#
-# def summarize_dataframe(data: dict) -> pd.DataFrame:
-#     """
-#     Convert a dictionary into a DataFrame and return basic statistics.
-#
-#     Args:
-#         data (dict): A dictionary where keys are column names and values are lists.
-#
-#     Returns:
-#         pd.DataFrame: A DataFrame summary with mean and standard deviation.
-#     """
-#     df = pd.DataFrame(data)
-#     summary = df.describe()
-#     print("\nData Summary:\n", summary)
-#     return summary
+    Args:
+        query: The search query
+        index: The index to search in
+        limit: The maximum number of results to return (default: 10)
+        semantic_ratio: The ratio of semantic search to use (0.0 to 1.0, default: 0.5)
+
+    Returns:
+        List[str]: A list of strings containing simulated search results
+
+    Raises:
+        ValueError: If semantic_ratio is not between 0 and 1
+    """
+    # Validate semantic ratio
+    if not 0 <= semantic_ratio <= 1:
+        raise ValueError("semantic_ratio must be between 0 and 1")
+    
+    # Print debug info
+    print(f"Simulated semantic search for '{query}' in index '{index}' with semantic_ratio={semantic_ratio}")
+    
+    # Dictionary of rich content with rare words and made-up terms
+    rich_content: Dict[str, List[str]] = {
+        "research_papers": [
+            "The quiescent glycoregulatory mechanisms exhibit profound circadian oscillations, particularly in the context of postprandial hyperglycemia. The pancreatic β-cells' exocytotic machinery demonstrates remarkable plasticity in response to glucolipotoxicity.",
+            "Recent investigations into the xenobiotic-induced dysglycemia reveal a complex interplay between hepatic gluconeogenesis and peripheral insulin resistance. The term 'glycofractionation' describes this novel metabolic phenomenon.",
+            "Islet amyloid polypeptide aggregation, colloquially termed 'amyloidogenic diabetopathy', represents a pathognomonic feature in type 2 diabetes mellitus. The islet microvasculature undergoes significant remodeling during diabetogenesis."
+        ],
+        "clinical_trials": [
+            "The double-blind, placebo-controlled trial of Zorbinol-X demonstrated significant reductions in HbA1c through its novel mechanism of 'glucomodulatory transduction inhibition' at the cellular level.",
+            "Participants receiving the experimental Endofibrase therapy exhibited marked improvements in postprandial glycemic excursions, attributed to enhanced 'pancreatic quiescification' - a term coined specifically for this trial.",
+            "The GLIMMER-7 study protocol incorporates rigorous assessment of 'dysglycemic rebounding' following administration of the investigational compound XR-27891, a selective glycokinase activator."
+        ],
+        "diabetes_research": [
+            "The pathophysiology of diabetic nephropathy involves glomerular hyperfiltration and subsequent podocytopathy. The term 'nephrodiabetogenic cascade' has been proposed to describe this sequential deterioration.",
+            "Continuous glucose monitoring systems now incorporate advanced algorithms for detecting 'glycemic perturbation patterns' - a neologism describing subtle variations in interstitial glucose concentrations.",
+            "The concept of 'insulinomimetic xenohormesis' represents a paradigm shift in understanding how certain phytochemicals may activate insulin signaling pathways through molecular mimicry."
+        ],
+        "medical_guidelines": [
+            "Current recommendations emphasize the importance of 'glycemic equipoise' - maintaining balanced glucose homeostasis through integrated pharmacological and lifestyle interventions.",
+            "The guidelines now recognize 'diabetogenic iatrogenesis' as a distinct clinical entity requiring specific management strategies, particularly in hospitalized patients.",
+            "Clinicians should be vigilant for signs of 'glucoregulatory decompensation' in patients with comorbid endocrinopathies, especially during periods of physiological stress."
+        ]
+    }
+    
+    # Generate mock search results with rich content
+    results: list[str] = []
+    
+    # Add some basic results
+    for i in range(1, min(limit + 1, 6)):  # Generate up to 5 basic results
+        results.append(f"Semantic result #{i} for query '{query}' in index '{index}'. Relevance: {round(random.uniform(0.6, 0.95), 2)}.")
+    
+    # Add rich content based on the index
+    if index in rich_content:
+        # Select 1-3 random rich content items for this index
+        selected_content = random.sample(rich_content[index], min(3, len(rich_content[index])))
+        for content in selected_content:
+            relevance = round(random.uniform(0.75, 0.98), 2)
+            results.append(f"{content} Semantic score: {relevance}. SOURCE: /data/{index}/document_{random.randint(1000, 9999)}.txt")
+    
+    # Add special content for diabetes queries
+    if "diabetes" in query.lower():
+        results.insert(0, "The novel concept of 'pancreatic beta-cell dedifferentiation' or 'diabetogenic transdifferentiation' represents a fundamental shift in our understanding of type 2 diabetes pathophysiology. The term 'glucolipoapoptosis' describes the specific cellular death pathway. Semantic score: 0.97. SOURCE: /data/diabetes_research/beta_cell_pathophysiology.txt")
+    
+    # Add clinical trial specific content
+    if index == "clinical_trials":
+        results.append(f"The GLUCOMET-9 trial investigating 'selective hepatic insulin sensitization' through the novel compound Metaboreglin-D demonstrated statistically significant improvements in fasting plasma glucose levels (p<0.001). SOURCE: /mock/data/trials/trial_{random.randint(1000, 9999)}.txt")
+    
+    # Shuffle results to make them appear more realistic
+    random.shuffle(results)
+    
+    return results[:limit]  # Ensure we don't exceed the requested limit

@@ -21,6 +21,14 @@ class IProtocolAdapter(ABC, Generic[BaseModelResponse, AbstractMessage, BaseMode
     function_convention: ClassVar[Type[IFunctionCall[Any]]]
 
     @abstractmethod
+    def tool_from_function(self, tool: Callable, **kwargs) -> dict:
+        raise NotImplementedError("You need to implement tool_from_function first!")
+    
+    @abstractmethod
+    def sanitize_args(self, *args, **kwargs) -> tuple:
+        raise NotImplementedError("You need to implement sanitize_args first!")
+    
+    @abstractmethod
     def completion(self, *args, **kwargs) -> BaseModelResponse:
         raise NotImplementedError("You need to implement completion first!")
 

@@ -1,14 +1,14 @@
 from pyexpat.errors import messages
-from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Any, AsyncGenerator, Generator
+from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Dict, Any, AsyncGenerator, Generator, Callable
 import time
 
 from pydantic import Field, PrivateAttr, BaseModel
 from functools import singledispatchmethod
 import litellm
 import os
+
 from litellm import CustomStreamWrapper, completion, acompletion, stream_chunk_builder
-from litellm._logging import _is_debugging_on
-from litellm.types.utils import Delta, Message, ModelResponse, ModelResponseStream
+from litellm.utils import Delta, Message, ModelResponse, ModelResponseStream, function_to_dict
 from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
 
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
@@ -16,6 +16,7 @@ from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToo
 from just_agents.data_classes import Role, ToolCall, FinishReason
 from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.types import MessageDict
+from just_agents.just_bus import JustLogBus
 
 SupportedResponse=Union[ModelResponse, ModelResponseStream, MessageDict]
 
@@ -46,6 +47,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
     #Class that describes function convention
 
     function_convention: ClassVar[Type[IFunctionCall[MessageDict]]] = LiteLLMFunctionCall
+    _log_bus : JustLogBus = PrivateAttr(default_factory= lambda: JustLogBus())
 
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
@@ -55,19 +57,77 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         Synchronous method to sanitize and preprocess arguments.
         """
         # Extract and preprocess the model from kwargs
-        model = kwargs.get('model', None)
-        if model is None:
+        model = kwargs.get('model')
+        if not model:
             raise ValueError("model is required")
-        
+
         supported_params = self.get_supported_params(model) or []
         if not "response_format" in supported_params:
             kwargs.pop("response_format", None)
+            self._log_bus.log_message(
+                f"Warning: response_format not supported by model",
+                source="litellm_protocol_adapter.sanitize_args",
+                action="param_drop",
+                model=model
+            )
         if not litellm.supports_function_calling(model):
             kwargs.pop("tools", None)
-            kwargs.pop("tool_choice", None)            
+            kwargs.pop("tool_choice", None)
+            self._log_bus.log_message(
+                f"Warning: tool calls not supported by model",
+                source="litellm_protocol_adapter.sanitize_args",
+                action="param_drop",
+                model=model
+            )
+
+        self._log_bus.log_message(
+            f"Supported completion params",
+            source="litellm_protocol_adapter.sanitize_args",
+            action="output",
+            args=args,
+            kwargs=kwargs
+        )
 
         # Return sanitized arguments
         return args, kwargs
+
+    def tool_from_function(self, tool: Callable, function_dict: Dict[str, Any] = None, use_litellm: bool = False) -> dict:
+        """
+        Convert a function to a tool dictionary.
+        """
+
+        if function_dict:
+            self._log_bus.log_message(
+                f"Built-in function_dict for {tool.__name__} provided",
+                source="litellm_protocol_adapter.tool_from_function",
+                action="input",
+                input_dict=function_dict
+            )
+        litellm_function_dict = ""
+        if use_litellm or function_dict is None:
+            try:
+                self._log_bus.log_message(
+                    "Attempting to use fallback LiteLLM implementation",
+                    source="litellm_protocol_adapter.tool_from_function",
+                    action="numpydoc import"
+                )
+                litellm_function_dict = function_to_dict(tool)
+                self._log_bus.log_message(
+                    f"LiteLLM implementation for {tool.__name__}",
+                    source="litellm_protocol_adapter.tool_from_function",
+                    action="function_to_dict.call",
+                    litellm_dict=litellm_function_dict
+                )
+
+            except ImportError as e:
+                self._log_bus.log_message(
+                    f"Warning: Failed to use fallback LiteLLM implementation",
+                    source="litellm_protocol_adapter.tool_from_function",
+                    action="exception",
+                    error=e
+                )
+        function_dict = litellm_function_dict or function_dict or ""
+        return {"type": "function","function": function_dict}
 
     def completion(self, *args, **kwargs) -> Union[ModelResponse, CustomStreamWrapper]:
         # Sanitize arguments before calling the completion method
@@ -78,7 +138,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
             -> Coroutine[Any, Any, Union[ModelResponse, CustomStreamWrapper, AsyncGenerator]]:
         # Sanitize arguments before calling the async_completion method
         args, kwargs = self.sanitize_args(*args, **kwargs)
-        return await acompletion(*args, **kwargs)
+        return acompletion(*args, **kwargs)
     
     # TODO: use https://docs.litellm.ai/docs/providers/custom_llm_server as mock for tests
 

@@ -26,7 +26,7 @@ def load_env():
     ]
     tools = [{"type": "function",
           "function": JustTool.function_to_llm_dict(get_current_weather)}]
-    #          "function": litellm.utils.function_to_dict(get_current_weather)}]
+
     OPENAI_GPT4oMINI = {
         "messages": messages,
         "model": "gpt-4o-mini",
