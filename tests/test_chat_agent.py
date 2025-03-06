@@ -146,6 +146,7 @@ class AgentResponse(BaseModel):
 
 
 def test_vision():
+    load_dotenv(override = True)
     agent = ChatAgent(role="helpful agent that can see",
                 goal="help users by providing a description of the image",
                 task="analyze the image and provide a description of the image",

@@ -24,6 +24,32 @@ def about_glucosedao(question: str) -> str:
     -Renat Sergazinov (GlucoBench author)
     """
 
+def decypher_using_secret_key(secret_key: str, message: str):
+    """
+    Decypher a message using a secret key.
+
+    Args:
+        secret_key (str): The secret key to use for decyphering.
+        message (str): The message to decypher.
+
+    Returns:
+        str: The deciphered message.
+    """
+    if secret_key != "swordfish":
+        return "Failed to decypher, wrong secret key"
+    elif message != "JBYEF0QTGV9IPRIAXEpI":
+        return "Failed to decypher, check message"
+    else:
+        return "Decipher successfull: 'Wake up, Neo...'"
+
+def get_secret_key(secret_word: str):
+    """
+    Get a secret key for a given word.
+    """
+    if secret_word == "banana":
+        return "swordfish"
+    else:
+        return "Failed to get secret key"
 
 def search_documents_raw(query: str, index: str, limit: Optional[int] = 4, semantic_ratio: Optional[float] = 0.5) -> \
 list[dict]:

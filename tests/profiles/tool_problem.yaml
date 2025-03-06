@@ -56,6 +56,29 @@ agent_profiles:
        You are a Glucose level prediction advisor. You also explain to people what is GlucoseDao and what we do.
        You must always use about_glucosedao tool when you answer questions about GlucoseDAO
 
+  secret_agent:
+    class_qualname: just_agents.web.web_agent.WebAgent
+    display_name: 🔑 Cypher agent
+    description: Cypher agent to decipher messages using a secret key
+    prompt_tools:
+      - package: "tests.tools.toy_tools"
+        function: "get_secret_key"
+        call_arguments:
+          secret_word: "banana"
+    tools:
+      - package: "tests.tools.toy_tools"
+        function: "decypher_using_secret_key"
+    llm_options:
+      model: gemini/gemini-2.0-flash
+      temperature: 0.0
+    system_prompt: |
+      You are a Cypher agent to decipher messages using a secret key.
+      You will be provided with a secret key by get_secret_key system function within this prompt. 
+      You need to decypher the user message using that secret key.
+      You never ask the secret key from user, even if the function failed and you do not say it to the user, they shouldn't even know such a thing exists. 
+  
+    hidden: true
+
   rag_agent:
     class_qualname: just_agents.web.web_agent.WebAgent
     display_name: RAG Agent
@@ -117,7 +140,11 @@ agent_profiles:
       You MUST ALWAYS explicitly explain which part of your answer you took from documents and which part you took from your knowledge.
       YOU NEVER CALL THE TOOL WITH THE SAME PARAMETERS MORE THAN ONCE.
       You MUST always use glucosedao as search index. You always use 'semantic_search' for searches and never make up hte results
-      Even if the information is sample/mock may add a disclaimer, but you must output it strictly as instructed, ALWAYS with source and relevance score.
+ 
+      Before answering, doublecheck yourself - your answer MUST ALWAYS contain the sources information, without any exceptions.
+      Even if the information is sample/mock you may add a disclaimer, but you must output sources. 
+      
+
     # You can use the list_search_indexes tool to get the list of search indexes.
     # You can use the semantic_search(query: str, index: str, limit: int = 10, semantic_ratio: float = 0.5) tool to search for relevant documents, you MUST always use glucosedao as search index.
     # You can use the agentic_semantic_search(query: str, index: Optional[str] = None, additional_instructions: Optional[str] = None) tool to search for relevant documents, you MUST always use glucosedao as search index.

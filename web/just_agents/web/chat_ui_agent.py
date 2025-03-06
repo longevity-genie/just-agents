@@ -28,6 +28,10 @@ class ChatUIAgent(WebAgent, JustAgentProfileWebMixin):
         "MODELS": "\`\n[\n]\n\`"
     }
 
+    raise_on_completion_status_errors: bool = Field(
+        default=False, #Stream errors to chat instead of raising an exception
+        description="Raise an exception on completion status 4xx and 5xx errors")
+
     address: str = Field(DEFAULT_ADDRESS, description="Http address of the REST endpoint hosting the agent")
     port: int = Field(8088, ge=1000, lt=65535, description="Port of the REST endpoint hosting the agent")
 

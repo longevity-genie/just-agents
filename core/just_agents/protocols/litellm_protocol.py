@@ -1,7 +1,8 @@
-from pyexpat.errors import messages
-from typing import Optional, Union, Coroutine, ClassVar, Type, Sequence, List, Dict, Any, AsyncGenerator, Generator, Callable
+from typing import Optional, Union, ClassVar, Type, Sequence, List, Dict, Any, AsyncGenerator, Generator, Callable
 import time
-
+import openai
+import uuid
+import json
 from pydantic import Field, PrivateAttr, BaseModel
 from functools import singledispatchmethod
 import litellm
@@ -80,14 +81,22 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
                 model=model
             )
 
-        self._log_bus.log_message(
-            f"Supported completion params",
-            source="litellm_protocol_adapter.sanitize_args",
-            action="output",
-            args=args,
-            kwargs=kwargs
-        )
-
+        if kwargs.pop("raise_on_completion_status_errors", None) is not None:
+            self._log_bus.log_message(
+                f"Warning: raise_on_completion_status_errors not supported by model",
+                source="litellm_protocol_adapter.sanitize_args",
+                action="param_drop",
+                model=model
+            )
+        
+        if kwargs.get("metadata", None) is not None and not "metadata" in supported_params:
+            kwargs.pop("metadata", None)
+            self._log_bus.log_message(
+                f"Warning: metadata not supported by model",
+                source="litellm_protocol_adapter.sanitize_args",
+                action="param_drop",
+                model=model
+            )
         # Return sanitized arguments
         return args, kwargs
 
@@ -111,7 +120,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
                     source="litellm_protocol_adapter.tool_from_function",
                     action="numpydoc import"
                 )
-                litellm_function_dict = function_to_dict(tool)
+                litellm_function_dict = function_to_dict(tool) # type: ignore
                 self._log_bus.log_message(
                     f"LiteLLM implementation for {tool.__name__}",
                     source="litellm_protocol_adapter.tool_from_function",
@@ -129,17 +138,67 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         function_dict = litellm_function_dict or function_dict or ""
         return {"type": "function","function": function_dict}
 
-    def completion(self, *args, **kwargs) -> Union[ModelResponse, CustomStreamWrapper]:
+    def completion(self, *args, **kwargs) -> Union[ModelResponse, CustomStreamWrapper, Generator]:
         # Sanitize arguments before calling the completion method
+        raise_on_completion_status_errors = kwargs.pop("raise_on_completion_status_errors", False)
         args, kwargs = self.sanitize_args(*args, **kwargs)
-        return completion(*args, **kwargs)
+        stream = kwargs.get("stream", None)
+        
+        # Define an error stream generator function outside the try block
+        def error_stream_generator(error_msg: str, model: str):
+            yield self.create_chunk_from_content(0, error_msg, model, Role.assistant.value)
+            yield f"data: {self.stop}\n\n"
+        
+        try:
+            return litellm.completion(*args, **kwargs)
+        except openai.APIStatusError as e:
+            self._log_bus.log_message(
+                "Error in completion",
+                source="litellm_protocol_adapter.completion",
+                action="exception",
+                error=e
+            )
+            if raise_on_completion_status_errors:
+                raise e
+            if stream:
+                return error_stream_generator(str(e), kwargs.get("model", ""))
+            else:
+                return ModelResponse(**self.create_response_from_content(
+                    str(e), 
+                    kwargs.get("model", ""), 
+                    Role.assistant.value
+                ))
+
 
     async def async_completion(self, *args, **kwargs) \
-            -> Coroutine[Any, Any, Union[ModelResponse, CustomStreamWrapper, AsyncGenerator]]:
+            -> Union[ModelResponse, CustomStreamWrapper, AsyncGenerator[Any, None]]:
         # Sanitize arguments before calling the async_completion method
+        raise_on_completion_status_errors = kwargs.pop("raise_on_completion_status_errors", False)
         args, kwargs = self.sanitize_args(*args, **kwargs)
-        return acompletion(*args, **kwargs)
-    
+        stream = kwargs.get("stream", None)
+        try:
+            return await litellm.acompletion(*args, **kwargs)
+                
+        except Exception as e:
+            self._log_bus.log_message(
+                "Error in async_completion",
+                source="litellm_protocol_adapter.async_completion",
+                action="exception",
+                error=e
+            )
+            if raise_on_completion_status_errors:
+                raise e
+            if stream:
+                # For streaming errors, return an async generator that yields error chunks
+                async def error_stream_generator():
+                    yield self.create_chunk_from_content(0, str(e), kwargs.get("model", ""), Role.assistant.value)
+                    yield f"data: {self.stop}\n\n"
+                
+                return error_stream_generator()
+            else:
+                # For non-streaming errors, return an error response
+                return ModelResponse(**self.create_response_from_content(str(e), kwargs.get("model", ""), Role.assistant.value))
+
     # TODO: use https://docs.litellm.ai/docs/providers/custom_llm_server as mock for tests
 
     def finish_reason_from_response(self, response: SupportedResponse) -> Optional[FinishReason]:
@@ -173,7 +232,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
             litellm.callbacks = callbacks
 
     def debug_enabled(self) -> bool:
-        return litellm._is_debugging_on()
+        return litellm._is_debugging_on() # type: ignore
 
     def enable_debug(self) -> None:
         """
@@ -236,16 +295,28 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
                 message = choice.get("message", {}) or choice.get("delta", {})
         return message or {}
 
-    def content_from_delta(self, delta: Union[MessageDict,Delta]) -> str:
+    @staticmethod
+    def content_from_delta(delta: Union[MessageDict, Delta]) -> str:
+        """
+        Extract content from a delta object.
+        
+        Args:
+            delta: Delta object from model response, can be Delta class, dict, or other
+            
+        Returns:
+            Extracted content as string
+        """
         if isinstance(delta, Delta):
             return delta.content or ''
         elif isinstance(delta, dict):
             return delta.get("content", '') or ''
+        elif isinstance(delta, str):
+            return delta
         else:
             return ''
 
-
-    def tool_calls_from_message(self, message: Union[MessageDict,Message]) -> List[LiteLLMFunctionCall]:
+    @staticmethod
+    def tool_calls_from_message(message: Union[MessageDict,Message]) -> List[LiteLLMFunctionCall]:
         # If there are no tool calls or tools available, exit the loop
         if isinstance(message,Message):
             tool_calls = [ tool.model_dump() for tool in message.tool_calls]
@@ -260,17 +331,20 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
                 for tool_call in tool_calls
             ]
 
-    def response_from_deltas(self, chunks: List[ModelResponseStream]) -> ModelResponse:
+    @staticmethod
+    def response_from_deltas(chunks: List[ModelResponseStream]) -> ModelResponse:
         return stream_chunk_builder(chunks=chunks)
 
-    def get_supported_params(self, model_name: str) -> Optional[list]:
+    @staticmethod
+    def get_supported_params(model_name: str) -> Optional[list]:
         return get_supported_openai_params(model_name)  # type: ignore
 
-    def message_as_chunk(self, index: int, delta: Union[MessageDict,Delta, str], model: str, role: Optional[str] = None) -> MessageDict:
+    @staticmethod
+    def create_chunk_from_content(index: int, delta: Union[MessageDict,Delta, str], model: str, role: Optional[str] = None) -> MessageDict:
         if isinstance(delta,str):
             message : dict = {"content": delta}
         elif isinstance(delta, Delta):
-            message : dict = {"content": self.content_from_delta(delta)}
+            message : dict = {"content": delta.content or ''}
         else:
             message : dict = delta
         if role:
@@ -283,9 +357,75 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
             "choices": [{"delta": message}],
         }
         return chunk
+    
+    @staticmethod
+    def create_response_from_content(
+        content: str,
+        model: str,
+        role: str = Role.assistant.value,
+        finish_reason: str = FinishReason.stop.value,
+        usage: Optional[Dict[str, int]] = None
+    ) -> Dict[str, Any]:
+        """
+        Creates an OpenAI-compatible response dictionary from the given content.
+        
+        Args:
+            content: The text content of the response
+            model: The model name to include in the response
+            role: The role of the message (default: assistant)
+            finish_reason: The reason the generation finished (default: stop)
+            usage: Optional usage statistics dictionary with keys like 'prompt_tokens', 
+                   'completion_tokens', and 'total_tokens'
+            
+        Returns:
+            A dictionary formatted as an OpenAI API response
+        """
+        # Create the message object
+        message = {
+            "role": role,
+            "content": content
+        }
+        
+        # Create the response dictionary with OpenAI-compatible structure
+        response = {
+            "id": f"chatcmpl-{str(uuid.uuid4())}",
+            "object": "chat.completion",
+            "created": int(time.time()),
+            "model": model,
+            "choices": [
+                {
+                    "index": 0,
+                    "message": message,
+                    "finish_reason": finish_reason
+                }
+            ]
+        }
+        
+        # Add usage statistics if provided
+        if usage:
+            response["usage"] = usage
+        
+        # self._log_bus.log_message(
+        #     f"Created OpenAI-compatible response",
+        #     source="litellm_protocol_adapter.create_response",
+        #     action="output",
+        #     response=response
+        # )
+        
+        return response
 
     @staticmethod
     def content_from_stream(stream_generator: Generator, stop: str = None) -> str:
+        """
+        Extract content from a stream generator by parsing SSE data.
+        
+        Args:
+            stream_generator: Generator yielding SSE chunks
+            stop: Optional stop token to terminate stream processing
+            
+        Returns:
+            Concatenated content from all delta chunks
+        """
         stop = stop or IProtocolAdapter.stop
         response_content = ""
         for chunk in stream_generator:
@@ -295,11 +435,18 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
                 json_data = data.get("data", "{}")
                 if json_data == stop:
                     break
-                print(json_data)
-                if "choices" in json_data and len(json_data["choices"]) > 0:
-                    delta = json_data["choices"][0].get("delta", {})
+                # Extract content from delta if available
+                json_dict: Dict[str, Any] = {}
+                if isinstance(json_data, dict):
+                    json_dict = json_data
+                elif isinstance(json_data, str):
+                    json_dict = json.loads(json_data)
+                if "choices" in json_dict and len(json_dict["choices"]) > 0:
+                    delta = json_dict["choices"][0].get("delta", {})
                     if "content" in delta:
                         response_content += delta["content"]
-            except Exception as e:
+            except (ValueError, KeyError, TypeError, json.JSONDecodeError) as e:
+                # Only catch specific exceptions related to parsing
                 continue
         return response_content
+

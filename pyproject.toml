@@ -13,7 +13,7 @@ maintainers = [
     "Newton Winter <isoutthere@gmail.com>"
 ]
 readme = "README.md"
-license = "MIT"
+license = "Apache 2.0"
 keywords = ["python", "llm", "agents", "AI", "machine-learning"]
 packages = [{include = "just_agents"}]
 

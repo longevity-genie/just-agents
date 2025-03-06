@@ -35,6 +35,21 @@ def get_current_weather(location: str):
     else:
         return json.dumps({"location": location, "temperature": "unknown"})
 
+
+def test_auto_prompt_query():
+    from tests.tools.toy_tools import get_secret_key,decypher_using_secret_key
+    session: BaseAgent = BaseAgentWithLogging(
+        llm_options=LLAMA3_3,
+        system_prompt="""You are a helpful assistant that can decypher messages using a secret key.  
+        You will be given a secret key. You need to decypher the message using the secret key provided by a system prompt.""",
+        prompt_tools=[
+            (get_secret_key, {"secret_word": "banana"}) #tupple of callable and call_arguments
+        ],
+        tools=[decypher_using_secret_key]
+    )
+    secret = session.query("Decipher me the message please - 'JBYEF0QTGV9IPRIAXEpI' ")
+    assert "Wake up, Neo..." in secret
+
 def agent_query(prompt: str, options: LLMOptions, **kwargs):
     session: BaseAgent = BaseAgentWithLogging(
         llm_options=options,

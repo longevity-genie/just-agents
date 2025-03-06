@@ -43,6 +43,10 @@ def test_web_agent_tool(load_env, tmp_path):
     ill_agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="sugar_genie_good", parent_section="agent_profiles")
     assert "Zaharia" in ill_agent.query("Who is the founder of GlucoseDAO?")
    
+def test_secret_agent(load_env, tmp_path):
+    config_path = Path(TESTS_DIR)  / "profiles" / "tool_problem.yaml"
+    agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="secret_agent", parent_section="agent_profiles")
+    assert "Wake up, Neo..." in agent.query("Decipher me the message please - 'JBYEF0QTGV9IPRIAXEpI' ")
 
 def _test_tool_description_helper(
     tmp_path: Path, 

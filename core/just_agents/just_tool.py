@@ -357,7 +357,7 @@ class JustTool(LiteLLMDescription):
 
 
 class JustPromptTool(JustTool):
-    input_parameters: Optional[Dict[str,Any]] = Field(..., description="Input parameters to call the function with.")
+    call_arguments: Optional[Dict[str,Any]] = Field(..., description="Input parameters to call the function with.")
     """Input parameters to call the function with."""
 
 JustTools = Union[

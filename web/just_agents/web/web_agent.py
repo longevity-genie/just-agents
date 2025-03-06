@@ -21,11 +21,7 @@ class EliotLogger(metaclass=SingletonMeta):
     _logger_output: LogDestinations
     _logdir : Path
     log_path: Path
-    
-    def stdout_logger(self,message: str, **kwargs: Any) -> None:
-        print(message)
-        if kwargs:
-            print(kwargs)
+
 
     def __init__(self, log_dir: Path, temp_dir: Path, logger_output: LogDestinations):
         if not log_dir or not temp_dir:
@@ -47,13 +43,12 @@ class EliotLogger(metaclass=SingletonMeta):
             to_nice_stdout(
                output_file=temp_dir / f"{uniq_name}.json"
             )
-            #add_destinations(self.stdout_logger)
+
         if self._logger_output == "file" or self._logger_output == "both":
             to_nice_file(
                output_file=json_path,
                rendered_file=self.log_path
             )
-            #to_file(open(self.log_path, "ab"))
 
 
 

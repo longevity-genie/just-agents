@@ -40,25 +40,25 @@ class JustAgentProfileToolsetMixin(BaseModel):
         else:
             self.tools[tool.name] = tool
 
-    def add_prompt_tool(self, fun: callable, input_parameters: Dict[str, Any]) -> None:
+    def add_prompt_tool(self, fun: callable, call_arguments: Dict[str, Any]) -> None:
         """
         Adds a tool to the agent's prompt_tools dictionary with input parameters.
 
         Args:
             fun (callable): The function to add as a prompt tool
-            input_parameters (Dict[str, Any]): Parameters to call the function with
+            call_arguments (Dict[str, Any]): Arguments to call the function with
         """
         # Ensure input parameters are JSON serializable
         try:
             import json
-            json.dumps(input_parameters)
+            json.dumps(call_arguments)
         except (TypeError, OverflowError):
             raise ValueError("Input parameters must be JSON serializable")
 
         tool = JustTool.from_callable(fun)
         prompt_tool = JustPromptTool(
             **tool.model_dump(),
-            input_parameters=input_parameters
+            call_arguments=call_arguments
         )
 
         if self.prompt_tools is None:
@@ -123,7 +123,7 @@ class JustAgentProfileToolsetMixin(BaseModel):
                 tool = JustTool.from_callable(func)
                 prompt_tool = JustPromptTool(
                     **tool.model_dump(),
-                    input_parameters=input_params
+                    call_arguments=input_params
                 )
                 new_prompt_tools[prompt_tool.name] = prompt_tool
             else:
@@ -160,11 +160,11 @@ class JustAgentProfileToolsetMixin(BaseModel):
         Retrieves the list of callables from the prompt_tools along with their input parameters.
 
         Returns:
-            Optional[List[Tuple[Callable, Dict[str, Any]]]]: List of (callable, input_params) tuples or None if no prompt_tools
+            Optional[List[Tuple[Callable, Dict[str, Any]]]]: List of (callable, call_arguments) tuples or None if no prompt_tools
         """
         if not self.prompt_tools:
             return None
-        return [(tool.get_callable(refresh=tool.auto_refresh), tool.input_parameters)
+        return [(tool.get_callable(refresh=tool.auto_refresh), tool.call_arguments)
                 for tool in self.prompt_tools.values()]
 
     def subscribe_to_tool_call(self, callback: SubscriberCallback) -> None:

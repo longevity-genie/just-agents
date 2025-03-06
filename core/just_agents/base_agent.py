@@ -78,9 +78,9 @@ class BaseAgent(
         default=50,
         description="A safeguard to prevent tool calls stuck in a loop")
 
-    drop_params: bool = Field(
+    raise_on_completion_status_errors: bool = Field(
         default=True,
-        description="Drop params from the request, useful for some models that do not support them")
+        description="Raise an exception on completion status 4xx and 5xx errors")
 
     enforce_agent_prompt: bool = Field(
         default=True,
@@ -106,11 +106,29 @@ class BaseAgent(
     _tool_fuse_broken: bool = PrivateAttr(False) #Fuse to prevent tool loops
 
 
+    def dynamic_prompt(self, prompt: str) -> str:
+        extended_prompt = prompt
+        if self.prompt_tools:
+            for tool_name, tool in self.prompt_tools.items():
+                tool_input = tool.call_arguments
+                tool_description = tool.description
+                tool_output = tool.get_callable()(**tool_input)
+                call_string = f'Result of {str(tool_name)}({str(tool_input)}) tool execution:\n'
+                call_string += f"{str(tool_output)}\n"
+                if tool_description:
+                    call_string += f" # {str(tool_name)} short description: {tool_description}\n"
+
+                extended_prompt += f"\n{call_string}\n"
+        return extended_prompt
 
 
-    def instruct(self, prompt: str, memory: IBaseMemory = None): #backward compatibility
+    def instruct(self, prompt: str, memory: IBaseMemory = None, dynamic_prompt: bool = True) -> None: 
         if not memory:
             memory = self.memory
+
+        if dynamic_prompt:
+            prompt = self.dynamic_prompt(prompt)
+
         memory.add_system_message(prompt)
 
     def deepcopy_memory(self, memory: IBaseMemory = None) -> IBaseMemory:
@@ -222,7 +240,12 @@ class BaseAgent(
                 opt["api_key"] = self._key_getter()
                 try:
                     # Directly use the protocol's completion method
-                    return self._protocol.completion(messages=messages, stream=stream, response_format=response_format, **opt)
+                    return self._protocol.completion(
+                        messages=messages, 
+                        stream=stream, 
+                        response_format=response_format, 
+                        raise_on_completion_status_errors=self.raise_on_completion_status_errors,
+                        **opt)
                 except Exception as e:
                     last_exception = e
                     if self.completion_remove_key_on_error:
@@ -230,14 +253,24 @@ class BaseAgent(
 
             if self.backup_options:
                 opt = self._prepare_options(self.backup_options)
-                return self._protocol.completion(messages=messages, stream=stream, response_format=response_format, **opt)
+                return self._protocol.completion(
+                    messages=messages, 
+                    stream=stream, 
+                    response_format=response_format, 
+                    raise_on_completion_status_errors=self.raise_on_completion_status_errors,
+                    **opt)
             if last_exception:
                 raise last_exception
             else:
                 raise Exception(
                     f"Run out of tries to execute completion. Check your keys! Keys {self._key_getter.len()} left.")
         else:
-            return self._protocol.completion(messages=messages, stream=stream, response_format=response_format, **opt)
+            return self._protocol.completion(
+                messages=messages, 
+                stream=stream, 
+                response_format=response_format, 
+                raise_on_completion_status_errors=self.raise_on_completion_status_errors,
+                **opt)
 
     def _process_function_calls(
             self,
@@ -367,7 +400,7 @@ class BaseAgent(
                 if delta or restream_tools:  # stream content as is
                     yielded = True
                     if reconstruct_chunks:
-                        yield SSE.sse_wrap(self._protocol.message_as_chunk(i, delta, part["model"], msg.get("role", None)))
+                        yield SSE.sse_wrap(self._protocol.create_chunk_from_content(i, delta, part["model"], msg.get("role", None)))
                     else:
                         yield SSE.sse_wrap(part.model_dump(mode='json'))
                 elif finish_reason == FinishReason.function_call:
@@ -398,7 +431,7 @@ class BaseAgent(
                 tool_messages = self._process_function_calls(tool_calls,memory)
                 if restream_tools:
                     for i, tool_message in enumerate(tool_messages):
-                        yield SSE.sse_wrap(self._protocol.message_as_chunk(i, tool_message, part["model"]))
+                        yield SSE.sse_wrap(self._protocol.create_chunk_from_content(i, tool_message, part["model"]))
             if step == self.max_tool_calls - 2:  # special case where we ran out of tool calls or stuck in a loop
                 self._tool_fuse_broken = True  # one last attempt at graceful response without tools
 
@@ -446,9 +479,11 @@ def log_print(log_string: str, action: str, source: str, *args: VariArgs.args, *
         source: The source of the log message
         **kwargs: Additional logging parameters
     """
-    print(f"{action} from {source}: {log_string}")
+
     if kwargs:
-        print(f"{action} from {source}, extra args: {str(kwargs)}")
+        print(f"{action} from {source}: {log_string}, extra args: {str(kwargs)}")
+    else:
+        print(f"{action} from {source}: {log_string}")
 
 
 
@@ -501,11 +536,14 @@ class BaseAgentWithLogging(BaseAgent):
         self._log_message = self.memory_handler
         self.memory.add_on_message(self._log_message) #using handler to log message
         self._log_tool_call = self.tool_call_callback
-        self.subscribe_to_tool_call(self._log_tool_call) #using listener to log tool call   
+        self.subscribe_to_tool_call(self._log_tool_call) #using listener to log tool call
+        self.subscribe_to_prompt_tool_call(self._log_tool_call)
         self._log_tool_result = self.tool_result_callback
         self.subscribe_to_tool_result(self._log_tool_result) #using listener to log tool results
+        self.subscribe_to_prompt_tool_result(self._log_tool_result)
         self._log_tool_error = self.tool_error_callback
         self.subscribe_to_tool_error(self._log_tool_error) #using listener to log tool errors
+        self.subscribe_to_prompt_tool_error(self._log_tool_error)
         
         self._log_bus.subscribe(".*", self.log_event_handler)
         self._log_function(f"Loaded {self.shortname}", "instantiation.success", "BaseAgentWithLogging", class_name=self.__class__)
@@ -546,7 +584,8 @@ class BaseAgentWithLogging(BaseAgent):
         """
         # Log or process the tool call
         #self._log_function(event_name, "tool.execute", "tools_bus") #auxilary event for tracing if parsing fails
-        self._log_function(f"{str(args)}", "tool.args", event_name)
+        if args:
+          self._log_function(f"{str(args)}", "tool.args", event_name)
         self._log_function(f"{str(kwargs)}", "tool.kwargs", event_name)
 
 
