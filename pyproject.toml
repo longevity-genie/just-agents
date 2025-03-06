@@ -32,7 +32,7 @@ just-agents-examples = "*"
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.4"
 python-dotenv = "*"
-langfuse = ">=2.59.2"
+langfuse = ">=2.59.7"
 just-agents-core = {path = "core", develop = true}
 just-agents-tools = {path = "tools", develop = true}
 just-agents-coding = {path = "coding", develop = true}

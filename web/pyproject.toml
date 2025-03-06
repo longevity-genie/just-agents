@@ -33,7 +33,7 @@ classifiers = [
 python = ">=3.10,<3.15"
 just-agents-core = "*"
 pycomfort = ">=0.0.18"
-fastapi = ">=0.115.10"
+fastapi = ">=0.115.11"
 uvicorn = ">=0.34.0"
 aiofiles = ">=24.1.0"
 python-dotenv = ">=1.0.1"
