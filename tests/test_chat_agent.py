@@ -3,7 +3,7 @@ from time import sleep, time
 from dotenv import load_dotenv
 
 from just_agents import llm_options
-from just_agents.base_agent import BaseAgent, ChatAgent
+from just_agents.base_agent import BaseAgent, ChatAgent, BaseAgentWithLogging
 from just_agents.data_classes import ImageContent, Message, Role, TextContent
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
 from just_agents.llm_options import LLAMA3_3, OPENAI_GPT4oMINI, GEMINI_2_FLASH, GEMINI_2_FLASH_EXP, OPENAI_GPT4o
@@ -137,11 +137,12 @@ class Annotation(BaseModel):
     }
 
 def test_gemini_summarization():
-
+    load_dotenv(override=True)
     #TODO: make it work at least for GEMINI_2_FLASH
-    agent = BaseAgent(
+    agent = BaseAgentWithLogging(
         llm_options=llm_options.GEMINI_2_FLASH,
-        tools=[],   
+        #llm_options=llm_options.OPENAI_GPT4o,
+        tools=[],
         system_prompt="""You are a paper annotator. You extract the abstract, authors and titles of the papers.
         Abstract and authors must be exactly he way they are in the paper, do not edit them.
         You provide your output as json object of the following JSON format:
@@ -164,8 +165,8 @@ def test_gemini_summarization():
     enforce_validation = True
     
     response = agent.query_structural(
-                query, 
-                Annotation, 
+                query,
+                Annotation,
                 enforce_validation=enforce_validation)
     
     validated_response = Annotation.model_validate(response)

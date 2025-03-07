@@ -245,3 +245,75 @@ class JustLogBus(BufferedEventBus):
             **kwargs: Additional parameters to log
         """
         JustLogBus().publish(source, log_message=message, action=action, **kwargs)
+        
+    @staticmethod
+    def trace(message: str, source: str = 'anonymous_logger', action: str = "log_bus.trace", **kwargs: Any) -> None:
+        """Log a TRACE level message.
+        
+        Args:
+            message: The trace message to log
+            source: The source of the log message
+            action: The action related to the log message
+            **kwargs: Additional parameters to log
+        """
+        JustLogBus.log_message(message, source, action, severity="TRACE", **kwargs)
+        
+    @staticmethod
+    def debug(message: str, source: str = 'anonymous_logger', action: str = "log_bus.debug", **kwargs: Any) -> None:
+        """Log a DEBUG level message.
+        
+        Args:
+            message: The debug message to log
+            source: The source of the log message
+            action: The action related to the log message
+            **kwargs: Additional parameters to log
+        """
+        JustLogBus.log_message(message, source, action, severity="DEBUG", **kwargs)
+        
+    @staticmethod
+    def info(message: str, source: str = 'anonymous_logger', action: str = "log_bus.info", **kwargs: Any) -> None:
+        """Log an INFO level message.
+        
+        Args:
+            message: The info message to log
+            source: The source of the log message
+            action: The action related to the log message
+            **kwargs: Additional parameters to log
+        """
+        JustLogBus.log_message(message, source, action, severity="INFO", **kwargs)
+        
+    @staticmethod
+    def warn(message: str, source: str = 'anonymous_logger', action: str = "log_bus.warn", **kwargs: Any) -> None:
+        """Log a WARN level message.
+        
+        Args:
+            message: The warning message to log
+            source: The source of the log message
+            action: The action related to the log message
+            **kwargs: Additional parameters to log
+        """
+        JustLogBus.log_message(message, source, action, severity="WARN", **kwargs)
+        
+    @staticmethod
+    def error(message: str, source: str = 'anonymous_logger', action: str = "log_bus.error", **kwargs: Any) -> None:
+        """Log an ERROR level message.
+        
+        Args:
+            message: The error message to log
+            source: The source of the log message
+            action: The action related to the log message
+            **kwargs: Additional parameters to log
+        """
+        JustLogBus.log_message(message, source, action, severity="ERROR", **kwargs)
+        
+    @staticmethod
+    def fatal(message: str, source: str = 'anonymous_logger', action: str = "log_bus.fatal", **kwargs: Any) -> None:
+        """Log a FATAL level message.
+        
+        Args:
+            message: The fatal error message to log
+            source: The source of the log message
+            action: The action related to the log message
+            **kwargs: Additional parameters to log
+        """
+        JustLogBus.log_message(message, source, action, severity="FATAL", **kwargs)

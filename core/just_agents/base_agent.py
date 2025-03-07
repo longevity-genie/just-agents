@@ -151,7 +151,7 @@ class BaseAgent(
 
     @property
     def debug_enabled(self) -> bool:
-        return self._protocol.debug_enabled
+        return self._protocol.is_debug_enabled()
 
     @debug_enabled.setter
     def debug_enabled(self, value: bool) -> None:
@@ -191,9 +191,12 @@ class BaseAgent(
     def _fork_memory(self, copy_values: bool) -> IBaseMemory:
         new_memory : IBaseMemory
         if copy_values:
-            new_memory = self.memory.model_copy() #Shallow copy
+            new_memory = self.memory.deepcopy()
         else:
-            new_memory = type(self.memory)()  # Call the default constructor of same class
+            #new_memory = type(self.memory)()  # Call the default constructor of same class
+            new_memory = self.memory.deepcopy()
+            new_memory.messages.clear()
+
         return new_memory
 
     @classmethod
@@ -301,9 +304,7 @@ class BaseAgent(
             continue_conversation = self.continue_conversation
 
         self.handle_on_query(query_input, action='query', source='input') # handle the input query
-        memory_instance = self._fork_memory(copy_values=True) #Handlers from main memory need to fire even if messages are discarded
-        if not continue_conversation:
-            memory_instance.clear_messages() #Clear copied messages list instead
+        memory_instance = self._fork_memory(copy_values=continue_conversation) #Handlers from main memory need to fire even if messages are discarded
         self.add_to_memory(query_input, memory_instance) #Now add query to ephemeral memory
         memory_instance.clear_system_messages(clear_non_empty=enforce_agent_prompt) #Clear prompt messages
         if not memory_instance.prompt_messages:
@@ -400,7 +401,11 @@ class BaseAgent(
                 if delta or restream_tools:  # stream content as is
                     yielded = True
                     if reconstruct_chunks:
-                        yield SSE.sse_wrap(self._protocol.create_chunk_from_content(i, delta, part["model"], msg.get("role", None)))
+                        yield SSE.sse_wrap(
+                            self._protocol.create_chunk_from_content(
+                                delta, part["model"], role=msg.get("role", None)
+                            ).model_dump(mode='json')
+                        )
                     else:
                         yield SSE.sse_wrap(part.model_dump(mode='json'))
                 elif finish_reason == FinishReason.function_call:
@@ -431,7 +436,11 @@ class BaseAgent(
                 tool_messages = self._process_function_calls(tool_calls,memory)
                 if restream_tools:
                     for i, tool_message in enumerate(tool_messages):
-                        yield SSE.sse_wrap(self._protocol.create_chunk_from_content(i, tool_message, part["model"]))
+                        yield SSE.sse_wrap(
+                            self._protocol.create_chunk_from_content(
+                                tool_message, kwargs.get("model",self.shortname), role=Role.tool.value
+                            ).model_dump(mode='json')
+                        )
             if step == self.max_tool_calls - 2:  # special case where we ran out of tool calls or stuck in a loop
                 self._tool_fuse_broken = True  # one last attempt at graceful response without tools
 

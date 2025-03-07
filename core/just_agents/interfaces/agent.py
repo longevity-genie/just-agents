@@ -84,13 +84,25 @@ class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, Abs
             #provider = getattr(self.llm_options, "provider", None) if hasattr(self, "llm_options") else None
             #model_name = getattr(self.llm_options, "model", "") if hasattr(self, "llm_options") else ""
             
-            response_format_obj = {"type": "json_object", "response_schema": schema}
+            # response_format_obj = {"type": "json_object", "response_schema": schema}
+            #response_format_obj["enforce_validation"] = enforce_validation
+
+            schema_wrapper = {
+                "name": "query_structural", 
+                "schema": schema,
+                "strict": enforce_validation
+            }
+
+            response_format_obj = {"type": "json_schema", "json_schema": schema_wrapper}
             
-            response_format_obj["enforce_validation"] = enforce_validation
+            #TODO: 400 response for strict, investigate, maybe litellm bug
+            #if enforce_validation:
+            #    response_format_obj["strict"] = True
             
-            response_format = response_format_obj
+           #  response_format = json.dumps(response_format_obj)
         
-        raw_response = self.query(query_input, response_format=response_format, **kwargs)
+        # raw_response = self.query(query_input, response_format=response_format_obj, **kwargs)
+        raw_response = self.query(query_input, response_format=parser, **kwargs)
 
         # If already a dict, no parsing needed
         if isinstance(raw_response, dict):
@@ -177,14 +189,23 @@ class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, Abs
         # Clean the schema recursively
         clean_schema_recursively(schema)
         
-        # Make sure required fields are specified for Gemini
-        # Gemini seems to need this reinforced
-        if "properties" in schema and not "required" in schema:
-            # Add all non-optional fields as required
-            schema["required"] = [
-                field_name for field_name, field in schema["properties"].items() 
-                if not field.get("nullable", False) and not "None" in str(field.get("type", ""))
-            ]
+        # Make sure required fields are specified for OpenAI models
+        if "properties" in schema:
+            # If required field doesn't exist, create it
+            if "required" not in schema:
+                schema["required"] = []
+                # schema["required"] = [
+                #     field_name for field_name, field in schema["properties"].items() 
+                #     if not field.get("nullable", False) and not "None" in str(field.get("type", ""))
+                # ]
+            # Get all property names
+            all_properties = list(schema["properties"].keys())
+            
+            # For OpenAI models, we need to include all properties in the required array
+            # even if they're optional in the Pydantic model
+            for field_name in all_properties:
+                if field_name not in schema["required"]:
+                    schema["required"].append(field_name)
         
         return schema
 

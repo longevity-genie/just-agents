@@ -5,6 +5,8 @@ from pydantic import ConfigDict
 # here we give only the most popular models, 
 # but you can specify any model you want, check https://models.litellm.ai/ for models and providers that are supported
 
+#TODO: parse https://github.com/BerriAI/litellm/blob/main/model_prices_and_context_window.json
+
 LLMOptions = Dict[str, Any]
 
 class ModelOptions(BaseModel):
@@ -116,7 +118,7 @@ OPENAI_GPT4o: LLMOptions = {
 }
 
 OPENAI_GPT4_5_PREVIEW: LLMOptions = {
-    "model": "gpt-4-5-preview",
+    "model": "gpt-4.5-preview",
     "temperature": 0.0
 }
 

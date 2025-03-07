@@ -129,7 +129,11 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC)
             raise ValueError("Failed to clear system prompts")
 
     def deepcopy(self) -> 'IBaseMemory':
-        return self.model_copy(deep=True)
+        new_memory = type(self)()  # Call the default constructor of same class
+        new_memory._on_message = self._on_message.copy() #shallow_copy collections instead
+        new_memory.messages = self.messages.copy()
+        return new_memory
+        #return self.model_copy(deep=True)
 
     # Role-specific message handlers
     def add_on_tool_call(self, fun: OnToolCallable) -> None:

@@ -1,14 +1,13 @@
 from typing import Optional, Union, ClassVar, Type, Sequence, List, Dict, Any, AsyncGenerator, Generator, Callable
-import time
-import openai
-import uuid
-import json
+
 from pydantic import Field, PrivateAttr, BaseModel
 from functools import singledispatchmethod
-import litellm
+
 import os
 
-from litellm import CustomStreamWrapper, completion, acompletion, stream_chunk_builder
+from openai import APIStatusError
+import litellm
+from litellm import CustomStreamWrapper, completion, acompletion, stream_chunk_builder, supports_function_calling, supports_response_schema
 from litellm.utils import Delta, Message, ModelResponse, ModelResponseStream, function_to_dict
 from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
 
@@ -44,7 +43,7 @@ class LiteLLMFunctionCall(ToolCall, IFunctionCall[MessageDict]):
         return {"role": Role.assistant.value, "content": None, "tool_calls": tool_calls}
 
 
-class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, CustomStreamWrapper]):
+class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Union[CustomStreamWrapper, CustomStreamWrapper]]):
     #Class that describes function convention
 
     function_convention: ClassVar[Type[IFunctionCall[MessageDict]]] = LiteLLMFunctionCall
@@ -71,7 +70,20 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
                 action="param_drop",
                 model=model
             )
-        if not litellm.supports_function_calling(model):
+
+        if "response_format" in kwargs and not supports_response_schema(model):
+            fallback = {"type": "json_object"}
+            self._log_bus.log_message(
+                f"Warning: response_schema is not supported by model, using json_object as fallback",
+                source="litellm_protocol_adapter.sanitize_args",
+                action="param_fallback",
+                response_format=kwargs["response_format"],
+                fallback_response_format=fallback,
+                model=model
+            )
+            kwargs["response_format"] = fallback
+
+        if not supports_function_calling(model):
             kwargs.pop("tools", None)
             kwargs.pop("tool_choice", None)
             self._log_bus.log_message(
@@ -81,9 +93,13 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
                 model=model
             )
 
-        if kwargs.pop("raise_on_completion_status_errors", None) is not None:
-            self._log_bus.log_message(
-                f"Warning: raise_on_completion_status_errors not supported by model",
+        if not kwargs.get("tools", None):
+            kwargs.pop("tool_choice", None)
+
+        for deprecated_internal_kwarg in ["raise_on_completion_status_errors", "reconstruct_chunks"]:
+            if kwargs.pop(deprecated_internal_kwarg, None) is not None:
+                self._log_bus.log_message(
+                f"Warning: {deprecated_internal_kwarg} is removed from just-agents",
                 source="litellm_protocol_adapter.sanitize_args",
                 action="param_drop",
                 model=model
@@ -143,15 +159,10 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         raise_on_completion_status_errors = kwargs.pop("raise_on_completion_status_errors", False)
         args, kwargs = self.sanitize_args(*args, **kwargs)
         stream = kwargs.get("stream", None)
-        
-        # Define an error stream generator function outside the try block
-        def error_stream_generator(error_msg: str, model: str):
-            yield self.create_chunk_from_content(0, error_msg, model, Role.assistant.value)
-            yield f"data: {self.stop}\n\n"
-        
+        model = kwargs.get("model", "")
         try:
-            return litellm.completion(*args, **kwargs)
-        except openai.APIStatusError as e:
+            return completion(*args, **kwargs)
+        except APIStatusError as e:
             self._log_bus.log_message(
                 "Error in completion",
                 source="litellm_protocol_adapter.completion",
@@ -161,14 +172,9 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
             if raise_on_completion_status_errors:
                 raise e
             if stream:
-                return error_stream_generator(str(e), kwargs.get("model", ""))
+                return self.create_streaming_chunks_from_text_wrapper(str(e),model,format_as_sse=False)
             else:
-                return ModelResponse(**self.create_response_from_content(
-                    str(e), 
-                    kwargs.get("model", ""), 
-                    Role.assistant.value
-                ))
-
+                return self.create_response_from_content(str(e), model)
 
     async def async_completion(self, *args, **kwargs) \
             -> Union[ModelResponse, CustomStreamWrapper, AsyncGenerator[Any, None]]:
@@ -177,9 +183,8 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         args, kwargs = self.sanitize_args(*args, **kwargs)
         stream = kwargs.get("stream", None)
         try:
-            return await litellm.acompletion(*args, **kwargs)
-                
-        except Exception as e:
+            return await acompletion(*args, **kwargs)
+        except APIStatusError as e:
             self._log_bus.log_message(
                 "Error in async_completion",
                 source="litellm_protocol_adapter.async_completion",
@@ -190,14 +195,16 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
                 raise e
             if stream:
                 # For streaming errors, return an async generator that yields error chunks
-                async def error_stream_generator():
-                    yield self.create_chunk_from_content(0, str(e), kwargs.get("model", ""), Role.assistant.value)
-                    yield f"data: {self.stop}\n\n"
-                
-                return error_stream_generator()
+                async def error_stream_generator(error_msg: str, model: str) -> AsyncGenerator[ModelResponseStream, None]:
+                    for chunk in self.create_streaming_chunks_from_text_wrapper(error_msg,model,format_as_sse=False):
+                        yield chunk
+                return error_stream_generator(str(e), kwargs.get("model", ""))
             else:
                 # For non-streaming errors, return an error response
-                return ModelResponse(**self.create_response_from_content(str(e), kwargs.get("model", ""), Role.assistant.value))
+                return self.create_response_from_content(
+                    str(e), 
+                    kwargs.get("model", ""),
+                )
 
     # TODO: use https://docs.litellm.ai/docs/providers/custom_llm_server as mock for tests
 
@@ -231,13 +238,10 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
             litellm.failure_callback = callbacks
             litellm.callbacks = callbacks
 
-    def debug_enabled(self) -> bool:
+    def is_debug_enabled(self) -> bool:
         return litellm._is_debugging_on() # type: ignore
 
     def enable_debug(self) -> None:
-        """
-        Enable debug mode for the protocol adapter.
-        """
         litellm._turn_on_debug()
 
     def disable_logging(self) -> None:
@@ -245,7 +249,6 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         Disable logging mode for the protocol adapter by removing all callbacks.
         """
         litellm.callbacks = []  # Reset callbacks to empty list
-
 
     @singledispatchmethod
     def message_from_response(self, response: SupportedResponse) -> MessageDict:
@@ -279,7 +282,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
             by_alias=True,
             exclude={"function_call"} if not response.choices[0].message.function_call else {}  # failsafe
         )
-        if "citations" in response: #TODO: investigate why not dmped
+        if "citations" in response: #TODO: investigate why not dumped
             message["citations"] = response.citations  # perplexity specific field
         return message or {}
 
@@ -337,27 +340,10 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
 
     @staticmethod
     def get_supported_params(model_name: str) -> Optional[list]:
-        return get_supported_openai_params(model_name)  # type: ignore
+        return get_supported_openai_params(model_name)  
 
-    @staticmethod
-    def create_chunk_from_content(index: int, delta: Union[MessageDict,Delta, str], model: str, role: Optional[str] = None) -> MessageDict:
-        if isinstance(delta,str):
-            message : dict = {"content": delta}
-        elif isinstance(delta, Delta):
-            message : dict = {"content": delta.content or ''}
-        else:
-            message : dict = delta
-        if role:
-            message["role"] = role
-        chunk : dict = {
-            "id": index,
-            "object": "chat.completion.chunk",
-            "created": time.time(),
-            "model": model,
-            "choices": [{"delta": message}],
-        }
-        return chunk
-    
+
+
     @staticmethod
     def create_response_from_content(
         content: str,
@@ -365,7 +351,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         role: str = Role.assistant.value,
         finish_reason: str = FinishReason.stop.value,
         usage: Optional[Dict[str, int]] = None
-    ) -> Dict[str, Any]:
+    ) -> ModelResponse:
         """
         Creates an OpenAI-compatible response dictionary from the given content.
         
@@ -380,73 +366,115 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse,MessageDict, Cust
         Returns:
             A dictionary formatted as an OpenAI API response
         """
-        # Create the message object
-        message = {
-            "role": role,
-            "content": content
-        }
+        # Decode content if it's a bytes object
+        if isinstance(content, bytes):
+            content = content.decode('utf-8')
         
-        # Create the response dictionary with OpenAI-compatible structure
-        response = {
-            "id": f"chatcmpl-{str(uuid.uuid4())}",
-            "object": "chat.completion",
-            "created": int(time.time()),
-            "model": model,
-            "choices": [
-                {
-                    "index": 0,
-                    "message": message,
-                    "finish_reason": finish_reason
-                }
-            ]
-        }
-        
-        # Add usage statistics if provided
-        if usage:
-            response["usage"] = usage
-        
-        # self._log_bus.log_message(
-        #     f"Created OpenAI-compatible response",
-        #     source="litellm_protocol_adapter.create_response",
-        #     action="output",
-        #     response=response
-        # )
-        
-        return response
+        # Use the more comprehensive helper method instead of reimplementing similar functionality
+        return ModelResponse(**IProtocolAdapter.create_complete_response(
+            content_str=content,
+            model=model,
+            role=role,
+            finish_reason=finish_reason,
+            is_streaming=False,
+            include_usage=usage is not None,  # Only include usage if it was provided
+            usage=usage,
+            include_token_details=False
+        ))
+    
 
     @staticmethod
-    def content_from_stream(stream_generator: Generator, stop: str = None) -> str:
+    def create_chunk_from_content(
+        delta: Union[MessageDict, Delta, str, None], 
+        model: str, 
+        role: Optional[str] = None,
+        chunk_id: Optional[str] = None,
+        finish_reason: Optional[str] = None,
+        usage: Optional[Dict[str, int]] = None
+    ) -> ModelResponseStream:
         """
-        Extract content from a stream generator by parsing SSE data.
+        Creates an OpenAI-compatible streaming chunk from the given content.
         
         Args:
-            stream_generator: Generator yielding SSE chunks
-            stop: Optional stop token to terminate stream processing
+            delta: The content delta (can be MessageDict, Delta object, string, or None)
+            model: The model name to include in the chunk
+            role: Optional role to include in the message
+            chunk_id: Optional custom ID for the chunk
+            finish_reason: Optional reason the generation finished
+            usage: Optional usage statistics
             
         Returns:
-            Concatenated content from all delta chunks
+            A dictionary formatted as an OpenAI API streaming chunk
         """
-        stop = stop or IProtocolAdapter.stop
-        response_content = ""
-        for chunk in stream_generator:
-            try:
-                # Parse the SSE data
-                data = SSE.sse_parse(chunk)
-                json_data = data.get("data", "{}")
-                if json_data == stop:
-                    break
-                # Extract content from delta if available
-                json_dict: Dict[str, Any] = {}
-                if isinstance(json_data, dict):
-                    json_dict = json_data
-                elif isinstance(json_data, str):
-                    json_dict = json.loads(json_data)
-                if "choices" in json_dict and len(json_dict["choices"]) > 0:
-                    delta = json_dict["choices"][0].get("delta", {})
-                    if "content" in delta:
-                        response_content += delta["content"]
-            except (ValueError, KeyError, TypeError, json.JSONDecodeError) as e:
-                # Only catch specific exceptions related to parsing
-                continue
-        return response_content
+        # Process the delta content - keep type handling at this level
+        if delta is None:
+            message_str = None
+        elif isinstance(delta, str):
+            message_str = delta
+        elif isinstance(delta, Delta):
+            message_str = delta.content 
+        else:
+            message_str = str(delta)
+
+        return ModelResponseStream(**IProtocolAdapter.create_complete_response(
+            content_str=message_str,
+            model=model,
+            role=role,
+            response_id=chunk_id,
+            finish_reason=finish_reason,
+            is_streaming=True,
+            include_usage=usage is not None,  # Only include usage if it was provided
+            usage=usage,
+            include_token_details=False
+        ))
+
+    def create_streaming_chunks_from_text_wrapper(
+        self,
+        content: str,
+        model: str,
+        prompt_text: str = "",
+        role: str = Role.assistant.value,
+        finish_reason: str = FinishReason.stop.value,
+        response_id: Optional[str] = None,
+        include_usage: bool = True,
+        include_token_details: bool = False,
+        format_as_sse: bool = False
+    ) -> Generator[Union[ModelResponseStream, Dict[str, Any]], None, None]:
+        """
+        Creates a generator that yields a series of chunks mimicking the OpenAI streaming protocol. 
+        The sequence follows a standard pattern of content -> finish -> usage.
+        """
+        # Decode content if it's a bytes object
+        if isinstance(content, bytes):
+            content = content.decode('utf-8')
+            
+        for chunk in IProtocolAdapter.create_streaming_chunks_from_text( #wraping low level function
+            content=content,
+            model=model,
+            prompt_text=prompt_text,
+            role=role,
+            finish_reason=finish_reason,
+            response_id=response_id,
+            include_usage=include_usage,
+            include_token_details=include_token_details,
+            format_as_sse=False
+        ):
+            model_chunk = ModelResponseStream(**chunk) #validate chunk
+            if format_as_sse:
+                yield SSE.sse_wrap(model_chunk.model_dump())
+            else:
+                yield model_chunk
+
+            if format_as_sse:
+                yield SSE.sse_wrap(IProtocolAdapter.stop)
+
+
+
+        
+
+
+        
+   
+
+
 
