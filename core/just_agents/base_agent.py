@@ -1,6 +1,8 @@
+import copy
 from pydantic import Field, PrivateAttr
 from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol
 from functools import partial
+
 from just_agents.data_classes import FinishReason, ToolCall, Message, Role
 from just_agents.types import MessageDict, SupportedMessages
 
@@ -94,6 +96,14 @@ class BaseAgent(
         default=True,
         description="Add new query messages to memory")
 
+    use_proxy: Optional[bool] = Field(
+        default=None,
+        description="Whether to use a proxy to connect to the internet")
+
+    proxy_address: Optional[str] = Field(
+        default=None,
+        description="The address of the proxy to use")
+
     # Protected handlers implementation
     _on_query : List[QueryListener] = PrivateAttr(default_factory=list)
     _on_response : List[ResponseListener] = PrivateAttr(default_factory=list)
@@ -130,11 +140,6 @@ class BaseAgent(
             prompt = self.dynamic_prompt(prompt)
 
         memory.add_system_message(prompt)
-
-    def deepcopy_memory(self, memory: IBaseMemory = None) -> IBaseMemory:
-        if not memory:
-            memory = self.memory
-        return memory.deepcopy()
 
     def add_to_memory(self, messages: SupportedMessages, memory: IBaseMemory = None) -> None:
         if not memory:
@@ -206,8 +211,8 @@ class BaseAgent(
             raise ValueError(f"Tools mismatch: agent tools empty, but llm_options has tools section:'{instance.llm_options.get('tools')}'")
         return instance
 
-    def _prepare_options(self, options: LLMOptions):
-        opt = options.copy()
+    def _prepare_options(self, options: LLMOptions) -> Dict[str, Any]:
+        opt: LLMOptions = copy.deepcopy(options)
         if self.tools is not None and not self._tool_fuse_broken:  # populate llm_options based on available tools
             opt["tools"] = [
                 self._protocol.tool_from_function(
@@ -218,6 +223,8 @@ class BaseAgent(
             ]
         else:
             opt.pop("tools", None) #Ensure no tools are passed to adapter
+        if self.use_proxy and self.proxy_address:
+            opt["api_base"] = self.proxy_address
         return opt
     
     def _execute_completion(
@@ -665,7 +672,7 @@ class BaseAgentWithLogging(BaseAgent):
         self._log_function(message, action=action, source=event_name, **kwargs)
 
 
-class ChatAgent(BaseAgent, JustAgentProfileChatMixin):
+class ChatAgent(JustAgentProfileChatMixin):
     """
     An agent that has role/goal/task attributes and can call other agents
     """
@@ -685,3 +692,5 @@ class ChatAgent(BaseAgent, JustAgentProfileChatMixin):
         if self.format is not None:
             self.system_prompt = self.system_prompt + "\n" + self.format
 
+class ChatAgentWithLogging(ChatAgent, BaseAgentWithLogging):
+    pass

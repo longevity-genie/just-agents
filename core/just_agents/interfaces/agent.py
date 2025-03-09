@@ -3,8 +3,8 @@ import ast
 import json
 import re
 from typing import Type, Union, Generator, AsyncGenerator, Any, TypeVar, Generic, List, Optional, Callable, Coroutine, \
-    Protocol, ParamSpec, ParamSpecArgs, ParamSpecKwargs
-from pydantic import BaseModel, ConfigDict
+    Protocol, ParamSpec, ParamSpecArgs, ParamSpecKwargs, Dict, get_type_hints, get_origin, get_args
+from pydantic import BaseModel, ConfigDict, Field, create_model
 import sys
 
 # Define generic types for inputs and outputs
@@ -76,10 +76,11 @@ class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, Abs
         automatically generates and sends a JSON schema to guide the response format.
         """
         
+        #TODO: Clean up this mess when it is working and move litellm-specific implementation into adapter
         # Check if we should auto-generate response format from parser
         if response_format is None and parser is not dict and issubclass(parser, BaseModel) and enforce_validation:
             schema = self._get_response_schema(parser)
-            
+            response_format = make_all_fields_required(parser)
             # Check if this is a Gemini model to add enforce_validation
             #provider = getattr(self.llm_options, "provider", None) if hasattr(self, "llm_options") else None
             #model_name = getattr(self.llm_options, "model", "") if hasattr(self, "llm_options") else ""
@@ -95,14 +96,14 @@ class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, Abs
 
             response_format_obj = {"type": "json_schema", "json_schema": schema_wrapper}
             
-            #TODO: 400 response for strict, investigate, maybe litellm bug
+  
             #if enforce_validation:
             #    response_format_obj["strict"] = True
             
            #  response_format = json.dumps(response_format_obj)
         
         # raw_response = self.query(query_input, response_format=response_format_obj, **kwargs)
-        raw_response = self.query(query_input, response_format=parser, **kwargs)
+        raw_response = self.query(query_input, response_format=response_format, **kwargs)
 
         # If already a dict, no parsing needed
         if isinstance(raw_response, dict):
@@ -258,3 +259,111 @@ class IAgentWithInterceptors(
             listener: ResponseListener[AbstractQueryResponseType]
     ) -> None:
         self._on_response.remove(listener)
+
+def make_all_fields_required(
+    model_class: Type[BaseModel],
+    cache: Optional[Dict[Type[BaseModel], Type[BaseModel]]] = None
+) -> Type[BaseModel]:
+    """
+    Creates a new Pydantic model class where all fields are required (recursively).
+    
+    Args:
+        model_class: The original Pydantic model class to transform
+        cache: A dictionary to cache already processed models to avoid infinite recursion
+        
+    Returns:
+        A new Pydantic model class with all fields marked as required
+    """
+    # Initialize cache to avoid processing the same model twice (prevents infinite recursion)
+    if cache is None:
+        cache = {}
+    
+    # If we've already processed this model, return the cached version
+    if model_class in cache:
+        return cache[model_class]
+    
+    # Create a temporary placeholder to handle recursive references
+    new_class_name = f"Required{model_class.__name__}"
+    cache[model_class] = None  # Will be replaced with actual implementation
+    
+    # Process all fields
+    new_fields: Dict[str, tuple] = {}
+    
+    for field_name, field_info in model_class.model_fields.items():
+        field_type = field_info.annotation
+        
+        # Process the type to make nested models required
+        processed_type = _process_field_type(field_type, cache)
+        
+        # Create a Field without default value to make it required
+        field_kwargs = {
+            # Preserve field metadata
+            "description": field_info.description,
+            "title": field_info.title,
+            # Remove defaults to make field required
+        }
+        
+        if field_info.json_schema_extra:
+            field_kwargs["json_schema_extra"] = field_info.json_schema_extra
+            
+        # Add the processed field to the new fields dictionary
+        new_fields[field_name] = (processed_type, Field(**field_kwargs))
+    
+    # Create the new model with required fields
+    model_config = getattr(model_class, "model_config", None)
+    
+    new_model = create_model(
+        new_class_name,
+        __config__=model_config,
+        **new_fields
+    )
+    
+    # Store the created model in cache
+    cache[model_class] = new_model
+    
+    return new_model
+
+def _process_field_type(
+    field_type: Any, 
+    cache: Dict[Type[BaseModel], Type[BaseModel]]
+) -> Any:
+    """
+    Process field types recursively, handling container types like List, Dict, Union, etc.
+    
+    Args:
+        field_type: The type annotation to process
+        cache: Cache of already processed models
+        
+    Returns:
+        The processed type with nested models made required
+    """
+    # Handle None/Optional types by unwrapping them
+    origin = get_origin(field_type)
+    args = get_args(field_type)
+    
+    # Handle Union types (including Optional which is Union[T, None])
+    if origin is Union:
+        # Process each union member type
+        processed_args = [
+            _process_field_type(arg, cache) for arg in args 
+            if arg is not type(None)  # Remove None from Union to make required
+        ]
+        
+        # If only one type remains, return it directly
+        if len(processed_args) == 1:
+            return processed_args[0]
+        # Otherwise create a new Union with the processed types
+        return Union[tuple(processed_args)]
+    
+    # Handle container types like List, Dict, etc.
+    elif origin is not None and args:
+        # Process container element types
+        processed_args = tuple(_process_field_type(arg, cache) for arg in args)
+        return origin[processed_args]
+    
+    # Handle Pydantic models - recursively make their fields required
+    elif isinstance(field_type, type) and issubclass(field_type, BaseModel):
+        return make_all_fields_required(field_type, cache)
+    
+    # Return unmodified type for basic types
+    return field_type

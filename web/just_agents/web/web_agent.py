@@ -4,6 +4,7 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import ClassVar, Optional, Dict, Any, Callable, Literal, Type, Generator, Union
+from just_agents.llm_options import LLMOptions
 from just_agents.base_agent import BaseAgent, BaseAgentWithLogging, VariArgs, LogFunction, BaseModelResponse, SupportedMessages
 from just_agents.just_serialization import JustSerializable
 from pydantic import Field,BaseModel,PrivateAttr
@@ -152,7 +153,7 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
         parent_section: Optional[str] = "agent_profiles",
         section: Optional[str] = None,
         required_base_class: Optional[Type[BaseAgent]] = None,
-        fail_on_any_error: bool = True
+        **kwargs
     ) -> Dict[str, 'BaseAgent']:
         """
         Creates a dictionary of WebAgent (or subclass) instances from a YAML file.
@@ -171,6 +172,10 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
                 config_data = yaml.safe_load(f) or {}
 
             agents : Dict[str,BaseAgent] = {}
+
+            fail_on_any_error = kwargs.get("fail_on_any_error", True)
+            use_proxy = kwargs.get("use_proxy", None)
+            proxy_address = kwargs.get("proxy_address", None)
 
             # Get the correct section data
             if parent_section:
@@ -206,6 +211,12 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
                         parent_section,
                         yaml_path
                     )
+                    if use_proxy is not None and proxy_address and isinstance(auto_instance, BaseAgent):
+                        #Precedence: yaml > kwargs > env > default
+                        if auto_instance.use_proxy is None: 
+                            auto_instance.use_proxy = use_proxy
+                        if auto_instance.proxy_address is None:
+                            auto_instance.proxy_address = proxy_address
                 except Exception as e:
                     action.log(
                         message_type="agent.config_error",

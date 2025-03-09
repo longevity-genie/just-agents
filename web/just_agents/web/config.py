@@ -87,6 +87,20 @@ class WebAgentConfig(BaseModel):
         description="Path to log directory",
         examples=["logs", "/app/data"]
     )
+    use_proxy: bool = Field(
+        default_factory=lambda: os.getenv('AGENT_USE_PROXY', "false").lower() == "true",
+        description="Whether to use a proxy to connect to the internet",
+        examples=[True, False]
+    )
+    proxy_address: str = Field(
+        default_factory=lambda: os.getenv('AGENT_PROXY_ADDRESS', "http://172.17.0.1:4000/v1"),
+        description="The address of the proxy to use",
+        examples=["http://172.17.0.1:4000/v1", "http://localhost:4000/v1"]
+    )
+  
+    
+    
+    
 
 
 class ChatUIAgentConfig(WebAgentConfig):

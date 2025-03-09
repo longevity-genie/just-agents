@@ -3,7 +3,7 @@ from time import sleep, time
 from dotenv import load_dotenv
 
 from just_agents import llm_options
-from just_agents.base_agent import BaseAgent, ChatAgent, BaseAgentWithLogging
+from just_agents.base_agent import BaseAgent, ChatAgent, BaseAgentWithLogging, ChatAgentWithLogging
 from just_agents.data_classes import ImageContent, Message, Role, TextContent
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
 from just_agents.llm_options import LLAMA3_3, OPENAI_GPT4oMINI, GEMINI_2_FLASH, GEMINI_2_FLASH_EXP, OPENAI_GPT4o
@@ -22,6 +22,7 @@ from typing import List, Optional
 to_nice_stdout()
 db_path = Path("tests/data/open_genes.sqlite")
 sleep_time = float(os.getenv("SLEEP_TIME", "20.0"))
+
 
 
 @pytest.fixture(scope="session")
@@ -94,10 +95,11 @@ def test_quering_gemini(open_genes_db):
 
 
 def test_query_structural():
-    agent = ChatAgent(role="helpful agent that provides structured information",
-                    goal="help users by providing structured information in JSON format",
-                    task="analyze user questions and provide comprehensive responses in a structured format",
-                    format="""all your answers should be represented as a JSON object with the following structure:
+    load_dotenv(override=True)
+    agent = ChatAgentWithLogging(role="helpful agent that provides structured information",
+                                 goal="help users by providing structured information in JSON format",
+                                 task="analyze user questions and provide comprehensive responses in a structured format",
+                                 format="""all your answers should be represented as a JSON object with the following structure:
                     {
                       "user_question": "the original question asked by the user",
                       "answer": "your analysis of the question",
@@ -105,8 +107,10 @@ def test_query_structural():
                       "question": "",
                       "final_answer": "your complete answer to the user's question"
                     }""",
-                    llm_options=GEMINI_2_FLASH
-                    )
+                                 #llm_options=LLAMA3_3
+                                 #llm_options=llm_options.OPENAI_GPT4o,
+                                 llm_options=GEMINI_2_FLASH
+                                 )
     
     # Ask the agent a question that doesn't require SQL or tool use
     response = agent.query_structural("What are the main factors that contribute to aging?", parser=AgentResponse, enforce_validation=True)
@@ -126,20 +130,16 @@ def test_query_structural():
 
 
 class Annotation(BaseModel):
-    abstract: str
+    abstract: str = Field(...)
     authors: List[str] = Field(default_factory=list)
-    title: str
-    source: str
-    
-    model_config = {
-        "extra": "forbid",
-        "arbitrary_types_allowed": True
-    }
+    title: str = Field(...)
+    source: str = Field(...)
 
+pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7808")
 def test_gemini_summarization():
     load_dotenv(override=True)
     #TODO: make it work at least for GEMINI_2_FLASH
-    agent = BaseAgentWithLogging(
+    agent = ChatAgentWithLogging(
         llm_options=llm_options.GEMINI_2_FLASH,
         #llm_options=llm_options.OPENAI_GPT4o,
         tools=[],
@@ -219,7 +219,7 @@ def test_vision():
 
 @pytest.mark.skip(reason="needs to be rewritten as it exceeds the context window")
 def test_delegation():
-    
+    load_dotenv(override=True)
     agent_db = ChatAgent(role="helpful agent which knows how operate with databases",
                     goal=f"help users by using SQL syntax to form comands to work with the {db_path} sqlite database",
                     task="formulate appropriate comands to operate in the given database.",

@@ -49,7 +49,9 @@ class AgentRestAPI(FastAPI):
         terms_of_service: Optional[str] = None,
         contact: Optional[Dict[str, Union[str, Any]]] = None,
         license_info: Optional[Dict[str, Union[str, Any]]] = None,
-        agents: Optional[Dict[str, BaseAgent]] = None, # We can set up agents explicetly here instead of loading them from yaml
+        agents: Optional[Dict[str, BaseAgent]] = None, # We can set up agents explicitly here instead of loading them from yaml
+        use_proxy:Optional[bool] = None,
+        proxy_address:Optional[str] = None,
 
     ) -> None:
         """Initialize the AgentRestAPI with FastAPI parameters.
@@ -86,7 +88,14 @@ class AgentRestAPI(FastAPI):
 
         # Initialize WebAgentConfig
         self._initialize_config()
-        
+        if use_proxy is not None:
+            self.config.use_proxy = use_proxy
+        else:
+            self.config.use_proxy = self.config.use_proxy
+        if proxy_address is not None:
+            self.config.proxy_address = proxy_address
+        else:
+            self.config.proxy_address = self.config.proxy_address
         self.agents = {} if agents is None else agents # Dictionary to store multiple agents
         self._agent_related_config(agent_config, agent_section, agent_parent_section, self.AGENT_CLASS)
         self._routes_config()
