@@ -34,6 +34,8 @@ StreamingResponseFunction = Callable[...,AbstractStreamingGeneratorResponseType]
 
 class IAgent(ABC, Generic[AbstractQueryInputType, AbstractQueryResponseType, AbstractStreamingChunkType]):
 
+    shortname: str # must have an identifier for the agent
+
     @abstractmethod
     def query(self, query_input: AbstractQueryInputType, **kwargs) -> Optional[AbstractQueryResponseType]:
         raise NotImplementedError("You need to implement query() abstract method first!")

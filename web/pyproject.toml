@@ -37,6 +37,7 @@ fastapi = ">=0.115.11"
 uvicorn = ">=0.34.0"
 aiofiles = ">=24.1.0"
 python-dotenv = ">=1.0.1"
+coolname = ">=2.2.0"
 
 [tool.poetry.group.dev.dependencies]
 just-agents-core = { path = "../core", develop = true }

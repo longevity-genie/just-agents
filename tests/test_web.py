@@ -12,7 +12,7 @@ from just_agents.web.chat_ui import ModelConfig
 from just_agents.web.run_agent import validate_agent_config
 from just_agents.web.chat_ui_rest_api import ChatUIAgentRestAPI
 from just_agents.web.config import ChatUIAgentConfig, BaseModel
-
+from just_agents.just_bus import JustLogBus
 
 TESTS_DIR = os.path.dirname(__file__)  # Get the directory where this test file is located
 MODELS_DIR = os.path.join(TESTS_DIR, "models.d")  # Path to models.d inside tests
@@ -43,10 +43,16 @@ def test_web_agent_tool(load_env, tmp_path):
     ill_agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="sugar_genie_good", parent_section="agent_profiles")
     assert "Zaharia" in ill_agent.query("Who is the founder of GlucoseDAO?")
    
-def test_secret_agent(load_env, tmp_path):
-    config_path = Path(TESTS_DIR)  / "profiles" / "tool_problem.yaml"
+def test_prompt_functions_and_agent_locator(load_env, tmp_path):
+    config_path = Path(TESTS_DIR)  / "profiles" / "secret_service.yaml"
+    key_agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="keys_agent", parent_section="agent_profiles")
     agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="secret_agent", parent_section="agent_profiles")
-    assert "Wake up, Neo..." in agent.query("Decipher me the message please - 'JBYEF0QTGV9IPRIAXEpI' ")
+    result = agent.query("Decipher me the message please - 'JBYEF0QTGV9IPRIAXEpI' ")
+    print(key_agent.shortname) # keep in local scope
+    assert key_agent.shortname == "keys_agent"
+    assert agent.shortname == "secret_agent"
+    assert "Wake up, Neo..." in result
+
 
 def _test_tool_description_helper(
     tmp_path: Path, 

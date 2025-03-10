@@ -8,9 +8,9 @@ class SingletonMeta(type):
     _instances: Dict[type, object] = {}
 
     def __call__(cls, *args, **kwargs):
-        if cls not in cls._instances:
-            cls._instances[cls] = super(SingletonMeta, cls).__call__(*args, **kwargs)
-        return cls._instances[cls]
+        if cls.__qualname__ not in cls._instances:
+            cls._instances[cls.__qualname__] = super(SingletonMeta, cls).__call__(*args, **kwargs)
+        return cls._instances[cls.__qualname__]
 
 VariArgs = ParamSpec('VariArgs')
 
@@ -317,3 +317,4 @@ class JustLogBus(BufferedEventBus):
             **kwargs: Additional parameters to log
         """
         JustLogBus.log_message(message, source, action, severity="FATAL", **kwargs)
+

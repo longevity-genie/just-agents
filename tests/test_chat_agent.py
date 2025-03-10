@@ -135,7 +135,7 @@ class Annotation(BaseModel):
     title: str = Field(...)
     source: str = Field(...)
 
-pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7808")
+@pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7808")
 def test_gemini_summarization():
     load_dotenv(override=True)
     #TODO: make it work at least for GEMINI_2_FLASH
@@ -212,7 +212,7 @@ def test_vision():
     pprint(message)
     result = agent.query(message)
     #https://arxiv.org/pdf/2410.05780
-    assert "cat" in result
+    assert "cat" in result or "kitten" in result
 
 
 

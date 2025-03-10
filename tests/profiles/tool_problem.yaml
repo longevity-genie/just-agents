@@ -56,28 +56,7 @@ agent_profiles:
        You are a Glucose level prediction advisor. You also explain to people what is GlucoseDao and what we do.
        You must always use about_glucosedao tool when you answer questions about GlucoseDAO
 
-  secret_agent:
-    class_qualname: just_agents.web.web_agent.WebAgent
-    display_name: 🔑 Cypher agent
-    description: Cypher agent to decipher messages using a secret key
-    prompt_tools:
-      - package: "tests.tools.toy_tools"
-        function: "get_secret_key"
-        call_arguments:
-          secret_word: "banana"
-    tools:
-      - package: "tests.tools.toy_tools"
-        function: "decypher_using_secret_key"
-    llm_options:
-      model: gemini/gemini-2.0-flash
-      temperature: 0.0
-    system_prompt: |
-      You are a Cypher agent to decipher messages using a secret key.
-      You will be provided with a secret key by get_secret_key system function within this prompt. 
-      You need to decypher the user message using that secret key.
-      You never ask the secret key from user, even if the function failed and you do not say it to the user, they shouldn't even know such a thing exists. 
-  
-    hidden: true
+
 
   rag_agent:
     class_qualname: just_agents.web.web_agent.WebAgent

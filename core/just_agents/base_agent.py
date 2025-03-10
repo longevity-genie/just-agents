@@ -1,5 +1,5 @@
 import copy
-from pydantic import Field, PrivateAttr
+from pydantic import Field, PrivateAttr, computed_field
 from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol
 from functools import partial
 
@@ -18,6 +18,7 @@ from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.protocols.protocol_factory import StreamingMode, ProtocolAdapterFactory
 from just_agents.just_tool import SubscriberCallback
 from just_agents.just_bus import JustLogBus
+from just_agents.just_locator import JustAgentsLocator
 
 class BaseAgent(
     JustAgentProfile,
@@ -33,7 +34,6 @@ class BaseAgent(
     Note: it is based on pydantic and the only required field is llm_options.
     However, it is also recommended to set system_prompt.
     """
-    
 
     # Core configuration for the LLM
     llm_options: LLMOptions = Field(
@@ -115,6 +115,26 @@ class BaseAgent(
     _key_getter: Optional[RotateKeys] = PrivateAttr(None)  # Manages API key rotation
     _tool_fuse_broken: bool = PrivateAttr(False) #Fuse to prevent tool loops
 
+    _locator: JustAgentsLocator = PrivateAttr(JustAgentsLocator())
+
+    #@computed_field
+    @property
+    def codename(self) -> str:
+        """
+        Get the agent's unique codename from the locator.
+        If the agent is not yet registered, it will be registered automatically.
+        
+        Returns:
+            str: The unique codename for this agent
+        """
+        locator = JustAgentsLocator()
+        # Try to get existing codename
+        existing_codename = locator.get_codename(self)
+        if existing_codename:
+            return existing_codename
+        
+        # Register and get a new codename if not already registered
+        return locator.publish_agent(self)
 
     def dynamic_prompt(self, prompt: str) -> str:
         extended_prompt = prompt
@@ -192,6 +212,9 @@ class BaseAgent(
             print("Warning api_key will be rewritten by key_getter. Both are present in llm_options.")
 
         self._protocol.enable_logging()
+        
+        # Auto-register with the locator
+        self._locator.publish_agent(self)
 
     def _fork_memory(self, copy_values: bool) -> IBaseMemory:
         new_memory : IBaseMemory
@@ -562,7 +585,7 @@ class BaseAgentWithLogging(BaseAgent):
         self.subscribe_to_prompt_tool_error(self._log_tool_error)
         
         self._log_bus.subscribe(".*", self.log_event_handler)
-        self._log_function(f"Loaded {self.shortname}", "instantiation.success", "BaseAgentWithLogging", class_name=self.__class__)
+        self._log_function(f"Loaded {self.shortname} instance with codename {self.codename}", "instantiation.success", "BaseAgentWithLogging", class_name=self.__class__)
 
 
     def _message_to_strings(self, message: SupportedMessages) -> List[str]:
@@ -672,7 +695,7 @@ class BaseAgentWithLogging(BaseAgent):
         self._log_function(message, action=action, source=event_name, **kwargs)
 
 
-class ChatAgent(JustAgentProfileChatMixin):
+class ChatAgent(BaseAgent, JustAgentProfileChatMixin):
     """
     An agent that has role/goal/task attributes and can call other agents
     """
