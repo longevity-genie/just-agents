@@ -115,7 +115,7 @@ class BaseAgent(
     _key_getter: Optional[RotateKeys] = PrivateAttr(None)  # Manages API key rotation
     _tool_fuse_broken: bool = PrivateAttr(False) #Fuse to prevent tool loops
 
-    _locator: JustAgentsLocator = PrivateAttr(JustAgentsLocator())
+    _locator: JustAgentsLocator = PrivateAttr(default_factory=lambda *args: JustAgentsLocator())
 
     #@computed_field
     @property
@@ -127,14 +127,13 @@ class BaseAgent(
         Returns:
             str: The unique codename for this agent
         """
-        locator = JustAgentsLocator()
         # Try to get existing codename
-        existing_codename = locator.get_codename(self)
+        existing_codename = self._locator.get_codename(self)
         if existing_codename:
             return existing_codename
         
         # Register and get a new codename if not already registered
-        return locator.publish_agent(self)
+        return self._locator.publish_agent(self)
 
     def dynamic_prompt(self, prompt: str) -> str:
         extended_prompt = prompt
@@ -242,7 +241,10 @@ class BaseAgent(
                     self.tools[tool].get_callable(wrap=False),
                     function_dict = self.tools[tool].get_litellm_description(),
                     use_litellm=self.litellm_tool_description
-                ) for tool in self.tools
+                ) for tool in self.tools if (
+                    not self.tools[tool].max_calls_per_query
+                        or self.tools[tool].remaining_calls > 0
+                )
             ]
         else:
             opt.pop("tools", None) #Ensure no tools are passed to adapter
@@ -349,7 +351,10 @@ class BaseAgent(
             remember_query: Optional[bool] = None,
             **kwargs
     ) -> IBaseMemory:
-        self._tool_fuse_broken = False  # defuse
+        self._tool_fuse_broken = False  # defuse call limiter
+        if self.tools:
+            for tool in self.tools.values():
+                tool.reset() #reset tool calls, if set
         if remember_query is None:
             remember_query = self.remember_query
         if remember_query: #replace with shallow copy of the fork if remember is set

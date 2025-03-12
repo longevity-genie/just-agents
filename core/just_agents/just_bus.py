@@ -318,3 +318,65 @@ class JustLogBus(BufferedEventBus):
         """
         JustLogBus.log_message(message, source, action, severity="FATAL", **kwargs)
 
+    @staticmethod
+    def debug_binding(func: Callable) -> Callable:
+        """
+        Creates a decorator that logs binding information for methods to help with debugging.
+        Shows which instance a method is bound to when called.
+        
+        Args:
+            func: The function or method to decorate
+            
+        Returns:
+            A decorated function that logs binding information
+            
+        Example:
+            class MyClass:
+                @JustLogBus.debug_binding
+                def my_method(self, arg):
+                    return arg
+                    
+            # Or for callbacks:
+            button.on_click(JustLogBus.debug_binding(self.handle_click))
+        """
+        import functools
+        
+        @functools.wraps(func)
+        def wrapper(*args, **kwargs):
+            # Get binding information
+            bound_to = getattr(func, '__self__', None)
+            func_name = getattr(func, '__qualname__', func.__name__)
+            
+            # Log based on binding type
+            if bound_to:
+                JustLogBus.debug(
+                    f"Calling {func_name} bound to {bound_to}",
+                    source="debug_binding",
+                    action="function.call",
+                    bound_instance=str(bound_to),
+                    function=func_name
+                )
+            else:
+                # Unbound method case
+                if args and isinstance(args[0], object) and not isinstance(args[0], type):
+                    JustLogBus.debug(
+                        f"Calling {func_name} with self={args[0]}",
+                        source="debug_binding",
+                        action="function.call",
+                        unbound_with_self=str(args[0]),
+                        function=func_name
+                    )
+                else:
+                    JustLogBus.debug(
+                        f"Calling unbound {func_name}",
+                        source="debug_binding",
+                        action="function.call",
+                        unbound=True,
+                        function=func_name
+                    )
+                
+            # Execute the original function
+            return func(*args, **kwargs)
+        
+        return wrapper
+

@@ -40,7 +40,7 @@ COPY . /opt/just-agents
 
 # Install dependencies
 RUN poetry config virtualenvs.create false && \
-    poetry add langfuse>=2.59.2 opik>=1.4.12 pandas>=2.2 --lock && \
+    poetry add "langfuse>=2.59.2" "opik>=1.4.12" "pandas>=2.2" --lock && \
     poetry install --no-interaction --no-cache --compile && \
     poetry show --tree
 

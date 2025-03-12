@@ -41,7 +41,8 @@ def test_auto_prompt_query():
     session: BaseAgent = BaseAgentWithLogging(
         llm_options=LLAMA3_3,
         system_prompt="""You are a helpful assistant that can decypher messages using a secret key.  
-        You will be given a secret key. You need to decypher the message using the secret key provided by a system prompt.""",
+        You will be given a secret key. You need to decypher the message using the 'decypher_using_secret_key' tool. 
+        Supply the secret key provided by a system prompt to it for it to work.""",
         prompt_tools=[
             (get_secret_key, {"secret_word": "banana"}) #tupple of callable and call_arguments
         ],

@@ -24,13 +24,13 @@ class LiteLLMFunctionCall(ToolCall, IFunctionCall[MessageDict]):
     def execute_function(self, call_by_name: ToolByNameCallback):
         function_args = self.arguments or {}
         if isinstance(function_args, str):
-            function_response = function_args #error on validation
+            function_response = f"Incorrect arguments received: '{function_args}'" #error on validation
         else:
             try:
                 function_to_call = call_by_name(self.name)
                 function_response = str(function_to_call(**function_args))
             except Exception as e:
-                function_response = str(e)
+                function_response = f"Error occurred during call: '{str(e)}'"
         message = {"role": Role.tool.value, "content": function_response, "name": self.name, "tool_call_id": self.id}
         return message
 

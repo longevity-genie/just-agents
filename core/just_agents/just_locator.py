@@ -70,7 +70,7 @@ class JustAgentsLocator(metaclass=SingletonMeta):
         self._use_coolname: bool = _COOLNAME_AVAILABLE
         
         # Callback for weak references when agents are collected
-        self._create_cleanup_callback = lambda codename: lambda: self._cleanup_codename(codename)
+        self._create_cleanup_callback = lambda codename: lambda *args: self._cleanup_codename(codename)
     
     def _cleanup_codename(self, codename: str) -> None:
         """

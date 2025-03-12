@@ -25,29 +25,76 @@ class LiteLLMDescription(BaseModel):
 class JustTool(LiteLLMDescription):
     package: str = Field(..., description="The name of the module where the function is located.")
     auto_refresh: bool = Field(True, description="Whether to automatically refresh the tool after initialization.")
-
+    error_on_duplicate_calls: bool = Field(True, description="Whether to raise an error on repeated calls with duplicate input.")
+    max_calls_per_query: Optional[int] = Field(None, ge=1, description="The maximum number of calls to the function per query.")
 
     _callable: Optional[Callable] = PrivateAttr(default=None)
     """The callable function wrapped with the JustToolsBus callbacks."""
     _raw_callable: Optional[Callable] = PrivateAttr(default=None)
     """The original callable function."""
+    _calls_made: int = PrivateAttr(default=0)
+    """Counter for tracking how many times this tool has been called."""
+    _previous_call: Optional[Tuple[Tuple, Dict]] = PrivateAttr(default=None)
+    """The most recent call to check for duplicates."""
 
+    @property
+    def remaining_calls(self) -> int:
+        """
+        Returns the number of remaining calls allowed for this tool.
+        
+        Returns:
+            int: Number of calls remaining, or -1 if unlimited
+        """
+        if self.max_calls_per_query is None:
+            return -1  # Placeholder for infinity
+        return max(0, self.max_calls_per_query - self._calls_made)
+
+    def reset(self) -> Self:
+        """
+        Reset the call counter for this tool.
+        """
+        self._calls_made = 0
+        self._previous_call = None  # Reset previous call
+        return self
+    
     def model_post_init(self, __context: Any) -> None:
         """Called after the model is initialized. Refreshes the tools metainfo if auto_refresh is True."""
         super().model_post_init(__context)
         if self.auto_refresh:
             self.refresh()
+        if self._callable is None or self._raw_callable is None:
+            self.get_callable() #populate callables on the instance level if unset
 
-    @staticmethod
-    def _wrap_function(func: Callable, name: str) -> Callable:
+    def _wrap_function(self, func: Callable, name: str) -> Callable:
         """
         Helper to wrap a function with event publishing logic to JustToolsBus.
         """
         def __wrapper(*args: Any, **kwargs: Any) -> Any:
             bus = JustToolsBus()
             bus.publish(f"{name}.execute", *args, kwargs=kwargs)
+            
             try:
+                # Check for maximum calls
+                if self.max_calls_per_query is not None:
+                    if self._calls_made >= self.max_calls_per_query:
+                        error = RuntimeError(f"Maximum number of calls ({self.max_calls_per_query}) reached for {name}")
+                        bus.publish(f"{name}.error", error=error)
+                        raise error
+                
+                # Check for duplicate calls - only comparing with previous call
+                current_call = (args, kwargs)
+                if self.error_on_duplicate_calls and self._previous_call is not None:
+                    prev_args, prev_kwargs = self._previous_call
+                    if prev_args == args and prev_kwargs == kwargs:
+                        error = RuntimeError(f"Duplicate call detected for {name} with same arguments")
+                        bus.publish(f"{name}.error", error=error, kwargs=kwargs)
+                        raise error
+                
+                # Execute function and record call
                 result = func(*args, **kwargs)
+                self._calls_made += 1
+                self._previous_call = current_call
+                
                 bus.publish(f"{name}.result", result_interceptor=result, kwargs=kwargs)
                 return result
             except Exception as e:
@@ -207,15 +254,11 @@ class JustTool(LiteLLMDescription):
 
         # Use our own implementation or fallback based on the flag
         litellm_description = cls.function_to_llm_dict(input_function)
-        wrapped_callable = cls._wrap_function(input_function, function_name)
-        
-        # Ensure function name is in litellm_description
         litellm_description['function'] = function_name
 
         return cls(
             **litellm_description,
-            package=package,
-            _callable=wrapped_callable
+            package=package
         )
 
     def subscribe(self, callback: SubscriberCallback, type: Optional[str]=None) -> bool:

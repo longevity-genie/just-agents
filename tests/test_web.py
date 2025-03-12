@@ -53,6 +53,18 @@ def test_prompt_functions_and_agent_locator(load_env, tmp_path):
     assert agent.shortname == "secret_agent"
     assert "Wake up, Neo..." in result
 
+def test_fallback(load_env, tmp_path):
+    config_path = Path(TESTS_DIR)  / "profiles" / "secret_service.yaml"
+    key_agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="keys_agent", parent_section="agent_profiles")
+    secret_agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="secret_agent", parent_section="agent_profiles")
+    general_agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="generic_assistant", parent_section="agent_profiles")
+    blue_sky = general_agent.query("When the sky is blue?")
+    assert "scattering" in blue_sky
+    result = general_agent.query("Decipher me the message please - 'JBYEF0QTGV9IPRIAXEpI' ")
+    assert key_agent.shortname == "keys_agent"
+    assert secret_agent.shortname == "secret_agent"
+    assert "Wake up, Neo..." in result
+
 
 def _test_tool_description_helper(
     tmp_path: Path, 

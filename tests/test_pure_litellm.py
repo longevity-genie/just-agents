@@ -58,7 +58,7 @@ class Annotation(BaseModel):
     title: str = Field(...)
     source: str = Field(...)
 
-pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7808")
+@pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7808")
 def test_response_format_gemini_problem(load_env): #https://github.com/BerriAI/litellm/issues/7808
     load_dotenv(override=True)
     OPENAI_GPT4oMINI, LLAMA3_3, GEMINI_2_FLASH = load_env
