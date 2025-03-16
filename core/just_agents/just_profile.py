@@ -108,9 +108,7 @@ class JustAgentProfileToolsetMixin(BaseModel):
         new_prompt_tools = {}
         for item in self.prompt_tools:
             if isinstance(item, JustPromptTool):
-                if item.auto_refresh:
-                    item = item.refresh()
-                new_prompt_tools[item.name] = item
+                prompt_tool = item
             elif isinstance(item, tuple) and len(item) == 2 and callable(item[0]) and isinstance(item[1], dict):
                 func, input_params = item
                 # Ensure input parameters are JSON serializable
@@ -125,10 +123,14 @@ class JustAgentProfileToolsetMixin(BaseModel):
                     **tool.model_dump(),
                     call_arguments=input_params
                 )
-                new_prompt_tools[prompt_tool.name] = prompt_tool
             else:
                 raise TypeError(
                     "Items in 'prompt_tools' must be (callable, input_params) tuples or JustPromptTool instances.")
+
+            prompt_tool.max_calls_per_query = None # Force disable
+            if prompt_tool.auto_refresh:
+                prompt_tool = prompt_tool.refresh()
+            new_prompt_tools[prompt_tool.name] = prompt_tool
 
         self.prompt_tools = new_prompt_tools
 

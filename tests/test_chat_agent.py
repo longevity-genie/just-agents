@@ -14,12 +14,10 @@ import pytest
 import requests
 import os
 from pathlib import Path
-from pycomfort.logging import to_nice_stdout
 from pydantic import BaseModel, Field, ConfigDict
 from typing import List, Optional
 
 
-to_nice_stdout()
 db_path = Path("tests/data/open_genes.sqlite")
 sleep_time = float(os.getenv("SLEEP_TIME", "20.0"))
 
@@ -197,10 +195,10 @@ class AgentResponse(BaseModel):
 
 def test_vision():
     load_dotenv(override = True)
-    agent = ChatAgent(role="helpful agent that can see",
+    agent = ChatAgentWithLogging(role="helpful agent that can see",
                 goal="help users by providing a description of the image",
                 task="analyze the image and provide a description of the image",
-                llm_options=OPENAI_GPT4o
+                llm_options=GEMINI_2_FLASH
                 )
     message = Message(
         role=Role.user,
@@ -209,11 +207,14 @@ def test_vision():
         ImageContent(image_url="https://upload.wikimedia.org/wikipedia/commons/4/4d/Cat_November_2010-1a.jpg", use_nested_format=True)
         ]
     )
-    pprint(message)
-    result = agent.query(message)
+
+    result = agent.query(message,remember_query=False)
     #https://arxiv.org/pdf/2410.05780
     assert "cat" in result or "kitten" in result
-
+    assert "tabby" in result or "stripe" in result
+    result = agent.query(message.model_dump_json(),remember_query=False)
+    assert "cat" in result or "kitten" in result
+    assert "tabby" in result or "stripe" in result
 
 
 

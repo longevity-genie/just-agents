@@ -101,7 +101,7 @@ def agent_call(prompt: str, options: LLMOptions, reconstruct_chunks: bool, **kwa
 def test_bad_model_query():
     opts: LLMOptions = {
     "model": "groq/llama-nonexistent",
-    "api_base": "https://api.groq.com/openai/v1",
+#    "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0
     }
     session: BaseAgent = BaseAgentWithLogging(
@@ -218,10 +218,13 @@ def validate_tool_call(call : Callable[[Any,...],str],*args,**kwargs):
     prompt = "What's the weather like in San Francisco, Tokyo, and Paris?"
     bus = JustToolsBus()
     results = []
-    result_callback = 'get_current_weather.result'
-    def callback(event_name: str, result_interceptor: str, **kwargs):
-        assert event_name == result_callback
-        results.append(result_interceptor)
+    result_callback = 'get_current_weather.*'
+    def callback(event_name: str, **kwargs):
+        if not event_name.endswith("result") or not "result_interceptor" in kwargs:
+            return
+        assert event_name.startswith('get_current_weather')
+        print(f"Test subscription: {event_name}")
+        results.append(kwargs.get("result_interceptor", "Error!"))
     bus.subscribe(result_callback,callback)
     result = call(prompt,*args,**kwargs)
     assert len(results) == 3
@@ -234,7 +237,6 @@ def validate_tool_call(call : Callable[[Any,...],str],*args,**kwargs):
 
 def test_query_tool():
     validate_tool_call(agent_query, OPENAI_GPT4oMINI)
-
 
 def test_stream_tool():
     validate_tool_call(agent_call, OPENAI_GPT4oMINI, False)

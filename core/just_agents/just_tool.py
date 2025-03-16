@@ -25,8 +25,10 @@ class LiteLLMDescription(BaseModel):
 class JustTool(LiteLLMDescription):
     package: str = Field(..., description="The name of the module where the function is located.")
     auto_refresh: bool = Field(True, description="Whether to automatically refresh the tool after initialization.")
-    error_on_duplicate_calls: bool = Field(True, description="Whether to raise an error on repeated calls with duplicate input.")
     max_calls_per_query: Optional[int] = Field(None, ge=1, description="The maximum number of calls to the function per query.")
+    model_config = ConfigDict(
+        extra="allow",
+    )
 
     _callable: Optional[Callable] = PrivateAttr(default=None)
     """The callable function wrapped with the JustToolsBus callbacks."""
@@ -34,8 +36,6 @@ class JustTool(LiteLLMDescription):
     """The original callable function."""
     _calls_made: int = PrivateAttr(default=0)
     """Counter for tracking how many times this tool has been called."""
-    _previous_call: Optional[Tuple[Tuple, Dict]] = PrivateAttr(default=None)
-    """The most recent call to check for duplicates."""
 
     @property
     def remaining_calls(self) -> int:
@@ -54,11 +54,10 @@ class JustTool(LiteLLMDescription):
         Reset the call counter for this tool.
         """
         self._calls_made = 0
-        self._previous_call = None  # Reset previous call
         return self
     
     def model_post_init(self, __context: Any) -> None:
-        """Called after the model is initialized. Refreshes the tools metainfo if auto_refresh is True."""
+        """Called after the model is initialized. Refreshes the tools meta-info if auto_refresh is True."""
         super().model_post_init(__context)
         if self.auto_refresh:
             self.refresh()
@@ -71,34 +70,24 @@ class JustTool(LiteLLMDescription):
         """
         def __wrapper(*args: Any, **kwargs: Any) -> Any:
             bus = JustToolsBus()
-            bus.publish(f"{name}.execute", *args, kwargs=kwargs)
+            bus.publish(f"{name}.{id(self)}.execute", *args, kwargs=kwargs)
             
             try:
                 # Check for maximum calls
                 if self.max_calls_per_query is not None:
                     if self._calls_made >= self.max_calls_per_query:
                         error = RuntimeError(f"Maximum number of calls ({self.max_calls_per_query}) reached for {name}")
-                        bus.publish(f"{name}.error", error=error)
-                        raise error
-                
-                # Check for duplicate calls - only comparing with previous call
-                current_call = (args, kwargs)
-                if self.error_on_duplicate_calls and self._previous_call is not None:
-                    prev_args, prev_kwargs = self._previous_call
-                    if prev_args == args and prev_kwargs == kwargs:
-                        error = RuntimeError(f"Duplicate call detected for {name} with same arguments")
-                        bus.publish(f"{name}.error", error=error, kwargs=kwargs)
+                        bus.publish(f"{name}.{id(self)}.error", error=error)
                         raise error
                 
                 # Execute function and record call
                 result = func(*args, **kwargs)
                 self._calls_made += 1
-                self._previous_call = current_call
                 
-                bus.publish(f"{name}.result", result_interceptor=result, kwargs=kwargs)
+                bus.publish(f"{name}.{id(self)}.result", result_interceptor=result, kwargs=kwargs)
                 return result
             except Exception as e:
-                bus.publish(f"{name}.error", error=e)
+                bus.publish(f"{name}.{id(self)}.error", error=e)
                 raise e
         return __wrapper
 
@@ -264,19 +253,19 @@ class JustTool(LiteLLMDescription):
     def subscribe(self, callback: SubscriberCallback, type: Optional[str]=None) -> bool:
         """
         Subscribe to the JustToolsBus.
-        
+
         Args:
             callback: Function to call when event occurs
             type: Event type to subscribe to, or None for all events
-            
+
         Returns:
             Success status of subscription
         """
         bus = JustToolsBus()
         if type is None:
-            return bus.subscribe(f"{self.name}.*", callback)
+            return bus.subscribe(f"{self.name}.{id(self)}.*", callback)
         else:
-            return bus.subscribe(f"{self.name}.{type}", callback)
+            return bus.subscribe(f"{self.name}.{id(self)}.{type}", callback)
 
     def unsubscribe(self, callback: SubscriberCallback, type: Optional[str]=None) -> bool:
         """
@@ -291,9 +280,9 @@ class JustTool(LiteLLMDescription):
         """
         bus = JustToolsBus()
         if type is None:
-            return bus.unsubscribe(f"{self.name}.*", callback)
+            return bus.unsubscribe(f"{self.name}.{id(self)}.*", callback)
         else:
-            return bus.unsubscribe(f"{self.name}.{type}", callback)
+            return bus.unsubscribe(f"{self.name}.{id(self)}.{type}", callback)
 
     def subscribe_to_call(self, callback: SubscriberCallback) -> None:
         """

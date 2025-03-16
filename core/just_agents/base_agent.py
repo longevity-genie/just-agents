@@ -1,4 +1,6 @@
 import copy
+
+from distro import codename
 from pydantic import Field, PrivateAttr, computed_field
 from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol
 from functools import partial
@@ -84,17 +86,68 @@ class BaseAgent(
         default=True,
         description="Raise an exception on completion status 4xx and 5xx errors")
 
+    send_system_prompt: bool = Field(
+        default=True,
+        description="When set, system prompt is used in query. ")
     enforce_agent_prompt: bool = Field(
         default=True,
-        description="When set, replaces query containing 'system' messages with agent prompt")
+        description="When set, replaces 'system' messages within queries containing them with agent's prompt setup")
+    """
+    Behavior of send_system_prompt and enforce_agent_prompt flags combinations:
+    - send_system_prompt=True, enforce_agent_prompt=True:
+      "Agent mode" -- This is the default behavior
+        - Any 'system' messages in the query are replaced with the agent's prompt
+        - Agent's prompt is updated and embedded in the query as 'system' message
+    - send_system_prompt=True, enforce_agent_prompt=False:
+      "Agent with override mode" -- Use when you need to override the agents behavior by custom system messages
+        If any 'system' messages are present in the query:
+        - they are preserved and sent to the LLM 'as is' 
+        - Agent's prompt or prompt_tools are not used. 
+        If the user query doesn't contain 'system' messages:
+        - Behavior is identical to the 'Agent mode' (True,True)
+    - send_system_prompt=False, enforce_agent_prompt=True:
+      "Forced user mode" -- Use when you need to force the user query to be sent to the LLM without any additional 'system' messages
+        - All 'system' messages are force-removed from the query, including the ones contained in the user query
+        - Query is sent to LLM as is, without any additional 'system' messages
+    - send_system_prompt=False, enforce_agent_prompt=False:
+      "Passive mode" -- Use when you only need to pass the user query, tools, and LLM options to the LLM
+        - If any 'system' messages are present in the query, they are preserved and sent to the LLM 'as is'.
+        - Agent's prompt or prompt_tools are not used
+        - If the user query doesn't contain 'system' messages, no system messages are sent to the LLM
+    """
 
     continue_conversation: bool = Field(
         default=True,
         description="Concatenate memory messages and query messages ")
-
     remember_query: bool = Field(
         default=True,
         description="Add new query messages to memory")
+    """
+    Behavior of continue_conversation and remember_query flags combinations:
+    - continue_conversation=True, remember_query=True:
+     "Full Memory Mode" -- This is the default behavior
+        - All previous memory messages are included in the context for this query
+        - New query and response messages are added to memory for future interactions
+        - Creates continuous, persistent conversation with full history
+
+    - continue_conversation=True, remember_query=False:
+      "Reference-Only Mode" -- Use when you need history for context but don't want to save the current interaction
+        - All previous memory messages are included in the context for this query
+        - New query and response messages are NOT saved to memory
+        - Allows one-off questions that reference history without changing it
+
+    - continue_conversation=False, remember_query=True:
+      "Fresh Start Mode" -- Use when you want to start a new conversation thread but save it for later
+        - Previous memory messages are NOT included in the context (starts from scratch)
+        - New query and response messages ARE saved to memory for future interactions
+        - Useful for beginning new topics that should be remembered
+
+    - continue_conversation=False, remember_query=False:
+      "Stateless Mode" -- Use for completely independent, one-shot interactions
+        - Previous memory messages are NOT included in the context (starts from scratch)
+        - New query and response messages are NOT saved to memory
+        - Creates completely isolated interactions with no persistence
+    """
 
     use_proxy: Optional[bool] = Field(
         default=None,
@@ -115,7 +168,7 @@ class BaseAgent(
     _key_getter: Optional[RotateKeys] = PrivateAttr(None)  # Manages API key rotation
     _tool_fuse_broken: bool = PrivateAttr(False) #Fuse to prevent tool loops
 
-    _locator: JustAgentsLocator = PrivateAttr(default_factory=lambda *args: JustAgentsLocator())
+    _locator: JustAgentsLocator = PrivateAttr(default_factory=lambda: JustAgentsLocator())
 
     #@computed_field
     @property
@@ -157,8 +210,8 @@ class BaseAgent(
 
         if dynamic_prompt:
             prompt = self.dynamic_prompt(prompt)
-
-        memory.add_system_message(prompt)
+        if prompt:
+            memory.add_system_message(prompt)
 
     def add_to_memory(self, messages: SupportedMessages, memory: IBaseMemory = None) -> None:
         if not memory:
@@ -191,7 +244,8 @@ class BaseAgent(
         # Protocol adapter handles formatting messages for specific LLM providers
         if not self._protocol:
             self._protocol = ProtocolAdapterFactory.get_protocol_adapter(
-                self.streaming_method,  # e.g., OpenAI, Azure, etc.
+                self.streaming_method,  # currently, only LiteLLM universal adapter is available
+                log_name=self.codename
             )
 
         # If tools (functions) are defined, configure LLM to use them
@@ -327,20 +381,28 @@ class BaseAgent(
             query_input: SupportedMessages,
             enforce_agent_prompt: Optional[bool] = None,
             continue_conversation: Optional[bool] = None,
+            send_system_prompt: Optional[bool] = None,
             **kwargs
     ) -> IBaseMemory:
-
+        # Set default values if not provided
         if enforce_agent_prompt is None:
             enforce_agent_prompt = self.enforce_agent_prompt
         if continue_conversation is None:
             continue_conversation = self.continue_conversation
+        if send_system_prompt is None:
+            send_system_prompt = self.send_system_prompt
 
-        self.handle_on_query(query_input, action='query', source='input') # handle the input query
-        memory_instance = self._fork_memory(copy_values=continue_conversation) #Handlers from main memory need to fire even if messages are discarded
-        self.add_to_memory(query_input, memory_instance) #Now add query to ephemeral memory
-        memory_instance.clear_system_messages(clear_non_empty=enforce_agent_prompt) #Clear prompt messages
-        if not memory_instance.prompt_messages:
-            self.instruct(self.system_prompt, memory_instance) #Ensure system prompt
+        self.handle_on_query(query_input, action='query', source='input')  # handle the input query
+        memory_instance = self._fork_memory(copy_values=continue_conversation)  # Handlers from main memory need to fire even if messages are discarded
+
+        memory_instance.clear_system_messages(clear_non_empty=True) 
+        # No old system messages in history in any case, either user's or agent's will be used
+        self.add_to_memory(query_input, memory_instance)  # Now add query to ephemeral memory
+        memory_instance.clear_system_messages(clear_non_empty=enforce_agent_prompt) #clear again, no system in query for 1 and 3 cases
+        
+        if send_system_prompt:
+            if enforce_agent_prompt or not memory_instance.system_messages: #Cases 1 and 2, 'Agent mode' and 'Agent with override mode'
+                self.instruct(self.system_prompt, memory_instance)
 
         self.handle_on_query(memory_instance.messages, action='query', source='preprocessor')  # handle the modified query
         return memory_instance
@@ -364,6 +426,7 @@ class BaseAgent(
     def query(
             self,
             query_input: SupportedMessages,
+            send_system_prompt: Optional[bool] = None,
             enforce_agent_prompt: Optional[bool] = None,
             continue_conversation: Optional[bool] = None,
             remember_query: Optional[bool] = None,
@@ -375,13 +438,14 @@ class BaseAgent(
         """
         memory = self._preprocess_input(
             query_input,
+            send_system_prompt=send_system_prompt,
             enforce_agent_prompt=enforce_agent_prompt,
             continue_conversation=continue_conversation,
         )
 
         for step in range(self.max_tool_calls):
             # individual llm call, unpacking the message, processing handlers
-            response = self._execute_completion(memory.messages ,stream=False, response_format=response_format, **kwargs)
+            response = self._execute_completion(memory.messages, stream=False, **kwargs)
             msg: SupportedMessage = self._protocol.message_from_response(response) # type: ignore
             self.handle_on_response(msg, action='response', source='llm')
             self.add_to_memory(msg, memory)
@@ -409,6 +473,7 @@ class BaseAgent(
     def stream(
             self,
             query_input: SupportedMessages,
+            send_system_prompt: Optional[bool] = None,
             enforce_agent_prompt: Optional[bool] = None,
             continue_conversation: Optional[bool] = None,
             remember_query: Optional[bool] = None,
@@ -419,6 +484,7 @@ class BaseAgent(
     ) -> Generator[Union[BaseModelResponse, SupportedMessages],None,None]:
         memory = self._preprocess_input(
             query_input,
+            send_system_prompt=send_system_prompt,
             enforce_agent_prompt=enforce_agent_prompt,
             continue_conversation=continue_conversation,
         )
@@ -523,9 +589,12 @@ def log_print(log_string: str, action: str, source: str, *args: VariArgs.args, *
         source: The source of the log message
         **kwargs: Additional logging parameters
     """
+    shortname = kwargs.pop("agent_shortname", "")
 
     if kwargs:
         print(f"{action} from {source}: {log_string}, extra args: {str(kwargs)}")
+    elif shortname:
+        print(f"{action} from <{shortname}> {source}: {log_string}")
     else:
         print(f"{action} from {source}: {log_string}")
 
@@ -549,7 +618,9 @@ class BaseAgentWithLogging(BaseAgent):
 
     @property
     def log_function(self) -> LogFunction:
-        return self._log_function
+        return lambda message, action, source, *args, **kwargs: (
+                self._logger_instance_info_wrapper(message, action, source, *args, **kwargs)
+        )
     
     @log_function.setter
     def log_function(self, value: LogFunction) -> None:
@@ -558,16 +629,26 @@ class BaseAgentWithLogging(BaseAgent):
         else:
             self._log_function = value
 
-    
+    def _logger_instance_info_wrapper(self, message, action, source, *args, **kwargs):
+        kwargs_cpy = kwargs.copy() #defensive copy
+        agent_codename=self.codename
+        kwargs_cpy["agent_shortname"] = self.shortname
+        # kwargs_cpy["agent_id"] = agent_codename
+        self._log_function(
+                message,
+                action,
+                f"{agent_codename}.{source}",
+                *args,
+                **kwargs_cpy
+        )
 
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
         if self._log_function is None:
-            self._log_function=self.default_logging_function
+            self.log_function=self.default_logging_function
 
         #self._log_query = self.query_handler
         # Wrap the bound query_handler in a lambda to match the expected QueryListener signature.
-        # Probably a linter bug due to generics + variadic arguments, works both ways
         self._log_query = (
             lambda input_query, action, source, *args, **kwargs: self.query_handler(input_query, action, source, *args, **kwargs)
         )
@@ -589,8 +670,13 @@ class BaseAgentWithLogging(BaseAgent):
         self.subscribe_to_tool_error(self._log_tool_error) #using listener to log tool errors
         self.subscribe_to_prompt_tool_error(self._log_tool_error)
         
-        self._log_bus.subscribe(".*", self.log_event_handler)
-        self._log_function(f"Loaded {self.shortname} instance with codename {self.codename}", "instantiation.success", "BaseAgentWithLogging", class_name=self.__class__)
+        self._log_bus.subscribe(f"{self.codename}.*", self.log_event_handler)
+        self.log_function(
+            f"Loaded {self.shortname} instance with codename {self.codename}",
+            "instantiation.success",
+            f"model_post_init",
+            class_name=f"{self.__class__.__module__}.{self.__class__.__qualname__}"
+        )
 
 
     def _message_to_strings(self, message: SupportedMessages) -> List[str]:
@@ -610,12 +696,12 @@ class BaseAgentWithLogging(BaseAgent):
     def query_handler(self, input_query: SupportedMessages, action: str, source: str, *args:VariArgs.args, **kwargs: VariArgs.kwargs) -> None:
         _ = args
         for item in self._message_to_strings(input_query):
-            self._log_function(item, action, source, **kwargs)
+            self.log_function(item, action, source, **kwargs)
 
 
     def response_handler(self, response: SupportedMessages, action: str, source: str) -> None:
         for item in self._message_to_strings(response):
-            self._log_function(item, action, source)
+            self.log_function(item, action, source)
 
     def tool_call_callback(self, event_name: str, *args, **kwargs) -> None:
         """
@@ -627,10 +713,10 @@ class BaseAgentWithLogging(BaseAgent):
             **kwargs: Keyword arguments passed to the tool
         """
         # Log or process the tool call
-        #self._log_function(event_name, "tool.execute", "tools_bus") #auxilary event for tracing if parsing fails
+        #self.log_function(event_name, "tool.execute", "tools_bus") #auxilary event for tracing if parsing fails
         if args:
-          self._log_function(f"{str(args)}", "tool.args", event_name)
-        self._log_function(f"{str(kwargs)}", "tool.kwargs", event_name)
+          self.log_function(f"{str(args)}", "tool.args", event_name)
+        self.log_function(f"{str(kwargs)}", "tool.kwargs", event_name)
 
 
     def tool_result_callback(self, event_name: str, *args: Any, **kwargs: Any) -> None:
@@ -646,12 +732,12 @@ class BaseAgentWithLogging(BaseAgent):
         result_interceptor: Optional[Any] = kwargs.get("result_interceptor")
         
         # Log the event
-        #self._log_function(event_name, "tool.result", "tools_bus") #auxilary event for tracing if parsing fails
+        #self.log_function(event_name, "tool.result", "tools_bus") #auxilary event for tracing if parsing fails
        
         if result_interceptor is not None:
-            self._log_function(f"{str(result_interceptor)}", "tool.result", event_name)
+            self.log_function(f"{str(result_interceptor)}", "tool.result", event_name)
         else:
-            self._log_function("None", "tool.result", event_name)
+            self.log_function("None", "tool.result", event_name)
 
     def tool_error_callback(self, event_name: str, *args: Any, **kwargs: Any) -> None:
         """
@@ -666,8 +752,8 @@ class BaseAgentWithLogging(BaseAgent):
         error: Optional[Exception] = kwargs.get("error")
         
         # Log the event and error
-        #self._log_function(event_name, "tool.error", "tools_bus")
-        self._log_function(f"{str(error)}", "tool.error", event_name)
+        #self.log_function(event_name, "tool.error", "tools_bus")
+        self.log_function(f"{str(error)}", "tool.error", event_name)
     
     def tool_handler(self, tool_call: ToolCall) -> None:
         """Handler for tool calls. Implements OnToolCallable protocol.
@@ -675,8 +761,8 @@ class BaseAgentWithLogging(BaseAgent):
         Args:
             tool_call: The tool call to handle
         """
-        self._log_function(tool_call.name, action="memory.add", source="tool_call")
-        self._log_function(f"{str(tool_call.arguments)}", action="memory.add", source=tool_call.name)
+        self.log_function(tool_call.name, action="memory.add", source="tool_call")
+        self.log_function(f"{str(tool_call.arguments)}", action="memory.add", source=tool_call.name)
 
     def memory_handler(self, message: MessageDict) -> None:
         """Handler for messages. Implements OnMessageCallable protocol.
@@ -685,7 +771,7 @@ class BaseAgentWithLogging(BaseAgent):
             message: The message dictionary to handle
         """
         if message:
-            self._log_function(str(message), action="memory.add", source=message.get("role","Error"))
+            self.log_function(str(message), action="memory.add", source=message.get("role","Error"))
 
     def log_event_handler(self, event_name: str, *args: Any, **kwargs: Any) -> None:
         """Handler for auxiliary log events. 
@@ -697,7 +783,7 @@ class BaseAgentWithLogging(BaseAgent):
         """
         message: Optional[str] = kwargs.pop("message","") or kwargs.pop("log_message","Missing log message!!")
         action: Optional[str] = kwargs.pop("action", "log_bus.receive")
-        self._log_function(message, action=action, source=event_name, **kwargs)
+        self.log_function(message, action=action, source=event_name, **kwargs)
 
 
 class ChatAgent(BaseAgent, JustAgentProfileChatMixin):
@@ -722,3 +808,4 @@ class ChatAgent(BaseAgent, JustAgentProfileChatMixin):
 
 class ChatAgentWithLogging(ChatAgent, BaseAgentWithLogging):
     pass
+

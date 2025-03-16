@@ -8,7 +8,7 @@ import os
 from openai import APIStatusError
 import litellm
 from litellm import CustomStreamWrapper, completion, acompletion, stream_chunk_builder, supports_function_calling, supports_response_schema
-from litellm.utils import Delta, Message, ModelResponse, ModelResponseStream, function_to_dict
+from litellm.utils import Delta, Message, ModelResponse, ModelResponseStream, function_to_dict, get_valid_models
 from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
 
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
@@ -47,35 +47,94 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
     #Class that describes function convention
 
     function_convention: ClassVar[Type[IFunctionCall[MessageDict]]] = LiteLLMFunctionCall
+    valid_models: ClassVar[List[str]] = get_valid_models()
+    log_name: str = Field('anonymous')
     _log_bus : JustLogBus = PrivateAttr(default_factory= lambda: JustLogBus())
 
     def model_post_init(self, __context: Any) -> None:
         super().model_post_init(__context)
+        self.log_name = f"{self.log_name}.litellm_adapter"
 
     def sanitize_args(self, *args, **kwargs) -> tuple:
         """
         Synchronous method to sanitize and preprocess arguments.
         """
+        source = f"{self.log_name}.sanitize_args"
         # Extract and preprocess the model from kwargs
         model = kwargs.get('model')
+        if '/' in model:
+            provider = model.split('/')[0]
+        else:
+            provider = None
+
         if not model:
+            self._log_bus.fatal(
+                f"model is required",
+                source=source,
+                action="essential_param_error",
+                model=model
+            )
             raise ValueError("model is required")
+        
+        for internal_kwarg in ["raise_on_completion_status_errors", "reconstruct_chunks"]:
+            if kwargs.pop(internal_kwarg, None) is not None:
+                self._log_bus.warn(
+                    f"{internal_kwarg} is just-agents internal argument and will be removed from the query",
+                    source=source,
+                    action="param_drop",
+                    model=model
+                )
+        
+        api_base = kwargs.get('api_base')
+
+        if model not in self.valid_models:
+            if not api_base:
+                self._log_bus.warn(
+                    f"Model is not supported by litellm by default! Validation is impossible.",
+                    source=source,
+                    action="validation_canceled",
+                    model=model
+                )  
+                suggestion = None
+                if not provider:
+                    for valid_model in self.valid_models:
+                        if model.lower() in valid_model.lower():
+                            suggestion = valid_model
+                            break
+                if suggestion:
+                    self._log_bus.warn(
+                        f"Litellm supports {suggestion}. Did you forget to set provider?",
+                        source=source,
+                        action="param_suggestion",
+                        suggestion=suggestion
+                    )
+            else: #custom api_base provided, assume it's an OpenAi compatible model
+                provider = kwargs.get("custom_llm_provider", "openai")
+                self._log_bus.info(
+                    f"Model is not supported by litellm by default, but custom api_base is set, using {provider} as provider",
+                    source=source,
+                    action="param_update",
+                    model=model,
+                    provider=provider
+                )
+                kwargs["custom_llm_provider"] = provider
+            return args, kwargs
 
         supported_params = self.get_supported_params(model) or []
         if not "response_format" in supported_params:
             kwargs.pop("response_format", None)
-            self._log_bus.log_message(
-                f"Warning: response_format not supported by model",
-                source="litellm_protocol_adapter.sanitize_args",
+            self._log_bus.warn(
+                f"response_format not supported by model",
+                source=source,
                 action="param_drop",
                 model=model
             )
 
-        if "response_format" in kwargs and not supports_response_schema(model):
+        if kwargs.get("response_format", None) and not supports_response_schema(model):
             fallback = {"type": "json_object"}
-            self._log_bus.log_message(
-                f"Warning: response_schema is not supported by model, using json_object as fallback",
-                source="litellm_protocol_adapter.sanitize_args",
+            self._log_bus.warn(
+                f"response_schema is not supported by model, using json_object as fallback",
+                source=source,
                 action="param_fallback",
                 response_format=kwargs["response_format"],
                 fallback_response_format=fallback,
@@ -86,30 +145,21 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         if not supports_function_calling(model):
             kwargs.pop("tools", None)
             kwargs.pop("tool_choice", None)
-            self._log_bus.log_message(
-                f"Warning: tool calls not supported by model",
-                source="litellm_protocol_adapter.sanitize_args",
+            self._log_bus.warn(
+                f"tool calls not supported by model",
+                source=source,
                 action="param_drop",
                 model=model
             )
 
         if not kwargs.get("tools", None):
             kwargs.pop("tool_choice", None)
-
-        for deprecated_internal_kwarg in ["raise_on_completion_status_errors", "reconstruct_chunks"]:
-            if kwargs.pop(deprecated_internal_kwarg, None) is not None:
-                self._log_bus.log_message(
-                f"Warning: {deprecated_internal_kwarg} is removed from just-agents",
-                source="litellm_protocol_adapter.sanitize_args",
-                action="param_drop",
-                model=model
-            )
         
         if kwargs.get("metadata", None) is not None and not "metadata" in supported_params:
             kwargs.pop("metadata", None)
             self._log_bus.log_message(
-                f"Warning: metadata not supported by model",
-                source="litellm_protocol_adapter.sanitize_args",
+                f"metadata not supported by model",
+                source=source,
                 action="param_drop",
                 model=model
             )
@@ -120,11 +170,11 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         """
         Convert a function to a tool dictionary.
         """
-
+        source = f"{self.log_name}.tool_from_function"
         if function_dict:
             self._log_bus.log_message(
                 f"Built-in function_dict for {tool.__name__} provided",
-                source="litellm_protocol_adapter.tool_from_function",
+                source=source,
                 action="input",
                 input_dict=function_dict
             )
@@ -133,13 +183,13 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
             try:
                 self._log_bus.log_message(
                     "Attempting to use fallback LiteLLM implementation",
-                    source="litellm_protocol_adapter.tool_from_function",
+                    source=source,
                     action="numpydoc import"
                 )
                 litellm_function_dict = function_to_dict(tool) # type: ignore
                 self._log_bus.log_message(
                     f"LiteLLM implementation for {tool.__name__}",
-                    source="litellm_protocol_adapter.tool_from_function",
+                    source=source,
                     action="function_to_dict.call",
                     litellm_dict=litellm_function_dict
                 )
@@ -147,10 +197,11 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
             except ImportError as e:
                 self._log_bus.log_message(
                     f"Warning: Failed to use fallback LiteLLM implementation",
-                    source="litellm_protocol_adapter.tool_from_function",
+                    source=source,
                     action="exception",
                     error=e
                 )
+                
         function_dict = litellm_function_dict or function_dict or ""
         return {"type": "function","function": function_dict}
 
@@ -160,12 +211,13 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         args, kwargs = self.sanitize_args(*args, **kwargs)
         stream = kwargs.get("stream", None)
         model = kwargs.get("model", "")
+        source = f"{self.log_name}.completion"
         try:
             return completion(*args, **kwargs)
         except APIStatusError as e:
             self._log_bus.log_message(
                 "Error in completion",
-                source="litellm_protocol_adapter.completion",
+                source=source,
                 action="exception",
                 error=e
             )
@@ -182,12 +234,13 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         raise_on_completion_status_errors = kwargs.pop("raise_on_completion_status_errors", False)
         args, kwargs = self.sanitize_args(*args, **kwargs)
         stream = kwargs.get("stream", None)
+        source = f"{self.log_name}.async_completion"
         try:
             return await acompletion(*args, **kwargs)
         except APIStatusError as e:
             self._log_bus.log_message(
                 "Error in async_completion",
-                source="litellm_protocol_adapter.async_completion",
+                source=source,
                 action="exception",
                 error=e
             )
@@ -342,8 +395,19 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
     def get_supported_params(model_name: str) -> Optional[list]:
         return get_supported_openai_params(model_name)  
 
+    @staticmethod
+    def supports_system_messages(model_name: str) -> Optional[list]:
+        return get_supported_openai_params(model_name) 
 
-
+    @staticmethod
+    def supports_response_schema(model_name: str) -> bool:
+        return supports_response_schema(model_name)
+    
+    @staticmethod
+    def supports_function_calling(model_name: str) -> bool:
+        return supports_function_calling(model_name)
+    
+   
     @staticmethod
     def create_response_from_content(
         content: str,

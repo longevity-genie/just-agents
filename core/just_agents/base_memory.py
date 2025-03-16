@@ -102,7 +102,6 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC)
     # Methods to add messages of specific roles
     def add_system_message(self, prompt: str) -> None:
         self.add_message({"role": Role.system, "content": prompt})
-        self.messages.sort(key=lambda msg: msg.get("role","user") != Role.system)
 
     def add_user_message(self, prompt: str) -> None:
         self.add_message({"role": Role.user, "content": prompt})
@@ -245,6 +244,8 @@ class BaseMemory(IBaseMemory, MessageFormatter):
         role: Optional[Role] = message.get("role", None)
         if role is None:
             raise ValueError("Message does not have a role")
+        if role == Role.system: # Bubble up the system message to the top of the list preserving order
+            self.messages.sort(key=lambda msg: msg.get("role","user") != Role.system)
         for handler in self._on_message.get(role, []):
             handler(message)
 
@@ -259,9 +260,10 @@ class BaseMemory(IBaseMemory, MessageFormatter):
     @add_message.register
     def _add_message_container(self, message: Message) -> None:
         """
-        Converts Message Pydantic model to plain dictionary, enforces text-only format
+        Converts Message Pydantic model to plain dictionary
         """
-        self.add_message(message.text_format().model_dump(mode="json", exclude_none=True, exclude_defaults=False))
+        #self.add_message(message.text_format().model_dump(mode="json", exclude_none=True, exclude_defaults=False))
+        self.add_message(message.model_dump(mode="json", exclude_none=True, exclude_defaults=False))
 
     @add_message.register
     def _add_message_dict(self, message: dict) -> None:

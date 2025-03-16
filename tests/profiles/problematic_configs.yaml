@@ -1,0 +1,53 @@
+# model_config.yaml
+agent_profiles:
+  gemini_agent:
+    display_name: Gemini Agent
+    llm_options:
+      model: gemini/gemini-2.0-flash
+      temperature: 0.0
+    system_prompt: You are a helpful assistant powered by Gemini. Answer the question concisely and accurately.
+
+  learnLM_agent:
+    display_name: LearnLM Agent
+    llm_options:
+      model: gemini/learnlm-1.5-pro-experimental
+      temperature: 0.0
+    system_prompt: You are a helpful assistant powered by Gemini. Answer the question concisely and accurately.
+
+  groq_agent:
+    display_name: Groq Agent
+    llm_options:
+      model: groq/llama-3.3-70b-versatile
+      api_base: https://api.groq.com/openai/v1
+      temperature: 0.0
+    system_prompt: You are a helpful assistant powered by Llama 3. Answer the question concisely and accurately.
+
+  deepseek_agent:
+    display_name: DeepSeek Agent
+    llm_options:
+      model: deepseek/deepseek-reasoner
+      temperature: 0.0
+    system_prompt: You are a helpful assistant powered by Gemini. Answer the question concisely and accurately.
+
+  deepseek_distilled_agent:
+    display_name: DeepSeek distilled Agent
+    llm_options:
+      model: groq/deepseek-r1-distill-llama-70b
+      temperature: 0.0
+    system_prompt: You are a helpful assistant powered by Gemini. Answer the question concisely and accurately.
+
+  openai_agent:
+    display_name: OpenAI Agent
+    llm_options:
+      model: gpt-4o
+      api_base: https://api.openai.com/v1
+      temperature: 0.0
+    system_prompt: You are a helpful assistant powered by GPT-4o. Answer the question concisely and accurately.
+
+  custom_agent:
+    display_name: Custom API Agent
+    llm_options:
+      model: sugar_genie
+      api_base: http://127.0.0.1:8089/v1
+   #   custom_llm_provider: openai
+    system_prompt: You are a helpful assistant that can answer questions about Glucosedao and its founders.

@@ -18,11 +18,12 @@ class ProtocolAdapterFactory:
     @staticmethod
     def get_protocol_adapter(
             mode: StreamingMode,
+            log_name: str = 'anonymous',
             **kwargs
     ) -> IProtocolAdapter:
         if mode == StreamingMode.openai:
             from just_agents.protocols.litellm_protocol import LiteLLMAdapter
-            return LiteLLMAdapter(**kwargs)
+            return LiteLLMAdapter(log_name=log_name, **kwargs)
         # elif mode == StreamingMode.echo:
         #     from just_agents.protocols.echo_protocol import EchoProtocolAdapter
         #     return EchoProtocolAdapter(**kwargs)

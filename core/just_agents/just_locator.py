@@ -22,7 +22,7 @@ class AgentIdentifier(BaseModel):
     Attributes:
         agent_class: The class type of the agent
         codename: Unique system-generated identifier
-        shortname: Property that dynamically returns agent's shortname
+
     """
     agent_class: Type[IAgent] = Field(description="Class type of the agent")
     codename: str = Field(description="Unique system-generated identifier")
@@ -178,7 +178,7 @@ class JustAgentsLocator(metaclass=SingletonMeta):
             return self._codename_to_identifiers.get(codename)
         return None
     
-    def get_codenames_by_class(self, bounding_class: Optional[Type[IAgent]] = None) -> List[str]:
+    def get_codenames_by_class(self, bounding_class: Optional[Type[T]] = None) -> List[str]:
         """
         Get all codenames for agents of a specific class.
         

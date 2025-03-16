@@ -5,8 +5,6 @@ from just_agents.web.rest_api import AgentRestAPI
 from just_agents.web.chat_ui_rest_api import ChatUIAgentRestAPI
 import uvicorn
 import typer
-
-from pycomfort.logging import to_nice_stdout
 from eliot import start_action, start_task
 
 env_config = ChatUIAgentConfig()

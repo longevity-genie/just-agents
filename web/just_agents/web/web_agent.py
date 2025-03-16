@@ -4,7 +4,6 @@ import os
 from datetime import datetime
 from pathlib import Path
 from typing import ClassVar, Optional, Dict, Any, Callable, Literal, Type, Generator, Union
-from just_agents.llm_options import LLMOptions
 from just_agents.base_agent import BaseAgent, BaseAgentWithLogging, VariArgs, LogFunction, BaseModelResponse, SupportedMessages
 from just_agents.just_serialization import JustSerializable
 from pydantic import Field,BaseModel,PrivateAttr
@@ -52,7 +51,6 @@ class EliotLogger(metaclass=SingletonMeta):
             )
 
 
-
 class WebAgentEliotLoggerMixin(BaseModel):
     """
     A mixin class that provides Eliot logging functionality to a WebAgent.
@@ -62,9 +60,8 @@ class WebAgentEliotLoggerMixin(BaseModel):
     _logger: EliotLogger = PrivateAttr(default=None)
     _logdir: Path = PrivateAttr(default_factory=lambda: Path(os.getenv('LOG_DIR', 'logs')))
     _tempdir: Path = PrivateAttr(default_factory=lambda: Path(os.getenv('TMP_DIR', 'tmp')))
-    _log_function: LogFunction = PrivateAttr(default=None)
     _task : Action = PrivateAttr(default_factory=lambda: start_task(action_type="WebAgent"))
-    
+
 
     def log_action(self,log_string: str, action: str, source: str, *args: VariArgs.args, **kwargs: VariArgs.kwargs) -> None:
         """
@@ -81,7 +78,7 @@ class WebAgentEliotLoggerMixin(BaseModel):
 
         # Transform kwargs into a string-to-string dictionary for logging
         str_kwargs = {str(k): str(v) for k, v in kwargs.items()}
-        
+
         with self._task as log_action:
             log_action.log(
                 message_type="WebAgent.log",
@@ -99,20 +96,23 @@ class WebAgentEliotLoggerMixin(BaseModel):
         self._tempdir.mkdir(exist_ok=True)
 
         self._logger = EliotLogger(self._logdir, self._tempdir, self.logger_output)
-
-        if self.logger_output == "stdout":
-            self._log_function=self.log_action
-        elif self.logger_output == "file":
-            self._log_function=self.log_action
-        elif self.logger_output == "both":
-            self._log_function=self.log_action
-        elif self.logger_output == "print_fallback":
-            self._log_function=self.default_logging_function
-        else:
-            raise ValueError(f"Invalid logger_output value: {self.logger_output}")
-
-        self._log_function("Logging initialization complete", action="startup", source="EliotLogger",
+        log_action = lambda message, action, source, *args, **kwargs: self.log_action(message, action, source, *args, **kwargs)
+        if hasattr(self,"_log_function"):
+            if self.logger_output == "stdout":
+                self._log_function=log_action
+            elif self.logger_output == "file":
+                self._log_function=log_action
+            elif self.logger_output == "both":
+                self._log_function=log_action
+            elif self.logger_output == "print_fallback":
+                self._log_function=self.default_logging_function
+            else:
+                raise ValueError(f"Invalid logger_output value: {self.logger_output}")
+            self._log_function("Logging initialization complete", action="startup", source="EliotLogger",
                            log_destination = self.logger_output, path=self._logger.log_path)
+        else:
+            raise ValueError(f"Class {self.__class__.__qualname__} missing _log_function attribute")
+
 
 class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
     """
@@ -125,10 +125,6 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
         DEFAULT_DESCRIPTION,
         description="Short description of what the agent does")
     """Short description of what the agent does."""
-
-    enforce_agent_prompt: bool = Field(
-        default=False,
-        description="Queries containing 'system' messages fall back to completion")
 
     continue_conversation: bool = Field(
         default=False,
@@ -209,7 +205,8 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
                     auto_instance : JustSerializable = WebAgent.from_yaml_auto(
                         section_name,
                         parent_section,
-                        yaml_path
+                        yaml_path,
+                        class_hint=required_base_class
                     )
                     if use_proxy is not None and proxy_address and isinstance(auto_instance, BaseAgent):
                         #Precedence: yaml > kwargs > env > default

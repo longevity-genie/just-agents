@@ -19,6 +19,7 @@ class SubscriberCallback(Protocol):
     def __call__(self, event_prefix: str, *args: VariArgs.args, **kwargs: VariArgs.kwargs) -> None:
         ...
 
+
 class JustEventBus(metaclass=SingletonMeta):
     """
     A simple singleton event bus to publish function call results for functions that support it.
@@ -30,10 +31,55 @@ class JustEventBus(metaclass=SingletonMeta):
     its own independent instance with separate subscribers.
     """
     _subscribers: Dict[str, List[SubscriberCallback]]
+    _signature_registry: Dict[str, List[str]]
 
     def __init__(self) -> None:
         """Initialize the basic event bus."""
         self._subscribers = {}
+        self._signature_registry = {}
+
+    @staticmethod
+    def extract_function_signature(callback: SubscriberCallback) -> dict[str, str]:
+        """
+        Extracts signature information from a callback function.
+        
+        Args:
+            callback: The callback function to analyze
+            
+        Returns:
+            A string containing the signature of the function, formatted as "ClassName.method_name" 
+            or "__UNBOUND__.method_name" if unbound
+        """
+        # Extract bound instance information if available
+        bound_instance = getattr(callback, '__self__', None)
+        
+        
+        if bound_instance is not None:
+            # This is a bound method - extract class and method information
+            class_name = type(bound_instance).__name__
+            # Get method name (qualname preferably)
+            method_name = getattr(callback, '__qualname__', None)
+            if method_name is None:
+                method_name = getattr(callback, '__name__', str(callback))
+                
+            # Create a signature for this class+method combination
+          
+        else:
+            # Handle unbound functions
+            class_name = "__UNBOUND__"
+            method_name = getattr(callback, '__name__', str(callback))
+
+        signature = f"{class_name}.{method_name}"
+        return signature
+
+    def _get_signatures_for_prefix(self, event_prefix: str) -> List[str]:
+        """Get all signatures for a given event prefix."""
+        signatures = []
+        for callback in self._subscribers[event_prefix]:
+            signature = self.extract_function_signature(callback)
+            if signature not in signatures:
+                signatures.append(signature)
+        return signatures
 
     def subscribe(self, event_prefix: str, callback: SubscriberCallback) -> bool:
         """Subscribe a callback to a specific event.
@@ -48,8 +94,38 @@ class JustEventBus(metaclass=SingletonMeta):
         """
         if event_prefix not in self._subscribers:
             self._subscribers[event_prefix] = []
+        if event_prefix not in self._signature_registry:
+            self._signature_registry[event_prefix] = []
+        signature = self.extract_function_signature(callback)
+        if signature not in self._signature_registry[event_prefix]:
+            self._signature_registry[event_prefix].append(signature)
         self._subscribers[event_prefix].append(callback)
+        
         return True
+
+    def subscribe_unique_by_class(self, event_prefix: str, callback: SubscriberCallback) -> bool:
+        """Subscribe a callback with class-level uniqueness enforcement.
+        
+        If another method with the same name from the same class is already subscribed 
+        to this event, this new subscription will not be added.
+        
+        Use this method when you want to ensure only one instance of each class
+        can subscribe with the same method name (useful for shared tools/adapters).
+        
+        Args:
+            event_prefix: The event name or pattern to subscribe to.
+                          For example, 'mytool.call' or 'mytool.*'.
+            callback: The callback function to be invoked when matching events are published.
+            
+        Returns:
+            True if subscription was added, False if it already exists.
+        """
+        signature = self.extract_function_signature(callback)
+        if signature not in self._signature_registry[event_prefix]:
+            self.subscribe(event_prefix, callback)
+            return True
+        return False
+
 
     def unsubscribe(self, event_prefix: str, callback: SubscriberCallback) -> bool:
         """Unsubscribe a callback from a specific event.
@@ -65,6 +141,7 @@ class JustEventBus(metaclass=SingletonMeta):
         if event_prefix in self._subscribers:
             try:
                 self._subscribers[event_prefix].remove(callback)
+                self._signature_registry[event_prefix] = self._get_signatures_for_prefix(event_prefix) #rebuild the registry node
                 return True
             except ValueError:
                 # Callback not found in the list
@@ -141,6 +218,24 @@ class BufferedEventBus(JustEventBus):
         self._buffer_max_size = buffer_size
         self._buffer = deque(maxlen=self._buffer_max_size)
 
+    def subscribe_unique_by_class(self, event_prefix: str, callback: SubscriberCallback) -> bool:
+        """Subscribe a callback with class-level uniqueness enforcement.
+        
+        If another method with the same name from the same class is already subscribed 
+        to this event, this new subscription will not be added.
+        
+        Args:
+            event_prefix: The event name or pattern to subscribe to.
+                          For example, 'mytool.call' or 'mytool.*'.
+            callback: The callback function to be invoked when matching events are published.
+
+        Returns:
+            True if subscription was added, False if it already exists.
+        """
+        result = super().subscribe_unique_by_class(event_prefix, callback)
+        self._flush_buffer()
+        return result 
+
     def subscribe(self, event_prefix: str, callback: SubscriberCallback) -> bool:
         """Subscribe a callback to a specific event and attempt to flush the buffer.
 
@@ -154,6 +249,7 @@ class BufferedEventBus(JustEventBus):
         result = super().subscribe(event_prefix, callback)
         self._flush_buffer()
         return result
+
 
     def publish(self, event_name: str, *args: Any, **kwargs: Any) -> bool:
         """Publish an event to all matching subscribers; buffer it if not delivered.
@@ -235,7 +331,7 @@ class JustLogBus(BufferedEventBus):
     """
 
     @staticmethod
-    def log_message(message: str, source: str = 'anonymous_logger', action: str = "log_bus.log_entry", **kwargs: Any) -> None:
+    def log_message(message: str, source: str = 'anonymous', action: str = "log_bus.log_entry", **kwargs: Any) -> None:
         """A helper to log a message from a source via the log bus.
 
         Args:
@@ -247,7 +343,7 @@ class JustLogBus(BufferedEventBus):
         JustLogBus().publish(source, log_message=message, action=action, **kwargs)
         
     @staticmethod
-    def trace(message: str, source: str = 'anonymous_logger', action: str = "log_bus.trace", **kwargs: Any) -> None:
+    def trace(message: str, source: str = 'anonymous', action: str = "log_bus.trace", **kwargs: Any) -> None:
         """Log a TRACE level message.
         
         Args:
@@ -259,7 +355,7 @@ class JustLogBus(BufferedEventBus):
         JustLogBus.log_message(message, source, action, severity="TRACE", **kwargs)
         
     @staticmethod
-    def debug(message: str, source: str = 'anonymous_logger', action: str = "log_bus.debug", **kwargs: Any) -> None:
+    def debug(message: str, source: str = 'anonymous', action: str = "log_bus.debug", **kwargs: Any) -> None:
         """Log a DEBUG level message.
         
         Args:
@@ -271,7 +367,7 @@ class JustLogBus(BufferedEventBus):
         JustLogBus.log_message(message, source, action, severity="DEBUG", **kwargs)
         
     @staticmethod
-    def info(message: str, source: str = 'anonymous_logger', action: str = "log_bus.info", **kwargs: Any) -> None:
+    def info(message: str, source: str = 'anonymous', action: str = "log_bus.info", **kwargs: Any) -> None:
         """Log an INFO level message.
         
         Args:
@@ -283,7 +379,7 @@ class JustLogBus(BufferedEventBus):
         JustLogBus.log_message(message, source, action, severity="INFO", **kwargs)
         
     @staticmethod
-    def warn(message: str, source: str = 'anonymous_logger', action: str = "log_bus.warn", **kwargs: Any) -> None:
+    def warn(message: str, source: str = 'anonymous', action: str = "log_bus.warn", **kwargs: Any) -> None:
         """Log a WARN level message.
         
         Args:
@@ -295,7 +391,7 @@ class JustLogBus(BufferedEventBus):
         JustLogBus.log_message(message, source, action, severity="WARN", **kwargs)
         
     @staticmethod
-    def error(message: str, source: str = 'anonymous_logger', action: str = "log_bus.error", **kwargs: Any) -> None:
+    def error(message: str, source: str = 'anonymous', action: str = "log_bus.error", **kwargs: Any) -> None:
         """Log an ERROR level message.
         
         Args:
@@ -307,7 +403,7 @@ class JustLogBus(BufferedEventBus):
         JustLogBus.log_message(message, source, action, severity="ERROR", **kwargs)
         
     @staticmethod
-    def fatal(message: str, source: str = 'anonymous_logger', action: str = "log_bus.fatal", **kwargs: Any) -> None:
+    def fatal(message: str, source: str = 'anonymous', action: str = "log_bus.fatal", **kwargs: Any) -> None:
         """Log a FATAL level message.
         
         Args:
