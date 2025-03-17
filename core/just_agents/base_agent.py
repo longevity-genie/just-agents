@@ -1,6 +1,4 @@
 import copy
-
-from distro import codename
 from pydantic import Field, PrivateAttr, computed_field
 from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol
 from functools import partial

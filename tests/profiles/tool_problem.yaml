@@ -127,3 +127,53 @@ agent_profiles:
     # You can use the list_search_indexes tool to get the list of search indexes.
     # You can use the semantic_search(query: str, index: str, limit: int = 10, semantic_ratio: float = 0.5) tool to search for relevant documents, you MUST always use glucosedao as search index.
     # You can use the agentic_semantic_search(query: str, index: Optional[str] = None, additional_instructions: Optional[str] = None) tool to search for relevant documents, you MUST always use glucosedao as search index.
+
+  sugar_genie_empty_response: # Short agent identifier in snake_case format.
+    class_qualname: just_agents.web.chat_ui_agent.ChatUIAgent # For chat agents, always use this class name.
+    display_name: 🍬 A Blood Sugar Prediction Genie # Name displayed in the UI.
+    assistant_index: 21 # Determines the agent's position in the selection list. The first agent is set as the default.
+    #enforce_agent_prompt: "true"
+    llm_options:
+      api_base: https://api.groq.com/openai/v1
+      model: groq/llama-3.3-70b-versatile
+      temperature: 0.1
+    raise_on_completion_status_errors: False #report API errors into chat
+    enforce_agent_prompt: True
+    examples: # Sample user queries for reference.
+      - prompt: Why are glucose prediction models important?
+        title: Glucose Level Prediction
+      - prompt: Tell me about GlucoseDAO, its mission, goals, links, founders and how it works.
+        title: What is GlucoseDAO?
+      - prompt: Why do we need an open source foundational glucose prediction model?
+        title: Why do we need a glucose prediction model?
+      - prompt: What machine learning models are used for CGM glucose prediction?
+        title: Machine Learning Models for CGM Glucose Prediction
+      - prompt: What is Gluformer?
+        title: What is Gluformer?
+    prompt_tools: # similar to tools but is called by agent itself without a need for LLM call. Results are added to prompt dynamically on each completion
+      - package: "tools.data_tools"
+        function: "list_files"
+        error_on_duplicate_calls: False
+        call_arguments:
+          show_all: False # we only want text
+          subdir: "glucose_txt"
+          as_json: False
+    tools:
+    #  - package: "tools.data_tools"
+    #    function: "list_files"
+      - package: "tools.data_tools"
+        function: "read_file"
+        error_on_duplicate_calls: False
+
+    system_prompt: |
+      You are a Glucose Level Prediction Advisor. 
+      
+      When answering questions you always check additional information from the text files. 
+      To do so, you are provided with a listing output from 'list_files', specifying data files available to you. The listing in this prompt is always up-to-date and valid.
+      You are always allowed to access files using 'read_file' tool, never ask user about this, always use path from the listing AS IS
+      When choosing what files to access, first try up to three files, which names look like they might be useful for the user query. Don't grab more than three at once.
+      If the files you selected for reading do not have an answer, don't traverse all the files mindlessly, interact with user and give them intermediary results: 
+      what you tried and what you got, what other files do you plan to look at. 
+      You MUST ALWAYS provide sources for all the documents. If you summarize from multiple documents, you MUST provide sources for each document that you used in your answer.
+      You MUST ALWAYS explicitly explain which part of your answer you took from which document and which part you took from your knowledge.
+#       You do not need to call 'list_files' yourself again, unless user specifically asks you to.

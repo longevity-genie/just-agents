@@ -6,11 +6,14 @@ import os
 from pathlib import Path
 from typing import Callable, Any, Dict
 
+from just_agents.data_classes import Message, Role
 from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.base_agent import BaseAgent, BaseAgentWithLogging
 from just_agents.web.web_agent import WebAgent
 from just_agents.llm_options import LLMOptions, LLAMA3_3, LLAMA3_2_VISION, OPENAI_GPT4oMINI
 from just_agents.just_tool import JustToolsBus
+from just_agents.web.chat_ui_agent import ChatUIAgent
+from just_agents.web.streaming import response_from_stream
 
 TESTS_DIR = os.path.dirname(__file__)  # Get the directory where this test file is located
 MODELS_DIR = os.path.join(TESTS_DIR, "models.d")  # Path to models.d inside tests
@@ -58,3 +61,21 @@ def test_custom_agent_config(load_env,tmp_path):
     assert agents["custom_agent"].llm_options["api_base"] == "http://127.0.0.1:8089/v1"
     response = agents["custom_agent"].query("Who are the founders of GlucoseDao??", send_system_prompt=False)
     assert response
+
+@pytest.mark.skip(reason="https://github.com/BerriAI/litellm/issues/9296")
+def test_empty_resp(load_env, tmp_path):
+    config_path = Path(TESTS_DIR) / "profiles" / "tool_problem.yaml"
+    agent_empty: WebAgent = ChatUIAgent.from_yaml(file_path=config_path, section_name="sugar_genie_empty_response",
+                                              parent_section="agent_profiles")
+    messages=[Message(
+        role=Role.user,
+        content="Who are the founders of GlucoseDao??"
+    )]
+    agent_empty.litellm_tool_description = True
+    agent_empty.debug_enabled = True
+    stream_generator = agent_empty.stream(
+        messages
+    )
+
+    response_content = response_from_stream(stream_generator)
+    assert response_content #stop with 0 chinks 70% of the time

@@ -8,7 +8,7 @@ import os
 from openai import APIStatusError
 import litellm
 from litellm import CustomStreamWrapper, completion, acompletion, stream_chunk_builder, supports_function_calling, supports_response_schema
-from litellm.utils import Delta, Message, ModelResponse, ModelResponseStream, function_to_dict, get_valid_models
+from litellm.utils import Delta, Message, ModelResponse, ModelResponseStream, function_to_dict  
 from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
 
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
@@ -43,6 +43,30 @@ class LiteLLMFunctionCall(ToolCall, IFunctionCall[MessageDict]):
         return {"role": Role.assistant.value, "content": None, "tool_calls": tool_calls}
 
 
+def get_valid_models() -> List[str]: #override of litellm_helper, key-independent.
+    """
+    Returns a list of all available LLM models from litellm, regardless of API key configuration.
+    
+    Returns:
+        A list of all available LLM models
+    """
+  
+    # Get all available providers from litellm
+    all_providers = litellm.provider_list
+    # List to store all models
+    valid_models = []
+    
+    # For every provider, get its associated models
+    for provider in all_providers:
+        # For Azure, add a placeholder model name
+        if provider == "azure":
+            valid_models.append("Azure-LLM")
+        else:
+            # Get all models for this provider
+            models_for_provider = litellm.models_by_provider.get(provider, [])
+            valid_models.extend(models_for_provider)
+            
+    return valid_models
 class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Union[CustomStreamWrapper, CustomStreamWrapper]]):
     #Class that describes function convention
 
@@ -93,7 +117,8 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
                     f"Model is not supported by litellm by default! Validation is impossible.",
                     source=source,
                     action="validation_canceled",
-                    model=model
+                    model=model,
+                    valid_models=self.valid_models
                 )  
                 suggestion = None
                 if not provider:
@@ -141,6 +166,9 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
                 model=model
             )
             kwargs["response_format"] = fallback
+
+        if "response_format" in kwargs and kwargs.get("response_format", None) is None:
+            kwargs.pop("response_format",None)
 
         if not supports_function_calling(model):
             kwargs.pop("tools", None)
@@ -201,6 +229,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
                     action="exception",
                     error=e
                 )
+
                 
         function_dict = litellm_function_dict or function_dict or ""
         return {"type": "function","function": function_dict}
@@ -215,10 +244,12 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         try:
             return completion(*args, **kwargs)
         except APIStatusError as e:
-            self._log_bus.log_message(
+            self._log_bus.error(
                 "Error in completion",
                 source=source,
                 action="exception",
+                args=args,
+                kwargs=kwargs,
                 error=e
             )
             if raise_on_completion_status_errors:
@@ -227,6 +258,16 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
                 return self.create_streaming_chunks_from_text_wrapper(str(e),model,format_as_sse=False)
             else:
                 return self.create_response_from_content(str(e), model)
+        except Exception as e:
+            self._log_bus.fatal(
+                "Unhandled exception in completion!!",
+                source=source,
+                action="exception",
+                args=args,
+                kwargs=kwargs,
+                error=e
+            )
+            raise e
 
     async def async_completion(self, *args, **kwargs) \
             -> Union[ModelResponse, CustomStreamWrapper, AsyncGenerator[Any, None]]:
