@@ -75,6 +75,10 @@ class BaseAgent(
         exclude=True,
         description="Environment variable name containing comma-separated API keys")
 
+    drop_unsupported_params: bool = Field(
+        default=True,
+        description="Drop parameters unsupported by the LLM provider/model from the query")
+
     max_tool_calls: int = Field(
         ge=1,
         default=50,
@@ -147,9 +151,14 @@ class BaseAgent(
         - Creates completely isolated interactions with no persistence
     """
 
+    debug: bool = Field(
+        default=False,
+        exclude=True,
+        description="Whether to enable debug mode on instantiation")
+
     use_proxy: Optional[bool] = Field(
         default=None,
-        description="Whether to use a proxy to connect to the internet")
+        description="Whether to use a proxy to connect to the LLM provider")
 
     proxy_address: Optional[str] = Field(
         default=None,
@@ -267,6 +276,9 @@ class BaseAgent(
         # Auto-register with the locator
         self._locator.publish_agent(self)
 
+        if self.debug:
+            self._protocol.enable_debug()
+
     def _fork_memory(self, copy_values: bool) -> IBaseMemory:
         new_memory : IBaseMemory
         if copy_values:
@@ -308,7 +320,6 @@ class BaseAgent(
             self,
             messages: SupportedMessages,
             stream: bool,
-            response_format: Optional[str] = None,
             **kwargs
     ) -> BaseModelResponse:
         
@@ -328,11 +339,12 @@ class BaseAgent(
                 try:
                     # Directly use the protocol's completion method
                     return self._protocol.completion(
-                        messages=messages, 
-                        stream=stream, 
-                        response_format=response_format, 
+                        drop_params=self.drop_unsupported_params,
                         raise_on_completion_status_errors=self.raise_on_completion_status_errors,
-                        **opt)
+                        **opt,
+                        messages=messages,
+                        stream=stream,
+                    )
                 except Exception as e:
                     last_exception = e
                     if self.completion_remove_key_on_error:
@@ -340,12 +352,14 @@ class BaseAgent(
 
             if self.backup_options:
                 opt = self._prepare_options(self.backup_options)
+                opt.update(kwargs)
                 return self._protocol.completion(
-                    messages=messages, 
-                    stream=stream, 
-                    response_format=response_format, 
+                    drop_params=self.drop_unsupported_params,
                     raise_on_completion_status_errors=self.raise_on_completion_status_errors,
-                    **opt)
+                    **opt,
+                    messages=messages,
+                    stream=stream,
+                )
             if last_exception:
                 raise last_exception
             else:
@@ -353,11 +367,12 @@ class BaseAgent(
                     f"Run out of tries to execute completion. Check your keys! Keys {self._key_getter.len()} left.")
         else:
             return self._protocol.completion(
-                messages=messages, 
-                stream=stream, 
-                response_format=response_format, 
+                drop_params=self.drop_unsupported_params, 
                 raise_on_completion_status_errors=self.raise_on_completion_status_errors,
-                **opt)
+                **opt,
+                messages=messages, 
+                stream=stream,
+            )
 
     def _process_function_calls(
             self,

@@ -25,8 +25,22 @@ class ChatUIAgent(WebAgent, JustAgentProfileWebMixin):
         "PUBLIC_APP_DESCRIPTION": "A HuggingChat demonstrator of chat + JustAgent",
         "PUBLIC_APP_DATA_SHARING": "1",
         "PUBLIC_APP_DISCLAIMER": "0",
-        "MODELS": "\`\n[\n]\n\`"
+        "MODELS": '`' + "\n[\n]\n" + '`'
     }
+
+    continue_conversation: bool = Field(
+        default=False,
+        description="Concatenate memory messages and query messages ")
+    remember_query: bool = Field(
+        default=False,
+        description="Add new query messages to memory")
+    """
+      "Stateless Mode" is used now by default for chatui-agents: 
+      prevents any cross-memory between users and messages duplication. ChatUI frontend manages user history.
+        - Previous memory messages are NOT included in the context (starts from scratch)
+        - New query and response messages are NOT saved to memory
+        - Creates completely isolated interactions with no persistence
+    """
 
     raise_on_completion_status_errors: bool = Field(
         default=False, #Stream errors to chat instead of raising an exception
@@ -34,6 +48,10 @@ class ChatUIAgent(WebAgent, JustAgentProfileWebMixin):
 
     address: str = Field(DEFAULT_ADDRESS, description="Http address of the REST endpoint hosting the agent")
     port: int = Field(8088, ge=1000, lt=65535, description="Port of the REST endpoint hosting the agent")
+
+    supports_vision_override: Optional[bool] = Field(
+        default=None,
+        description="Override the default check for model support of vision, useful for custom models or proxies with custom model names")
 
     def compose_model_config(self, proxy_address: str = None) -> dict:
         """
@@ -58,11 +76,19 @@ class ChatUIAgent(WebAgent, JustAgentProfileWebMixin):
                 baseURL=baseurl
             )
         ]
+        multimodal = self._protocol.supports_vision(self.shortname)
+        if self.supports_vision_override is not None:
+            multimodal = self.supports_vision_override
+  
+        if not multimodal: #don't put multimodal if it's not supported
+            multimodal = None
+
         # Compose the top-level ModelConfig
         model_config = ModelConfig(
             name=self.shortname,
             displayName=self.display_name or self.shortname,
             description=self.description,
+            multimodal=multimodal,
             parameters=params,
             endpoints=endpoints,
             promptExamples=prompt_examples

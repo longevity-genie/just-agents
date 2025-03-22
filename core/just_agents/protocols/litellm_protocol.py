@@ -2,12 +2,13 @@ from typing import Optional, Union, ClassVar, Type, Sequence, List, Dict, Any, A
 
 from pydantic import Field, PrivateAttr, BaseModel
 from functools import singledispatchmethod
-
+from copy import deepcopy
 import os
 
 from openai import APIStatusError
 import litellm
-from litellm import CustomStreamWrapper, completion, acompletion, stream_chunk_builder, supports_function_calling, supports_response_schema
+from litellm import CustomStreamWrapper, completion, acompletion, stream_chunk_builder, \
+                    supports_function_calling, supports_response_schema, supports_vision
 from litellm.utils import Delta, Message, ModelResponse, ModelResponseStream, function_to_dict  
 from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
 
@@ -86,6 +87,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         source = f"{self.log_name}.sanitize_args"
         # Extract and preprocess the model from kwargs
         model = kwargs.get('model')
+        messages = kwargs.get('messages')
         if '/' in model:
             provider = model.split('/')[0]
         else:
@@ -93,13 +95,21 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
 
         if not model:
             self._log_bus.fatal(
-                f"model is required",
+                f"Model is required",
                 source=source,
                 action="essential_param_error",
                 model=model
             )
             raise ValueError("model is required")
-        
+        if not messages:
+            self._log_bus.error(
+                f"Messages are required",
+                source=source,
+                action="essential_param_error",
+                model=model
+            )
+            raise ValueError("Messages are required")
+
         for internal_kwarg in ["raise_on_completion_status_errors", "reconstruct_chunks"]:
             if kwargs.pop(internal_kwarg, None) is not None:
                 self._log_bus.warn(
@@ -108,7 +118,23 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
                     action="param_drop",
                     model=model
                 )
+
+        for key in kwargs.keys():
+            if key is None:
+                kwargs.pop(key) #remove None keys
+
+        messages = deepcopy(messages) #defnsive copy to avoid mutating original messages
+        if "anthropic" in model.lower() or "claude" in model.lower() or "opus" in model.lower() or "sonnet" in model.lower():
+            anthropic_reasoning = True
+        else:
+            anthropic_reasoning = False
         
+        for message in messages:
+            message["reasoning"] = message.pop("reasoning", None)
+            message["reasoning_content"] = message.pop("reasoning_content", None)
+            if not anthropic_reasoning: 
+                message.pop("thinking_blocks", None)
+
         api_base = kwargs.get('api_base')
 
         if model not in self.valid_models:
@@ -166,9 +192,6 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
                 model=model
             )
             kwargs["response_format"] = fallback
-
-        if "response_format" in kwargs and kwargs.get("response_format", None) is None:
-            kwargs.pop("response_format",None)
 
         if not supports_function_calling(model):
             kwargs.pop("tools", None)
@@ -448,7 +471,10 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
     def supports_function_calling(model_name: str) -> bool:
         return supports_function_calling(model_name)
     
-   
+    @staticmethod
+    def supports_vision(model_name: str) -> bool:
+        return supports_vision(model_name)
+
     @staticmethod
     def create_response_from_content(
         content: str,

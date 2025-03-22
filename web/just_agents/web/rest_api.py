@@ -90,12 +90,10 @@ class AgentRestAPI(FastAPI):
         self._initialize_config()
         if use_proxy is not None:
             self.config.use_proxy = use_proxy
-        else:
-            self.config.use_proxy = self.config.use_proxy
+
         if proxy_address is not None:
             self.config.proxy_address = proxy_address
-        else:
-            self.config.proxy_address = self.config.proxy_address
+
         self.agents = {} if agents is None else agents # Dictionary to store multiple agents
         self._agent_related_config(agent_config, agent_section, agent_parent_section, self.AGENT_CLASS)
         self._routes_config()
@@ -146,7 +144,9 @@ class AgentRestAPI(FastAPI):
                     agent_config, 
                     agent_parent_section, 
                     section=agent_section,
-                    fail_on_any_error=self.config.agent_failfast
+                    fail_on_any_error=self.config.agent_failfast,
+                    use_proxy=self.config.use_proxy,
+                    proxy_address=self.config.proxy_address
                 )
 
                 if agent_section in loaded_agents:
@@ -168,7 +168,9 @@ class AgentRestAPI(FastAPI):
                 loaded_agents = agent_class.from_yaml_dict(
                     agent_config, 
                     agent_parent_section,
-                    fail_on_any_error=self.config.agent_failfast
+                    fail_on_any_error=self.config.agent_failfast,
+                    use_proxy=self.config.use_proxy,
+                    proxy_address=self.config.proxy_address
                 )
                 if not loaded_agents:
                     action.log(

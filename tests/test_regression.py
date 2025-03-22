@@ -50,6 +50,8 @@ def test_deepseek_reasoner_agent(load_env,tmp_path):
     response = agents["deepseek_agent"].query("Count the number of letters e in deepseek/deepseek-reasoner", send_system_prompt=False)
     assert response
     assert "ten" in response or "10" in response
+    response = agents["deepseek_agent"].query("Count the number of letters r in 'strawberry crumble'", send_system_prompt=False)
+    assert "four" in response or "4" in response
 
 @pytest.mark.skip(reason="needs server part in test, todo")
 def test_custom_agent_config(load_env,tmp_path):

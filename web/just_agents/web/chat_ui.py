@@ -65,6 +65,11 @@ class ModelConfig(BaseModel):
         description="Human-readable or display name for the model.",
         examples=["proxified-gpt-4o"]
     )
+
+    multimodal: Optional[bool] = Field(
+        default=None,
+        description="Whether the model supports multimodal input/output")
+    
     description: str = Field(
         ...,
         description="Brief description of what this model is or does.",

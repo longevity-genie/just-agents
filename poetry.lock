@@ -911,14 +911,14 @@ type = ["pytest-mypy"]
 
 [[package]]
 name = "iniconfig"
-version = "2.0.0"
+version = "2.1.0"
 description = "brain-dead simple config-ini parsing"
 optional = false
-python-versions = ">=3.7"
+python-versions = ">=3.8"
 groups = ["dev"]
 files = [
-    {file = "iniconfig-2.0.0-py3-none-any.whl", hash = "sha256:b6a85871a79d2e3b22d2d1b94ac2824226a63c6b741c88f7ae975f18b6778374"},
-    {file = "iniconfig-2.0.0.tar.gz", hash = "sha256:2d91e135bf72d31a410b17c16da610a82cb55f6b0477d1a902134b24a455b8b3"},
+    {file = "iniconfig-2.1.0-py3-none-any.whl", hash = "sha256:9deba5723312380e77435581c6bf4935c94cbfab9b1ed33ef8d238ea168eb760"},
+    {file = "iniconfig-2.1.0.tar.gz", hash = "sha256:3abbd2e30b36733fee78f9c7f7308f2d0050e88f0087fd25c2645f63c773e1c7"},
 ]
 
 [[package]]
@@ -1088,7 +1088,7 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "just-agents-coding"
-version = "0.6.7"
+version = "0.6.8-post.1+dfbd109"
 description = "Just Agents - Coding Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1106,7 +1106,7 @@ url = "coding"
 
 [[package]]
 name = "just-agents-core"
-version = "0.6.7"
+version = "0.6.8-post.1+dfbd109"
 description = "Just Agents - Base Package"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1129,7 +1129,7 @@ url = "core"
 
 [[package]]
 name = "just-agents-examples"
-version = "0.6.7"
+version = "0.6.8-post.1+dfbd109"
 description = "Just Agents - Examples code"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1150,7 +1150,7 @@ url = "examples"
 
 [[package]]
 name = "just-agents-router"
-version = "0.6.7"
+version = "0.6.8-post.1+dfbd109"
 description = "Just Agents - Router Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1167,7 +1167,7 @@ url = "router"
 
 [[package]]
 name = "just-agents-tools"
-version = "0.6.7"
+version = "0.6.8-post.1+dfbd109"
 description = "Just Agents - Tools Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1185,7 +1185,7 @@ url = "tools"
 
 [[package]]
 name = "just-agents-web"
-version = "0.6.7"
+version = "0.6.8-post.1+dfbd109"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1208,14 +1208,14 @@ url = "web"
 
 [[package]]
 name = "langfuse"
-version = "2.60.0"
+version = "2.60.1"
 description = "A client library for accessing langfuse"
 optional = false
 python-versions = "<4.0,>=3.9"
 groups = ["dev"]
 files = [
-    {file = "langfuse-2.60.0-py3-none-any.whl", hash = "sha256:91713abdd5ec31fba1a5e0e9523d5cd4af7c859524c9ceb21b8920122c0591a9"},
-    {file = "langfuse-2.60.0.tar.gz", hash = "sha256:3ce68db5d4471ea03868e414e8a64271105a19d46cef51f19f4a0a88988b5ab5"},
+    {file = "langfuse-2.60.1-py3-none-any.whl", hash = "sha256:0147c0b74a88c57fb73f486cc9ab0c30aacd30963fefa23723611274c3fda900"},
+    {file = "langfuse-2.60.1.tar.gz", hash = "sha256:9801337b35d992630b4a15be20b7926d5abc114023260f1fb7151715f524fb91"},
 ]
 
 [package.dependencies]
@@ -1235,14 +1235,14 @@ openai = ["openai (>=0.27.8)"]
 
 [[package]]
 name = "litellm"
-version = "1.63.11"
+version = "1.63.14"
 description = "Library to easily interface with LLM API providers"
 optional = false
 python-versions = "!=2.7.*,!=3.0.*,!=3.1.*,!=3.2.*,!=3.3.*,!=3.4.*,!=3.5.*,!=3.6.*,!=3.7.*,>=3.8"
 groups = ["main", "dev"]
 files = [
-    {file = "litellm-1.63.11-py3-none-any.whl", hash = "sha256:f3915dc35309b164ef2419ad05e5241ddd97f3f47aa036df28365bf889d8ea23"},
-    {file = "litellm-1.63.11.tar.gz", hash = "sha256:89930895121d0cbf5553e560ed886c45be480ceec0eca3c53ae441473d5d46a4"},
+    {file = "litellm-1.63.14-py3-none-any.whl", hash = "sha256:d4c469f5990e142cc23dfa06c3fddd627001928e4df43682001f453af6a1fb51"},
+    {file = "litellm-1.63.14.tar.gz", hash = "sha256:9cffe19d8140c33a2f777c5b2e8b8175ffe03979aac341b8538d6e6d143bd640"},
 ]
 
 [package.dependencies]
@@ -1260,7 +1260,7 @@ tokenizers = "*"
 
 [package.extras]
 extra-proxy = ["azure-identity (>=1.15.0,<2.0.0)", "azure-keyvault-secrets (>=4.8.0,<5.0.0)", "google-cloud-kms (>=2.21.3,<3.0.0)", "prisma (==0.11.0)", "resend (>=0.8.0,<0.9.0)"]
-proxy = ["PyJWT (>=2.8.0,<3.0.0)", "apscheduler (>=3.10.4,<4.0.0)", "backoff", "cryptography (>=43.0.1,<44.0.0)", "fastapi (>=0.115.5,<0.116.0)", "fastapi-sso (>=0.16.0,<0.17.0)", "gunicorn (>=22.0.0,<23.0.0)", "orjson (>=3.9.7,<4.0.0)", "pynacl (>=1.5.0,<2.0.0)", "python-multipart (>=0.0.18,<0.0.19)", "pyyaml (>=6.0.1,<7.0.0)", "rq", "uvicorn (>=0.29.0,<0.30.0)", "uvloop (>=0.21.0,<0.22.0)"]
+proxy = ["PyJWT (>=2.8.0,<3.0.0)", "apscheduler (>=3.10.4,<4.0.0)", "backoff", "boto3 (==1.34.34)", "cryptography (>=43.0.1,<44.0.0)", "fastapi (>=0.115.5,<0.116.0)", "fastapi-sso (>=0.16.0,<0.17.0)", "gunicorn (>=23.0.0,<24.0.0)", "orjson (>=3.9.7,<4.0.0)", "pynacl (>=1.5.0,<2.0.0)", "python-multipart (>=0.0.18,<0.0.19)", "pyyaml (>=6.0.1,<7.0.0)", "rq", "uvicorn (>=0.29.0,<0.30.0)", "uvloop (>=0.21.0,<0.22.0)", "websockets (>=13.1.0,<14.0.0)"]
 
 [[package]]
 name = "llm-sandbox"
@@ -1543,14 +1543,14 @@ test = ["matplotlib", "pytest", "pytest-cov"]
 
 [[package]]
 name = "openai"
-version = "1.66.3"
+version = "1.68.2"
 description = "The official Python library for the openai API"
 optional = false
 python-versions = ">=3.8"
 groups = ["main", "dev"]
 files = [
-    {file = "openai-1.66.3-py3-none-any.whl", hash = "sha256:a427c920f727711877ab17c11b95f1230b27767ba7a01e5b66102945141ceca9"},
-    {file = "openai-1.66.3.tar.gz", hash = "sha256:8dde3aebe2d081258d4159c4cb27bdc13b5bb3f7ea2201d9bd940b9a89faf0c9"},
+    {file = "openai-1.68.2-py3-none-any.whl", hash = "sha256:24484cb5c9a33b58576fdc5acf0e5f92603024a4e39d0b99793dfa1eb14c2b36"},
+    {file = "openai-1.68.2.tar.gz", hash = "sha256:b720f0a95a1dbe1429c0d9bb62096a0d98057bcda82516f6e8af10284bdd5b19"},
 ]
 
 [package.dependencies]
@@ -1566,6 +1566,7 @@ typing-extensions = ">=4.11,<5"
 [package.extras]
 datalib = ["numpy (>=1)", "pandas (>=1.2.3)", "pandas-stubs (>=1.1.0.11)"]
 realtime = ["websockets (>=13,<15)"]
+voice-helpers = ["numpy (>=2.0.2)", "sounddevice (>=0.5.1)"]
 
 [[package]]
 name = "orjson"
@@ -2469,19 +2470,19 @@ tenacity = "*"
 
 [[package]]
 name = "setuptools"
-version = "76.0.0"
+version = "77.0.3"
 description = "Easily download, build, install, upgrade, and uninstall Python packages"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "setuptools-76.0.0-py3-none-any.whl", hash = "sha256:199466a166ff664970d0ee145839f5582cb9bca7a0a3a2e795b6a9cb2308e9c6"},
-    {file = "setuptools-76.0.0.tar.gz", hash = "sha256:43b4ee60e10b0d0ee98ad11918e114c70701bc6051662a9a675a0496c1a158f4"},
+    {file = "setuptools-77.0.3-py3-none-any.whl", hash = "sha256:67122e78221da5cf550ddd04cf8742c8fe12094483749a792d56cd669d6cf58c"},
+    {file = "setuptools-77.0.3.tar.gz", hash = "sha256:583b361c8da8de57403743e756609670de6fb2345920e36dc5c2d914c319c945"},
 ]
 
 [package.extras]
 check = ["pytest-checkdocs (>=2.4)", "pytest-ruff (>=0.2.1)", "ruff (>=0.8.0)"]
-core = ["importlib_metadata (>=6)", "jaraco.collections", "jaraco.functools (>=4)", "jaraco.text (>=3.7)", "more_itertools", "more_itertools (>=8.8)", "packaging", "packaging (>=24.2)", "platformdirs (>=4.2.2)", "tomli (>=2.0.1)", "wheel (>=0.43.0)"]
+core = ["importlib_metadata (>=6)", "jaraco.functools (>=4)", "jaraco.text (>=3.7)", "more_itertools", "more_itertools (>=8.8)", "packaging (>=24.2)", "platformdirs (>=4.2.2)", "tomli (>=2.0.1)", "wheel (>=0.43.0)"]
 cover = ["pytest-cov"]
 doc = ["furo", "jaraco.packaging (>=9.3)", "jaraco.tidelift (>=1.4)", "pygments-github-lexers (==0.0.5)", "pyproject-hooks (!=1.1)", "rst.linker (>=1.9)", "sphinx (>=3.5)", "sphinx-favicon", "sphinx-inline-tabs", "sphinx-lint", "sphinx-notfound-page (>=1,<2)", "sphinx-reredirects", "sphinxcontrib-towncrier", "towncrier (<24.7)"]
 enabler = ["pytest-enabler (>=2.2)"]

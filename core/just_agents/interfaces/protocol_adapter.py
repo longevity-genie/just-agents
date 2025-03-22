@@ -92,6 +92,33 @@ class IProtocolAdapter(ABC, Generic[BaseModelResponse, BaseModelStreamResponse, 
         """Get supported parameters for a specific model."""
         raise NotImplementedError("You need to implement get_supported_params first!")
 
+
+    @staticmethod
+    @abstractmethod
+    def supports_system_messages(model_name: str) -> Optional[list]:
+        """Check if a model supports system messages."""
+        raise NotImplementedError("You need to implement supports_system_messages first!")
+
+
+    @staticmethod
+    @abstractmethod
+    def supports_response_schema(model_name: str) -> bool:
+        """Check if a model supports response schema."""
+        raise NotImplementedError("You need to implement supports_response_schema first!")
+
+    @staticmethod
+    @abstractmethod
+    def supports_function_calling(model_name: str) -> bool:
+        """Check if a model supports function calling."""
+        raise NotImplementedError("You need to implement supports_function_calling first!")
+
+    @staticmethod
+    @abstractmethod
+    def supports_vision(model_name: str) -> bool:
+        """Check if a model supports vision."""
+        raise NotImplementedError("You need to implement supports_vision first!")
+
+    @staticmethod
     @abstractmethod
     def create_streaming_chunks_from_text_wrapper(self, content: str, model: str, **kwargs) \
     -> Generator[Union[BaseModelStreamResponse, AbstractMessage], None, None]:
@@ -121,7 +148,6 @@ class IProtocolAdapter(ABC, Generic[BaseModelResponse, BaseModelStreamResponse, 
     @staticmethod
     def get_chat_completion_id() -> Optional[str]:
         return f"chatcmpl-{str(uuid.uuid4())}"
-    
 
     @staticmethod
     def create_base_response(

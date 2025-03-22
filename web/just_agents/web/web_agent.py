@@ -149,6 +149,9 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
         parent_section: Optional[str] = "agent_profiles",
         section: Optional[str] = None,
         required_base_class: Optional[Type[BaseAgent]] = None,
+        fail_on_any_error: Optional[bool] = True,
+        use_proxy: Optional[bool] = None,
+        proxy_address: Optional[str] = None,
         **kwargs
     ) -> Dict[str, 'BaseAgent']:
         """
@@ -168,10 +171,6 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
                 config_data = yaml.safe_load(f) or {}
 
             agents : Dict[str,BaseAgent] = {}
-
-            fail_on_any_error = kwargs.get("fail_on_any_error", True)
-            use_proxy = kwargs.get("use_proxy", None)
-            proxy_address = kwargs.get("proxy_address", None)
 
             # Get the correct section data
             if parent_section:
