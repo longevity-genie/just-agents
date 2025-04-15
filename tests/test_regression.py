@@ -10,7 +10,6 @@ from just_agents.data_classes import Message, Role
 from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.base_agent import BaseAgent, BaseAgentWithLogging
 from just_agents.web.web_agent import WebAgent
-from just_agents.llm_options import LLMOptions, LLAMA3_3, LLAMA3_2_VISION, OPENAI_GPT4oMINI
 from just_agents.just_tool import JustToolsBus
 from just_agents.web.chat_ui_agent import ChatUIAgent
 from just_agents.web.streaming import response_from_stream

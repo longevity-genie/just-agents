@@ -1,7 +1,7 @@
 {
-      "name": "open_genes_gpt-4o-mini",
-      "displayName": "Genetics Genie with OpenGenes (gpt-4o-mini)",
-      "description": "Genetics Genie open genes gpt-4o-mini",
+      "name": "open_genes_gpt-4.1-nano",
+      "displayName": "Genetics Genie with OpenGenes (gpt-4.1-nano)",
+      "description": "Genetics Genie open genes gpt-4.1-nano",
       "parameters": {
         "temperature": 0.0,
         "max_new_tokens": 10000,

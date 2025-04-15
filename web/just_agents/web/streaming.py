@@ -40,6 +40,24 @@ def has_system_prompt(request: ChatCompletionRequest) -> Optional[str]:
 
     return text if text else None
 
+def mask_api_key(key: Optional[str]) -> Optional[str]:
+    """
+    Masks API key by showing first 1/3 of the key and replacing the rest with asterisks.
+    
+    Args:
+        key: The API key to mask
+        
+    Returns:
+        Optional[str]: Masked API key or None if key is None
+    """
+    if not key:
+        return None
+    
+    visible_chars = max(len(key) // 3, 1)  # Show at least 1 character
+    masked_length = len(key) - visible_chars
+    return key[:visible_chars] + '*' * masked_length
+
+
 def get_completion_response(
         model : Optional[str]="SYSTEM",
         text : Optional[str]=None,
@@ -183,8 +201,8 @@ def process_request_with_debugging(request: ChatCompletionRequest) -> StreamingR
         )
 
         # Define LLM options
-        OPENAI_GPT4oMINI_prox = {
-            "model": "gpt-4o-mini",
+        OPENAI_GPT4_1NANO_prox = {
+            "model": "gpt-4.1-nano",
             "temperature": 0.0,
             "api_base": "http://127.0.0.1:14000"
         }
@@ -195,7 +213,7 @@ def process_request_with_debugging(request: ChatCompletionRequest) -> StreamingR
                 model=request.model,
                 text=response_from_stream(
                     dump_sync_stream_to_file(
-                        BaseAgent(llm_options=OPENAI_GPT4oMINI_prox).stream(
+                        BaseAgent(llm_options=OPENAI_GPT4_1NANO_prox).stream(
                             request.messages,
                             enforce_agent_prompt=False
                         ),
@@ -208,7 +226,7 @@ def process_request_with_debugging(request: ChatCompletionRequest) -> StreamingR
         return StreamingResponse(
             # Original debugging line, commented out for reference
             # dump_async_stream_to_file(rsp, "working.txt"),
-            BaseAgent(llm_options=OPENAI_GPT4oMINI_prox).stream(
+            BaseAgent(llm_options=OPENAI_GPT4_1NANO_prox).stream(
                 request.messages,
                 enforce_agent_prompt=False
             ),

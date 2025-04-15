@@ -17,7 +17,7 @@ class ModelOptions(BaseModel):
     )
     model: str = Field(
         ...,
-        examples=["groq/llama-3.3-70b-versatile","gpt-4o-mini"],
+        examples=["groq/llama-3.3-70b-versatile","gpt-4.1-nano"],
         description="LLM model name"
     )
     api_key: Optional[str] = Field(None, examples=["sk-proj-...."])
@@ -67,13 +67,6 @@ ANTHROPIC_CLAUDE_3_5_SONNET: LLMOptions = {
     "temperature": 0.0
 }
 
-LLAMA3_2_VISION: LLMOptions = {
-    #supports both text and vision
-    "model": "groq/llama-3.2-90b-vision-preview",
-    "api_base": "https://api.groq.com/openai/v1",
-    "temperature": 0.0
-}
-
 LLAMA3_3: dict[str, Any] = {
     "model": "groq/llama-3.3-70b-versatile",
     "api_base": "https://api.groq.com/openai/v1",
@@ -113,11 +106,20 @@ OPENAI_GPT4o: LLMOptions = {
     "temperature": 0.0
 }
 
-OPENAI_GPT4_5_PREVIEW: LLMOptions = {
-    "model": "gpt-4.5-preview",
+OPENAI_GPT4_1: LLMOptions = {
+    "model": "gpt-4.1",
     "temperature": 0.0
 }
 
+OPENAI_GPT4_1MINI: LLMOptions = {
+    "model": "gpt-4.1-mini",
+    "temperature": 0.0
+}
+
+OPENAI_GPT4_1NANO: LLMOptions = {
+    "model": "gpt-4.1-nano",
+    "temperature": 0.0
+}
 
 OPENAI_GPT4oMINI: LLMOptions = {
     "model": "gpt-4o-mini",

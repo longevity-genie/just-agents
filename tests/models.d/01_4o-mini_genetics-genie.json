@@ -1,7 +1,7 @@
 {
-  "name": "gpt-4o-mini",
-  "displayName": "Genetics Genie gpt-4o-mini",
-  "description": "Genetics Genie agent gpt-4o-mini",
+  "name": "gpt-4.1-nano",
+  "displayName": "Genetics Genie gpt-4.1-nano",
+  "description": "Genetics Genie agent gpt-4.1-nano",
   "parameters": {
     "temperature": 0.0,
     "max_new_tokens": 10000,

@@ -58,7 +58,7 @@ class ModelConfig(BaseModel):
     name: str = Field(
         ...,
         description="Internal identifier for the model.",
-        examples=["gpt-4o-mini"]
+        examples=["gpt-4.1-nano"]
     )
     displayName: str = Field(
         ...,
@@ -73,7 +73,7 @@ class ModelConfig(BaseModel):
     description: str = Field(
         ...,
         description="Brief description of what this model is or does.",
-        examples=["OpenAI gpt-4o-mini model served through cache-proxy"]
+        examples=["OpenAI gpt-4.1-nano model served through cache-proxy"]
     )
     parameters: ModelParameters = Field(
         ...,

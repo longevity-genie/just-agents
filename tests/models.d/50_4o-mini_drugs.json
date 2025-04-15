@@ -1,7 +1,7 @@
 {
-      "name": "drugs_gpt-4o-mini",
-      "displayName": "KG-RAG gpt-4o-mini",
-      "description": "Biochatter Drug Interactions KG-RAG for gpt-4o-mini",
+      "name": "drugs_gpt-4.1-nano",
+      "displayName": "KG-RAG gpt-4.1-nano",
+      "description": "Biochatter Drug Interactions KG-RAG for gpt-4.1-nano",
       "parameters": {
         "temperature": 0.0,
         "max_new_tokens": 4096,

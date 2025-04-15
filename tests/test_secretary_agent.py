@@ -24,7 +24,7 @@ def secretary_autoload_false(temp_config_path: str) -> Tuple[SecretaryAgent, boo
     params = {
         'autoload_from_yaml': False,
         'config_path': temp_config_path,
-        'llm_options': just_agents.llm_options.OPENAI_GPT4oMINI,
+        'llm_options': just_agents.llm_options.OPENAI_GPT4_1NANO,
     }
     secretary = SecretaryAgent(**params)
     info = secretary.get_info(secretary)
@@ -39,7 +39,7 @@ def secretary_autoload_true(temp_config_path: str, secretary_autoload_false: Tup
     dotenv.load_dotenv(override=True)
     params = {
         'model_name': None,
-        'llm_options': just_agents.llm_options.OPENAI_GPT4oMINI,
+        'llm_options': just_agents.llm_options.OPENAI_GPT4_1NANO,
         'extra_dict': {
             "personality_traits": "Agent's personality traits go here",
         },

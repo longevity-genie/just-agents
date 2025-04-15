@@ -1,7 +1,7 @@
 {
-  "name": "precious3GPT_gpt-4o-mini",
-  "displayName": "precious3GPT gpt-4o-mini",
-  "description": "Agent for interacting with model precious3GPT with gpt-4o-mini",
+  "name": "precious3GPT_gpt-4.1-nano",
+  "displayName": "precious3GPT gpt-4.1-nano",
+  "description": "Agent for interacting with model precious3GPT with gpt-4.1-nano",
   "parameters": {
     "temperature": 0.0,
     "max_new_tokens": 10000,

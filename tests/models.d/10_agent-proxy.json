@@ -1,7 +1,7 @@
 {
       "name": "llama-3.3-70b-versatile",
       "displayName": "TEST",
-      "description": "OpenAI gpt-4o-mini model served through cache-proxy",
+      "description": "OpenAI gpt-4.1-nano model served through cache-proxy",
       "parameters": {
         "temperature": 0.0,
         "max_new_tokens": 4096,

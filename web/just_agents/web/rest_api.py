@@ -10,7 +10,14 @@ from just_agents.base_agent import BaseAgent
 from just_agents.web.models import Model, ModelList
 from just_agents.web.web_agent import WebAgent
 from just_agents.web.config import WebAgentConfig
-from just_agents.web.streaming import response_from_stream, get_completion_response, async_wrap, has_system_prompt
+from just_agents.web.streaming import (
+    mask_api_key, 
+    response_from_stream, 
+    get_completion_response, 
+    async_wrap, 
+    has_system_prompt, 
+    mask_api_key
+)
 
 from just_agents.web.models import (
      ChatCompletionRequest, ChatCompletionResponse, ChatCompletionUsage, ErrorResponse
@@ -21,6 +28,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, Header
 from fastapi.responses import StreamingResponse
 from eliot import start_task
+
 
 
 
@@ -294,11 +302,20 @@ class AgentRestAPI(FastAPI):
 
                 input_kwargs : dict = {}
 
+                action.log(
+                    message_type=f"Completion api_key",
+                    request_api_key=mask_api_key(request.api_key),
+                    header_api_key=mask_api_key(header_api_key),
+                    security_key=mask_api_key(self.config.security_api_key),
+                    keys_match=(api_key == self.config.security_api_key),
+                    action="completion_auth",
+                )
+
                 if self.config.security_api_key:
                     if api_key != self.config.security_api_key: #only accept requests with the correct security key
                         raise ValueError("Invalid API key")
                 else:
-                    if api_key:
+                    if api_key and len(api_key) > 8: # drop "sk-proj-" and other empty prefixes
                         input_kwargs["api_key"] = api_key #accept any requests, but if api_key is provided, add it to the input
 
                 if is_streaming:

@@ -87,6 +87,6 @@ tools:
   - package: "just_agents.examples.coding.tools"
     function: "submit_code"
 options:
-  model: "gpt-4o-mini"
+  model: "gpt-4.1-nano"
   temperature: 0.0
   api_base: "http://127.0.0.1:14000/v1"

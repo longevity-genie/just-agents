@@ -12,7 +12,7 @@ if __name__ == "__main__":
 
     #here we use claude sonnet 3.5 as default mode, if you want to switch to another please edit yaml
     config_path = coding_examples_dir / "coding_agents.yaml"
-    options =  llm_options.OPENAI_GPT4oMINI  #llm_options.ANTHROPIC_CLAUDE_3_5_SONNET
+    options =  llm_options.OPENAI_GPT4_1NANO  #llm_options.ANTHROPIC_CLAUDE_3_5_SONNET
     agent: ChainOfThoughtAgent = ChainOfThoughtAgent.from_yaml("Bioinformatician", file_path=config_path)
     agent.memory.add_on_message(lambda message: print(message))
     prompt = "Get FGF2 human protein sequence from uniprot using biopython. As a result, return only the sequence"

@@ -32,7 +32,7 @@ def planning_example():
     planner: ChatAgent = ChatAgent(llm_options = planner_options , role = "You are a helpful adviser that helps people to create their NGOs and DAOs",
                                    goal = "Your goal is to help the user to make the best possible action plan to create her NGO or DAO.",
                                    task="Create the best actionable plan possible while being realististic knowing limitations of the time and resources of the founder and current state of the art, take into account the feedback and suggestions, improve it until it is perfect.")
-    reviewer: ChatAgent = ChatAgent(llm_options = llm_options.OPENAI_GPT4oMINI,
+    reviewer: ChatAgent = ChatAgent(llm_options = llm_options.OPENAI_GPT4_1NANO,
                                       role = "you represent the interests of the DAO or nonprofit creator and provide feedback and suggestions for the plan which is generated for you",
                                       goal="provide the best feedback ever and ask for specific improvements",
                                       task="evaluate the plan and provide feedback and suggestions for the plan")

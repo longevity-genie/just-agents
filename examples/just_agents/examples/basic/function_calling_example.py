@@ -31,7 +31,7 @@ if __name__ == "__main__":
     prompt = "What's the weather like in San Francisco, Tokyo, and Paris?"
 
     # Create an agent instance with:
-    # 1. LLAMA3_2_VISION as the language model
+    # 1. LLAMA3_3 as the language model
     # 2. get_current_weather function as an available tool
     agent = BaseAgent(  # type: ignore
         llm_options=llm_options.LLAMA3_3,
