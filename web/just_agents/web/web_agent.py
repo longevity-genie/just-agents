@@ -213,6 +213,12 @@ class WebAgent(BaseAgentWithLogging,WebAgentEliotLoggerMixin):
                             auto_instance.use_proxy = use_proxy
                         if auto_instance.proxy_address is None:
                             auto_instance.proxy_address = proxy_address
+                        action.log(
+                            message_type="agent.proxy_configuratio",
+                            instance=auto_instance.__class__.__qualname__,
+                            proxy_address=auto_instance.proxy_address,
+                            use_proxy=auto_instance.use_proxy
+                        )
                 except Exception as e:
                     action.log(
                         message_type="agent.config_error",

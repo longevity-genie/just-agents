@@ -97,9 +97,11 @@ class WebAgentConfig(BaseModel):
         description="The address of the proxy to use",
         examples=["http://172.17.0.1:4000/v1", "http://localhost:4000/v1"]
     )
-  
-    
-    
+    security_api_key: Optional[str] = Field(
+        default_factory=lambda: os.getenv('SECURITY_API_KEY', None),
+        description="The security API key to protect the API from unauthorized access",
+        examples=["None","security_api_key"]
+    )
     
 
 

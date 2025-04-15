@@ -82,7 +82,8 @@ class ChatUIAgentRestAPI(AgentRestAPI):
                 # Write JSON config using the computed index override.
                 agent.write_model_config_to_json(
                     models_dir=Path(self.config.models_dir),
-                    index_override=index_overrides[agent.shortname]
+                    index_override=index_overrides[agent.shortname],
+                    api_key=self.config.security_api_key
                 )
 
                 action.log(

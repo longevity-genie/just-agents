@@ -334,26 +334,26 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         else:
             return None
 
-    def enable_logging(self) -> None:
+    def set_logging(self, enable: bool = True) -> None:
         """
         Enable logging and callbacks for the protocol adapter.
         Sets up Langfuse and Opik callbacks if environment variables are present.
         """
         callbacks = []
         
-        # Check if Langfuse credentials are set
-        if os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY"):
-            callbacks.append("langfuse")
-            
-        # Check if Opik credentials are set    
-        if os.environ.get("OPIK_API_KEY") and os.environ.get("OPIK_WORKSPACE"):
-            callbacks.append("opik")
+        if enable:
+            # Check if Langfuse credentials are set
+            if os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY"):
+                callbacks.append("langfuse")
+                
+            # Check if Opik credentials are set    
+            if os.environ.get("OPIK_API_KEY") and os.environ.get("OPIK_WORKSPACE"):
+                callbacks.append("opik")
             
         # Set unified callbacks if any integrations are enabled
-        if callbacks:
-            litellm.success_callback = callbacks
-            litellm.failure_callback = callbacks
-            litellm.callbacks = callbacks
+        litellm.success_callback = callbacks
+        litellm.failure_callback = callbacks
+        litellm.callbacks = callbacks
 
     def is_debug_enabled(self) -> bool:
         return litellm._is_debugging_on() # type: ignore

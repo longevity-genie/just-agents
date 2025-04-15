@@ -156,6 +156,10 @@ class BaseAgent(
         exclude=True,
         description="Whether to enable debug mode on instantiation")
 
+    observability: bool = Field(
+        default=True,
+        description="Whether to enable observability on instantiation")
+
     use_proxy: Optional[bool] = Field(
         default=None,
         description="Whether to use a proxy to connect to the LLM provider")
@@ -271,7 +275,7 @@ class BaseAgent(
         if (self._key_getter is not None) and (self.llm_options.get("api_key", None) is not None):
             print("Warning api_key will be rewritten by key_getter. Both are present in llm_options.")
 
-        self._protocol.enable_logging()
+        self._protocol.set_logging(enable=self.observability)
         
         # Auto-register with the locator
         self._locator.publish_agent(self)
@@ -297,7 +301,7 @@ class BaseAgent(
             raise ValueError(f"Tools mismatch: agent tools empty, but llm_options has tools section:'{instance.llm_options.get('tools')}'")
         return instance
 
-    def _prepare_options(self, options: LLMOptions) -> Dict[str, Any]:
+    def _prepare_options(self, options: LLMOptions, **kwargs) -> Dict[str, Any]:
         opt: LLMOptions = copy.deepcopy(options)
         if self.tools is not None and not self._tool_fuse_broken:  # populate llm_options based on available tools
             opt["tools"] = [
@@ -314,17 +318,17 @@ class BaseAgent(
             opt.pop("tools", None) #Ensure no tools are passed to adapter
         if self.use_proxy and self.proxy_address:
             opt["api_base"] = self.proxy_address
+        opt.update(kwargs)
         return opt
     
-    def _execute_completion(
+    def _execute_completion( #TODO: refactor to handle async completion and errors handling
             self,
             messages: SupportedMessages,
             stream: bool,
             **kwargs
     ) -> BaseModelResponse:
         
-        opt = self._prepare_options(self.llm_options)
-        opt.update(kwargs)
+        opt = self._prepare_options(self.llm_options, **kwargs)
         
         max_tries = self.completion_max_tries or 1  # provide default if None
         if self._key_getter is not None:
@@ -351,8 +355,8 @@ class BaseAgent(
                         self._key_getter.remove(opt["api_key"])
 
             if self.backup_options:
-                opt = self._prepare_options(self.backup_options)
-                opt.update(kwargs)
+                opt = self._prepare_options(self.backup_options, **kwargs)
+        
                 return self._protocol.completion(
                     drop_params=self.drop_unsupported_params,
                     raise_on_completion_status_errors=self.raise_on_completion_status_errors,
@@ -414,7 +418,7 @@ class BaseAgent(
         memory_instance.clear_system_messages(clear_non_empty=enforce_agent_prompt) #clear again, no system in query for 1 and 3 cases
         
         if send_system_prompt:
-            if enforce_agent_prompt or not memory_instance.system_messages: #Cases 1 and 2, 'Agent mode' and 'Agent with override mode'
+            if enforce_agent_prompt or not memory_instance.has_system_messages(): #Cases 1 and 2, 'Agent mode' and 'Agent with override mode'
                 self.instruct(self.system_prompt, memory_instance)
 
         self.handle_on_query(memory_instance.messages, action='query', source='preprocessor')  # handle the modified query

@@ -136,9 +136,9 @@ class IProtocolAdapter(ABC, Generic[BaseModelResponse, BaseModelStreamResponse, 
         raise NotImplementedError("You need to implement enable_debug first!")
 
     @abstractmethod
-    def enable_logging(self) -> None:
+    def set_logging(self, enable: bool = True) -> None:
         """Enable logging."""
-        raise NotImplementedError("You need to implement enable_logging first!")
+        raise NotImplementedError("You need to implement set_logging first!")
 
     @abstractmethod
     def disable_logging(self) -> None:

@@ -18,7 +18,7 @@ from just_agents.web.models import (
 from dotenv import load_dotenv
 
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI
+from fastapi import FastAPI, Header
 from fastapi.responses import StreamingResponse
 from eliot import start_task
 
@@ -138,17 +138,24 @@ class AgentRestAPI(FastAPI):
                     raise ValueError("No agents loaded neither from config file nor from explicit agents")
                 return  # Return early if no config file exists
            
+            loaded_agents = agent_class.from_yaml_dict(
+                agent_config, 
+                agent_parent_section, 
+                section=agent_section,
+                fail_on_any_error=self.config.agent_failfast,
+                use_proxy=self.config.use_proxy,
+                proxy_address=self.config.proxy_address,
+            )
+
+            if not loaded_agents:
+                action.log(
+                    message_type="No agents loaded",
+                    action="error_no_agents_loaded"
+                )
+                raise ValueError("No agents loaded successfully")
+
             if agent_section:
                 # Load single agent
-                loaded_agents = agent_class.from_yaml_dict(
-                    agent_config, 
-                    agent_parent_section, 
-                    section=agent_section,
-                    fail_on_any_error=self.config.agent_failfast,
-                    use_proxy=self.config.use_proxy,
-                    proxy_address=self.config.proxy_address
-                )
-
                 if agent_section in loaded_agents:
                     self.agent = loaded_agents[agent_section]
                     loaded_agents = {agent_section: self.agent}
@@ -165,20 +172,6 @@ class AgentRestAPI(FastAPI):
                     )
                     raise ValueError(f"Requested agent {agent_section} not loaded due to errors")
             else:
-                loaded_agents = agent_class.from_yaml_dict(
-                    agent_config, 
-                    agent_parent_section,
-                    fail_on_any_error=self.config.agent_failfast,
-                    use_proxy=self.config.use_proxy,
-                    proxy_address=self.config.proxy_address
-                )
-                if not loaded_agents:
-                    action.log(
-                        message_type="No agents loaded",
-                        action="error_no_agents_loaded"
-                    )
-                    raise ValueError("No agents loaded successfully")
-
                 for agent in loaded_agents.values():
                     action.log(
                         message_type=f"Added agent",
@@ -192,7 +185,6 @@ class AgentRestAPI(FastAPI):
             # Set the first agent as default if no default agent exists
             if not hasattr(self, 'agent') and self.agents:
                 self.agent = next(iter(self.agents.values()))
-
 
 
     def _routes_config(self):
@@ -268,7 +260,7 @@ class AgentRestAPI(FastAPI):
 
 
 #    @log_call(action_type="chat_completions", include_result=False)
-    async def chat_completions(self, request: ChatCompletionRequest) -> Union[ChatCompletionResponse, Any, ErrorResponse]:
+    async def chat_completions(self, request: ChatCompletionRequest, authorization: Optional[str] = Header(None)) -> Union[ChatCompletionResponse, Any, ErrorResponse]:
         with start_task(action_type="chat_completions") as action:
             try:
                 action.log(
@@ -291,11 +283,29 @@ class AgentRestAPI(FastAPI):
                 )
 
                 is_streaming = request.stream
-                stream_generator = agent.stream(
-                    request.messages
-                )
+                
+                # Extract API key from Authorization header if available
+                header_api_key: Optional[str] = None
+                if authorization and authorization.startswith("Bearer "):
+                    header_api_key = authorization.replace("Bearer ", "").strip()
+                
+                # Use header API key first, fallback to request API key if present
+                api_key = header_api_key or request.api_key
+
+                input_kwargs : dict = {}
+
+                if self.config.security_api_key:
+                    if api_key != self.config.security_api_key: #only accept requests with the correct security key
+                        raise ValueError("Invalid API key")
+                else:
+                    if api_key:
+                        input_kwargs["api_key"] = api_key #accept any requests, but if api_key is provided, add it to the input
 
                 if is_streaming:
+                    stream_generator = agent.stream(
+                        request.messages,
+                        **input_kwargs
+                    )
                     return StreamingResponse(
                         async_wrap(stream_generator),
                         media_type="application/x-ndjson",
@@ -307,15 +317,19 @@ class AgentRestAPI(FastAPI):
                     )
                 else:
                     # Collect all chunks into final response
-                    response_content = response_from_stream(stream_generator, request.stop)
-                    return get_completion_response(
-                        model=request.model,
-                        text=response_content,
-                        usage = ChatCompletionUsage(
-                            prompt_tokens=0,
-                            completion_tokens=0,
-                            total_tokens=0
-                        )
+                    # response_content = response_from_stream(stream_generator, request.stop)
+                    # return get_completion_response(
+                    #     model=request.model,
+                    #     text=response_content,
+                    #     usage = ChatCompletionUsage(
+                    #         prompt_tokens=0,
+                    #         completion_tokens=0,
+                    #         total_tokens=0
+                    #     )
+                    # )
+                    return agent.query(
+                        request.messages,
+                        **input_kwargs
                     )
 
             except Exception as e:

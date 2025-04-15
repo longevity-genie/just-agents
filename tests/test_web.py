@@ -151,6 +151,7 @@ def test_models_valid(model_file):
 
 def test_agent_config(load_env):
     os.environ["REMOVE_DD_CONFIGS"] = "test"
+    os.environ["AGENT_USE_PROXY"] = "True"
     os.environ["AGENT_CONFIG_PATH"] = "testt.yaml"
     os.environ["MODELS_DIR"] = str(Path(TESTS_DIR) / "models.d")
     os.environ["ENV_MODELS_PATH"] = str(Path(TESTS_DIR) / "env" / ".env.local")

@@ -119,6 +119,9 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC)
     def prompt_messages(self) -> List[MessageDict]:
         return self.get_message_by_role(Role.system)
 
+    def has_system_messages(self) -> bool:
+        return any(message.get("role", "user") == Role.system for message in self.messages)
+
     def clear_system_messages(self, clear_non_empty: bool = True) -> None:
         for sys_prompt in self.prompt_messages:
             if not clear_non_empty and Message(**sys_prompt).get_text():

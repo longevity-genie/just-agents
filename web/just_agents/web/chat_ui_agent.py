@@ -53,7 +53,7 @@ class ChatUIAgent(WebAgent, JustAgentProfileWebMixin):
         default=None,
         description="Override the default check for model support of vision, useful for custom models or proxies with custom model names")
 
-    def compose_model_config(self, proxy_address: str = None) -> dict:
+    def compose_model_config(self, proxy_address: str = None, api_key: str = None) -> dict:
         """
         Creates a ModelConfig instance populated with reasonable defaults.
         """
@@ -70,13 +70,15 @@ class ChatUIAgent(WebAgent, JustAgentProfileWebMixin):
             baseurl = proxy_address
         else:
             baseurl = f"{self.address}:{self.port}/v1"
+        
         endpoints = [
             ModelEndpoint(
                 type="openai",
-                baseURL=baseurl
+                baseURL=baseurl,
+                apiKey=api_key
             )
         ]
-        multimodal = self._protocol.supports_vision(self.shortname)
+        multimodal = self._protocol.supports_vision(self.llm_options.get("model", "model_name"))
         if self.supports_vision_override is not None:
             multimodal = self.supports_vision_override
   
@@ -101,13 +103,21 @@ class ChatUIAgent(WebAgent, JustAgentProfileWebMixin):
             exclude_none=True,
         )
 
-    def write_model_config_to_json(self, models_dir: Union[Path, str], filename: str = None, index_override: int = None):
+    def write_model_config_to_json(
+            self, 
+            models_dir: Union[Path, str], 
+            filename: str = None, 
+            index_override: int = None,
+            api_key: str = None
+        ):
         """
         Writes a sample ModelConfig instance to a JSON file in the specified test directory.
 
         Args:
             models_dir (Path): Directory where the JSON file will be saved.
             filename (str): Name of the JSON file. Defaults to "model_config.json".
+            index_override (int): Index override for the model config.
+            api_key (str): API key to be used for the model config.
 
         Returns:
             Path: The path to the written JSON file.
@@ -116,7 +126,8 @@ class ChatUIAgent(WebAgent, JustAgentProfileWebMixin):
             # Create the sample ModelConfig instance
             if isinstance(models_dir, str):
                 models_dir = Path(models_dir).resolve().absolute()
-            model_config = self.compose_model_config()
+
+            model_config = self.compose_model_config(api_key=api_key)
             models_dir.mkdir(parents=True, exist_ok=True)
             os.chmod(models_dir, 0o777)
 

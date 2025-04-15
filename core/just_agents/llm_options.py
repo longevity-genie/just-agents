@@ -20,6 +20,13 @@ class ModelOptions(BaseModel):
         examples=["groq/llama-3.3-70b-versatile","gpt-4o-mini"],
         description="LLM model name"
     )
+    api_key: Optional[str] = Field(None, examples=["sk-proj-...."])
+    api_base : Optional[HttpUrl] = Field(default=None,
+        examples=[
+            "https://api.groq.com/openai/v1",
+            "https://api.openai.com/v1"
+        ]
+    )
     temperature: Optional[float] = Field(
         0.0,
         ge=0.0,
@@ -48,17 +55,6 @@ class ModelOptions(BaseModel):
         examples=[0.5],
         description="Frequency penalty, values from -2.0 to 2.0"
     )
-
-class LLMOptionsExt(ModelOptions):
-    api_key: Optional[str] = Field(None, examples=["sk-proj-...."])
-    api_base : Optional[HttpUrl] = Field(default=None,
-        examples=[
-            "https://api.groq.com/openai/v1",
-            "https://api.openai.com/v1"
-        ])
-    tools : Optional[List[Any]] = None
-    tool_choice : Optional[str] = None
-
 
 
 ANTHROPIC_CLAUDE_3_7_SONNET: LLMOptions = {
