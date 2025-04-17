@@ -135,7 +135,7 @@ class JustAgentProfileToolsetMixin(BaseModel):
         self.prompt_tools = new_prompt_tools
 
     @model_validator(mode='after')
-    def validate_model(self) -> 'JustAgentProfileToolsetMixin':
+    def validate_agent_profile(self) -> 'JustAgentProfileToolsetMixin':
         """
         Converts callables to JustTool instances and refreshes them before validation.
 

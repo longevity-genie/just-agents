@@ -50,7 +50,9 @@ def triple_func_call(opts: dict): #fixed - https://github.com/BerriAI/litellm/is
     assembly = litellm.stream_chunk_builder(partial_streaming_chunks)
     print(assembly.choices[0].message.tool_calls)
     assert len(assembly.choices[0].message.tool_calls) == 3, assembly.choices[0].message.tool_calls[0].function.arguments[0]
-    print (assembly.choices[0].message.tool_calls)
+    for i in range(3):
+        assert assembly.choices[0].message.tool_calls[i].function.arguments[0]
+        assert "location" in assembly.choices[0].message.tool_calls[i].function.arguments
 
 class Annotation(BaseModel):
     abstract: str = Field(...)
@@ -58,7 +60,7 @@ class Annotation(BaseModel):
     title: str = Field(...)
     source: str = Field(...)
 
-@pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7808")
+#@pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7808")
 def test_response_format_gemini_problem(load_env): #https://github.com/BerriAI/litellm/issues/7808
     load_dotenv(override=True)
     OPENAI_GPT4_1NANO, LLAMA3_3, GEMINI_2_FLASH = load_env
@@ -89,8 +91,10 @@ def test_response_format_gemini_problem(load_env): #https://github.com/BerriAI/l
     assert "Situational Awareness" in validated_response.title, "it must have Situational Awareness in the title"
     # Check that the response follows the expected structure
 
-
+#@pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7621")
+#@pytest.mark.skip(reason="until regression fixed in https://github.com/BerriAI/litellm/issues/10034")
 def test_grok_bug_regression(load_env):
-    _, LLAMA3_3,_ = load_env
+    OPENAI_GPT4_1NANO, LLAMA3_3,_ = load_env
+    #triple_func_call(OPENAI_GPT4_1NANO)
     triple_func_call(LLAMA3_3) #fixed - https://github.com/BerriAI/litellm/issues/7621
 

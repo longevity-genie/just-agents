@@ -40,7 +40,7 @@ def test_agents_loaded(load_env,tmp_path):
     assert "gemini_agent" in agents
 
 
-@pytest.mark.skip(reason="expensive, run manually")
+@pytest.mark.skip(reason="expensive and long, run manually")
 def test_deepseek_reasoner_agent(load_env,tmp_path):
     agents = load_agents(load_env,tmp_path)
     assert agents

@@ -151,7 +151,7 @@ agent_profiles:
       - prompt: What is Gluformer?
         title: What is Gluformer?
     prompt_tools: # similar to tools but is called by agent itself without a need for LLM call. Results are added to prompt dynamically on each completion
-      - package: "tools.data_tools"
+      - package: "tests.tools.data_tools"
         function: "list_files"
         error_on_duplicate_calls: False
         call_arguments:
@@ -161,7 +161,7 @@ agent_profiles:
     tools:
     #  - package: "tools.data_tools"
     #    function: "list_files"
-      - package: "tools.data_tools"
+      - package: "tests.tools.data_tools"
         function: "read_file"
         error_on_duplicate_calls: False
 

@@ -133,7 +133,7 @@ class Annotation(BaseModel):
     title: str = Field(...)
     source: str = Field(...)
 
-@pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7808")
+#@pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7808")
 def test_gemini_summarization():
     load_dotenv(override=True)
     #TODO: make it work at least for GEMINI_2_FLASH

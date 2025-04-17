@@ -5,10 +5,14 @@ set -e
 
 # Check for --dry-run option
 DRY_RUN=""
+ALLOW_UNCOMMITTED=""
 for arg in "$@"; do
     if [ "$arg" == "--dry-run" ]; then
         DRY_RUN="--dry-run"
         echo "Running in dry-run mode. No changes will be made."
+    elif [ "$arg" == "--allow-uncommitted" ]; then
+        ALLOW_UNCOMMITTED="true"
+        echo "Warning: Allowing publishing with uncommitted changes."
     fi
 done
 
@@ -72,7 +76,8 @@ check_pypi_version() {
     # Get the latest version from PyPI
     pypi_version=$(pip index versions "$pkg_name" 2>/dev/null | grep -m1 'Available versions:' | grep -oE '[0-9]+\.[0-9]+\.[0-9]+(-[a-zA-Z0-9.]+)?' | head -n1 || echo "0.0.0")
     
-    if [ "$pypi_version" \> "$expected_version" ]; then
+    # Compare versions using 'sort -V' for proper semantic versioning comparison
+    if [ "$(printf '%s\n%s\n' "$pypi_version" "$expected_version" | sort -V | head -n1)" != "$pypi_version" ]; then
         echo "Error: PyPI version ($pypi_version) is ahead of local version ($expected_version) for $pkg_name"
         return 1
     fi
@@ -185,8 +190,13 @@ check_git_status() {
 
     # Check for uncommitted changes
     if ! git diff-index --quiet HEAD --; then
-        echo "Error: Uncommitted changes found. Please commit or stash them before publishing."
-        return 1
+        if [ -z "$ALLOW_UNCOMMITTED" ]; then
+            echo "Error: Uncommitted changes found. Please commit or stash them before publishing."
+            echo "Or use --allow-uncommitted flag to override this check."
+            return 1
+        else
+            echo "Warning: Uncommitted changes detected, but continuing due to --allow-uncommitted flag."
+        fi
     fi
 
     # Check if local branch is up-to-date with the correct remote

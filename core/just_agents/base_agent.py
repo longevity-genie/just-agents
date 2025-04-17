@@ -1,6 +1,6 @@
 import copy
-from pydantic import Field, PrivateAttr, computed_field
-from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol
+from pydantic import Field, PrivateAttr, computed_field, BaseModel, field_serializer, field_validator, model_validator
+from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol, Type
 from functools import partial
 
 from just_agents.data_classes import FinishReason, ToolCall, Message, Role
@@ -19,6 +19,8 @@ from just_agents.protocols.protocol_factory import StreamingMode, ProtocolAdapte
 from just_agents.just_tool import SubscriberCallback
 from just_agents.just_bus import JustLogBus
 from just_agents.just_locator import JustAgentsLocator
+from just_agents.just_schema import ModelHelper
+
 
 class BaseAgent(
     JustAgentProfile,
@@ -46,6 +48,43 @@ class BaseAgent(
         default=None,
         exclude=True,
         description="options that will be used after we give up with main options, one more completion call will be done with backup options")
+
+    parser: Optional[
+        Union[Type[BaseModel],Dict[str,Any]]
+    ] = Field(
+        default=None,
+        description="Pydantic model class to validate against or dict describing the model, e.g: {'name': 'str', 'value': 'int', 'score': 'float'}")
+
+    @field_serializer('parser', mode="plain", when_used="always")
+    def serialize_parser(self, parser: Optional[Type[BaseModel]]) -> Optional[Dict[str, Any]]:
+        """
+        Serializes the parser field (Pydantic model class) to a dictionary representation.
+        
+        Args:
+            parser: The Pydantic model class to serialize
+            
+        Returns:
+            A dictionary with the model name and schema, or None if parser is None
+        """
+        if parser is None:
+            return None
+
+        # Use ModelHelper to convert the model class to a serialized schema
+        return ModelHelper.serialize_model_schema(parser)
+
+    @model_validator(mode='after')
+    def validate_base_agent(self) -> 'BaseAgent': #don't use model_validate name or inheritance breaks #https://github.com/pydantic/pydantic/discussions/9202
+        if isinstance(self.parser, dict):
+            try:
+                # Create a new model class from the schema
+                self.parser = ModelHelper.create_model_from_flat_yaml(
+                    self.codename + 'OutputParser',
+                    self.parser,
+                    optional_fields=False  # Make fields required for validation
+                )
+            except Exception as e:
+                raise ValueError(f"Invalid YAML format for parser: {e}")
+        return self
 
     # API key management settings
     completion_remove_key_on_error: bool = Field(
@@ -567,6 +606,51 @@ class BaseAgent(
             remember_query=remember_query,
         )
         yield SSE.sse_wrap(self._protocol.stop)
+
+
+    def query_structural(
+        self, 
+        query_input: SupportedMessages, 
+        parser: Type[BaseModel] = BaseModel,
+        response_format: Optional[str] = None,
+        enforce_validation: bool = False,
+        **kwargs
+    ) -> Union[dict, BaseModel]:
+        """
+        Query the agent and parse the response according to the provided parser.
+        
+        If no response_format is provided and parser is a Pydantic model,
+        automatically generates and sends a JSON schema to guide the response format.
+        
+        Args:
+            query_input: The input to send to the model
+            parser: The Pydantic model class to validate against or dict
+            response_format: Optional JSON schema to guide response format
+            enforce_validation: Whether to enforce validation on the model side
+            **kwargs: Additional arguments to pass to the query method
+            
+        Returns:
+            Either a dictionary or validated Pydantic model
+        """
+        
+        if response_format is None and parser is not dict and issubclass(parser, BaseModel) and enforce_validation:
+            schema = ModelHelper.get_response_schema(parser)
+            response_format = ModelHelper.make_all_fields_required(parser)
+            
+            schema_wrapper = {
+                "name": "query_structural", 
+                "schema": schema,
+                "strict": enforce_validation
+            }
+
+            response_format_obj = {"type": "json_schema", "json_schema": schema_wrapper}
+        
+        # Get raw response from the model
+        raw_response = self.query(query_input, response_format=response_format, **kwargs)
+        
+        # Process and validate the response
+        return ModelHelper.get_structured_output(raw_response, parser)
+
 
     @property
     def model_supported_parameters(self) -> list[str]:

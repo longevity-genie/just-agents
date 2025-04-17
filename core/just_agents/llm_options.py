@@ -73,6 +73,18 @@ LLAMA3_3: dict[str, Any] = {
     "temperature": 0.0
 }
 
+LLAMA4_MAVERICK: dict[str, Any] = {
+    "model": "groq/meta-llama/llama-4-maverick-17b-128e-instruct",
+    "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0,
+}
+
+LLAMA4_SCOUT: dict[str, Any] = {
+    "model": "froq/meta-llama/llama-4-scout-17b-16e-instruct",
+    "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0,
+}
+
 LLAMA3_3_specdec: dict[str, Any] = {
     "model": "groq/llama-3.3-70b-specdec",
     "api_base": "https://api.groq.com/openai/v1",
