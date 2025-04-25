@@ -111,7 +111,8 @@ def test_query_structural():
                                  )
     
     # Ask the agent a question that doesn't require SQL or tool use
-    response = agent.query_structural("What are the main factors that contribute to aging?", parser=AgentResponse, enforce_validation=True)
+    response = agent.query_structural("What are the main factors that contribute to aging?",
+                                      parser=AgentResponse, enforce_validation=True)
     
     print("RESPONSE 1 =======================================")
     pprint(response)
@@ -218,7 +219,7 @@ def test_vision():
 
 
 
-@pytest.mark.skip(reason="needs to be rewritten as it exceeds the context window")
+@pytest.mark.skip(reason="uses lots of tokens")
 def test_delegation():
     load_dotenv(override=True)
     agent_db = ChatAgent(role="helpful agent which knows how operate with databases",

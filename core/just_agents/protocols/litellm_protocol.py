@@ -452,7 +452,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
             ]
 
     @staticmethod
-    def reenumerate_tool_call_chunks(chunks: List[Any]):
+    def re_enumerate_tool_call_chunks(chunks: List[Any]):
         tool_calls = []
         message = None
         for chunk in chunks:
@@ -470,7 +470,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
     def response_from_deltas(chunks: List[ModelResponseStream]) -> ModelResponse:
         # litellm regression #https://github.com/BerriAI/litellm/issues/10034
         #if "llama" in chunks[-1]["model"] and chunks[-1].choices[0].finish_reason=="tool_calls":
-        #   return LiteLLMAdapter.reenumerate_tool_call_chunks(chunks) # bug fix
+        #   return LiteLLMAdapter.re_enumerate_tool_call_chunks(chunks) # bug fix
         return stream_chunk_builder(chunks=chunks)
 
     @staticmethod

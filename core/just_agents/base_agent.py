@@ -53,7 +53,7 @@ class BaseAgent(
         Union[Type[BaseModel],Dict[str,Any]]
     ] = Field(
         default=None,
-        description="Pydantic model class to validate against or dict describing the model, e.g: {'name': 'str', 'value': 'int', 'score': 'float'}")
+        description="Pydantic model class to validate against, or, in serialized form - a dict describing such class fields explicitly, e.g: {'name': 'str', 'value': 'int', 'score': 'float'}")
 
     @field_serializer('parser', mode="plain", when_used="always")
     def serialize_parser(self, parser: Optional[Type[BaseModel]]) -> Optional[Dict[str, Any]]:
