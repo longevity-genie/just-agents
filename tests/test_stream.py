@@ -5,7 +5,7 @@ from typing import Callable, Any
 
 from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.base_agent import BaseAgent, BaseAgentWithLogging
-from just_agents.llm_options import LLMOptions, LLAMA3_3, OPENAI_GPT4_1NANO
+from just_agents.llm_options import LLMOptions, LLAMA3_3, OPENAI_GPT4_1NANO, OPENAI_GPT4_1MINI
 from just_agents.just_tool import JustToolsBus
 
 

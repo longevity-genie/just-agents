@@ -6,7 +6,7 @@ from just_agents import llm_options
 from just_agents.base_agent import BaseAgent, ChatAgent, BaseAgentWithLogging, ChatAgentWithLogging
 from just_agents.data_classes import ImageContent, Message, Role, TextContent
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
-from just_agents.llm_options import LLAMA3_3, OPENAI_GPT4_1NANO, GEMINI_2_FLASH, GEMINI_2_FLASH_EXP, OPENAI_GPT4o
+from just_agents.llm_options import LLAMA3_3, OPENAI_GPT4_1NANO, GEMINI_2_5_FLASH
 from pprint import pprint
 
 from just_agents.tools.db import sqlite_query
@@ -87,7 +87,7 @@ def test_quering_gemini(open_genes_db):
                     goal=f"help users by using SQL syntax to form commands to work with the {open_genes_db} sqlite database",
                     task="formulate appropriate commands to operate in the given database using 'sqlite_query' tool and always include the table names in your response.",
                     tools=[sqlite_query],
-                    llm_options=GEMINI_2_FLASH
+                    llm_options=GEMINI_2_5_FLASH
                     )
     _test_database_tables(agent, open_genes_db)
 
@@ -107,7 +107,7 @@ def test_query_structural():
                     }""",
                                  #llm_options=LLAMA3_3
                                  #llm_options=llm_options.OPENAI_GPT4o,
-                                 llm_options=GEMINI_2_FLASH
+                                 llm_options=GEMINI_2_5_FLASH
                                  )
     
     # Ask the agent a question that doesn't require SQL or tool use
@@ -137,9 +137,8 @@ class Annotation(BaseModel):
 #@pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7808")
 def test_gemini_summarization():
     load_dotenv(override=True)
-    #TODO: make it work at least for GEMINI_2_FLASH
     agent = ChatAgentWithLogging(
-        llm_options=llm_options.GEMINI_2_FLASH,
+        llm_options=llm_options.GEMINI_2_5_FLASH,
         #llm_options=llm_options.OPENAI_GPT4o,
         tools=[],
         system_prompt="""You are a paper annotator. You extract the abstract, authors and titles of the papers.
@@ -199,7 +198,7 @@ def test_vision():
     agent = ChatAgentWithLogging(role="helpful agent that can see",
                 goal="help users by providing a description of the image",
                 task="analyze the image and provide a description of the image",
-                llm_options=GEMINI_2_FLASH
+                llm_options=GEMINI_2_5_FLASH
                 )
     message = Message(
         role=Role.user,
@@ -226,7 +225,7 @@ def test_delegation():
                     goal=f"help users by using SQL syntax to form comands to work with the {db_path} sqlite database",
                     task="formulate appropriate comands to operate in the given database.",
                     tools=[sqlite_query],
-                    llm_options=GEMINI_2_FLASH
+                    llm_options=GEMINI_2_5_FLASH
                     )
     agent_db.query("What is in this image?")
 

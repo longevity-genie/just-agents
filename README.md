@@ -97,18 +97,18 @@ The `ChatAgent` class represents an agent with a specific role, goal, and task. 
 
 ```python
 from just_agents.base_agent import ChatAgent
-from just_agents.llm_options import LLAMA3_3, LLAMA3_3_specdec:
+from just_agents.llm_options import LLAMA4_SCOUT
 
 # Initialize agents with different roles
 Harris = ChatAgent(
-    llm_options=LLAMA3_3, 
+    llm_options=LLAMA4_SCOUT, 
     role="You are Kamala Harris in a presidential debate",
     goal="Win the debate with clear, concise responses",
     task="Respond briefly and effectively to debate questions"
 )
 
 Trump = ChatAgent(
-    llm_options=LLAMA3_3_specdec,
+    llm_options=LLAMA3_3,
     role="You are Donald Trump in a presidential debate",
     goal="Win the debate with your signature style",
     task="Respond briefly and effectively to debate questions"
@@ -116,10 +116,8 @@ Trump = ChatAgent(
 
 Moderator = ChatAgent(
     llm_options={
-        "model": "groq/mixtral-8x7b-32768",
-        "api_base": "https://api.groq.com/openai/v1",
-        "temperature": 0.0,
-        "tools": []
+        "model": "groq/meta-llama/llama-4-maverick-17b-128e-instruct",
+        "temperature": 0.0
     },
     role="You are a neutral debate moderator",
     goal="Ensure a fair and focused debate",
@@ -184,7 +182,7 @@ def count_letters(character: str, word: str) -> str:
 # Initialize agent with tools and LLM options
 agent = ChainOfThoughtAgent(
     tools=[count_letters],
-    llm_options=llm_options.LLAMA3_3
+    llm_options=llm_options.LLAMA4_SCOUT
 )
 
 # Optional: Add callback to see all messages

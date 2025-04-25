@@ -33,10 +33,10 @@ classifiers = [
 python = ">=3.10,<3.15"
 just-agents-core = "*"
 pycomfort = ">=0.0.18"
-fastapi = ">=0.115.11"
+fastapi = ">=0.115.12"
 uvicorn = ">=0.34.0"
 aiofiles = ">=24.1.0"
-python-dotenv = ">=1.0.1"
+python-dotenv = ">=1.1.0"
 coolname = ">=2.2.0"
 
 [tool.poetry.group.dev.dependencies]

@@ -76,7 +76,9 @@ def semantic_search(
     
 
 
-def agentic_semantic_search(query: str, index: Optional[str] = None, additional_instructions: Optional[str] = None) -> str:
+def agentic_semantic_search(query: str, 
+                            index: Optional[str] = None, 
+                            additional_instructions: Optional[str] = None) -> str:
     """
     Perform an advanced search using the RAG agent that can provide contextual answers.
 

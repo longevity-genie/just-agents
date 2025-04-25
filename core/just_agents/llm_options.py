@@ -74,21 +74,13 @@ LLAMA3_3: dict[str, Any] = {
 }
 
 LLAMA4_MAVERICK: dict[str, Any] = {
-    "model": "groq/meta-llama/llama-4-maverick-17b-128e-instruct",
-    "api_base": "https://api.groq.com/openai/v1",
+    "model": "groq/meta-llama/llama-4-scout-17b-16e-instruct",
     "temperature": 0.0,
 }
 
 LLAMA4_SCOUT: dict[str, Any] = {
-    "model": "froq/meta-llama/llama-4-scout-17b-16e-instruct",
-    "api_base": "https://api.groq.com/openai/v1",
+    "model": "groq/meta-llama/llama-4-scout-17b-16e-instruct",
     "temperature": 0.0,
-}
-
-LLAMA3_3_specdec: dict[str, Any] = {
-    "model": "groq/llama-3.3-70b-specdec",
-    "api_base": "https://api.groq.com/openai/v1",
-    "temperature": 0.0
 }
 
 CERABRAS_LLAMA3_3_70B: LLMOptions = {
@@ -194,7 +186,12 @@ GEMINI_2_FLASH: LLMOptions = {
 }
 
 GEMINI_2_5_FLASH: LLMOptions = {
-    "model": "gemini/gemini-2.5-flash-preview",
+    "model": "gemini/gemini-2.5-flash-preview-04-17",
+    "temperature": 0.0
+}
+
+GEMINI_2_5_PRO: LLMOptions = {
+    "model": "gemini/gemini-2.5-pro-preview-03-25",
     "temperature": 0.0
 }
 

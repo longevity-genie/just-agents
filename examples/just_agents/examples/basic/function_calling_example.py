@@ -34,7 +34,7 @@ if __name__ == "__main__":
     # 1. LLAMA3_3 as the language model
     # 2. get_current_weather function as an available tool
     agent = BaseAgent(  # type: ignore
-        llm_options=llm_options.LLAMA3_3,
+        llm_options=llm_options.LLAMA4_MAVERICK, #.GEMINI_2_5_FLASH,
         tools=[get_current_weather]
     )
     
