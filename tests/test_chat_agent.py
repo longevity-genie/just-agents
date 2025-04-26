@@ -1,11 +1,10 @@
 import pprint
-from time import sleep, time
+from time import sleep
 from dotenv import load_dotenv
 
 from just_agents import llm_options
-from just_agents.base_agent import BaseAgent, ChatAgent, BaseAgentWithLogging, ChatAgentWithLogging
+from just_agents.base_agent import ChatAgent, ChatAgentWithLogging
 from just_agents.data_classes import ImageContent, Message, Role, TextContent
-from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
 from just_agents.llm_options import LLAMA3_3, OPENAI_GPT4_1NANO, GEMINI_2_5_FLASH
 from pprint import pprint
 

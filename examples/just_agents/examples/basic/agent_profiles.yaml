@@ -1,47 +1,15 @@
-ChainOfThoughtAgent:
-  class_qualname: just_agents.patterns.chain_of_throught.ChainOfThoughtAgent
-  llm_options:
-    model: groq/meta-llama/llama-4-scout-17b-16e-instruct
-    temperature: 0.0
-    tool_choice: auto
-  tools:
-    letter_count:
-      description: 'returns number of letters in the word '
-      function: letter_count
-      name: letter_count
-      package: examples.just_agents.examples.tools
-      parameters:
-        properties:
-          letter:
-            type: string
-          word:
-            type: string
-        required:
-        - word
-        - letter
-        type: object
 agent_profiles:
   ChainOfThoughtAgent:
     class_qualname: just_agents.patterns.chain_of_throught.ChainOfThoughtAgent
     llm_options:
-      api_base: https://api.groq.com/openai/v1
-      model: groq/llama-3.3-70b-versatile
+      model: groq/meta-llama/llama-4-scout-17b-16e-instruct
       temperature: 0.0
       tool_choice: auto
-      tools: []
     tools:
       letter_count:
-        arguments:
-        - word:
-            default: null
-            kind: POSITIONAL_OR_KEYWORD
-            type_annotation: <class 'str'>
-        - letter:
-            default: null
-            kind: POSITIONAL_OR_KEYWORD
-            type_annotation: <class 'str'>
-        description: returns number of letters in the word
+        description: 'returns number of letters in the word '
         function: letter_count
+        name: letter_count
         package: examples.just_agents.examples.tools
         parameters:
           properties:
