@@ -10,7 +10,7 @@ agent_profiles:
         description: 'returns number of letters in the word '
         function: letter_count
         name: letter_count
-        package: examples.just_agents.examples.tools
+        package: just_agents.examples.tools
         parameters:
           properties:
             letter:
