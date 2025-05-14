@@ -1,10 +1,11 @@
-from typing import Type, TypeVar, Any, Dict, Optional, Union, get_origin, get_args, List, Literal
+from typing import Type, TypeVar, Any, Dict, Optional, Union, get_origin, get_args, List, Literal, Callable, Tuple
 from pydantic import BaseModel, Field, create_model, ConfigDict
 import re
 import ast
 import json
-
-from just_agents.web.chat_ui import ModelConfig
+import inspect
+from docstring_parser import parse
+import typing
 
 T = TypeVar('T', bound=BaseModel)
 ConfigDictExtra = Literal["ignore", "allow", "forbid"]
@@ -13,6 +14,88 @@ class ModelHelper:
     """
     Utility class with static methods for working with Pydantic models.
     """
+    DIRECT_SCHEMA_TYPES = (str, int, float, bool, list, dict, tuple, type(None))
+
+    @staticmethod
+    def is_direct_schema_type(type_hint: Any) -> bool:
+        """Checks if a type is directly mappable to a JSON schema type or a BaseModel."""
+        if type_hint in ModelHelper.DIRECT_SCHEMA_TYPES:
+            return True
+        if inspect.isclass(type_hint) and issubclass(type_hint, BaseModel):
+            return True
+        return False
+
+    @staticmethod
+    def simplify_type_for_schema_generation(type_hint: Any) -> Any:
+        """
+        Recursively simplifies type hints for robust schema generation.
+        - Direct schema types (primitives, Any, None, BaseModel) are kept.
+        - Optional[X] becomes simplified X (NoneType is removed from Unions).
+        - List[X] becomes List[simplified X].
+        - Tuple[X,Y,...] becomes Tuple[simplified X, simplified Y,...].
+        - Dict[K,V] becomes Dict[simplified K, simplified V].
+        - Other types (e.g., pathlib.Path, custom non-BaseModel classes) become str.
+        - Unions are simplified and deduplicated.
+        """
+        origin = get_origin(type_hint)
+        args = get_args(type_hint)
+
+        # Case 1: Plain type (not a generic like List[X]) or built-in collection type
+        if origin is None:
+            if type_hint is list: # Bare list, e.g., x: list
+                return List[Any]
+            elif type_hint is dict: # Bare dict, e.g., x: dict
+                return Dict[Any, Any]
+            elif type_hint is tuple: # Bare tuple, e.g., x: tuple
+                return Tuple[Any, ...] # type: ignore
+            elif ModelHelper.is_direct_schema_type(type_hint): # Primitives, BaseModel, Any, None
+                return type_hint
+            else: # Other non-generic, non-direct types (e.g. pathlib.Path)
+                return str
+        
+        # Case 2: Generic types from typing module
+        if origin is Union:
+            simplified_args = [ModelHelper.simplify_type_for_schema_generation(arg) for arg in args]
+            non_none_args = [arg for arg in simplified_args if arg is not type(None)]
+            
+            if not non_none_args: # All args were None or became None
+                return type(None)
+            elif len(non_none_args) == 1: # Simplified to a single type
+                return non_none_args[0]
+            else: # Reconstruct Union with simplified, non-None args
+                # typing.Union constructor handles deduplication of identical types
+                return Union[tuple(non_none_args)]
+        
+        elif origin is list or origin is List:
+            if args: # e.g. List[int]
+                item_type = ModelHelper.simplify_type_for_schema_generation(args[0])
+                return List[item_type]
+            else: # e.g. list (bare) or List (bare)
+                return List[Any]
+        
+        elif origin is dict or origin is Dict:
+            if args and len(args) == 2: # e.g. Dict[str, int]
+                key_type = ModelHelper.simplify_type_for_schema_generation(args[0])
+                value_type = ModelHelper.simplify_type_for_schema_generation(args[1])
+                return Dict[key_type, value_type]
+            else: # e.g. dict (bare) or Dict (bare)
+                return Dict[Any, Any]
+        
+        elif origin is tuple or origin is Tuple:
+            if not args: # e.g. typing.Tuple (unsubscripted type alias)
+                return Tuple[Any, ...] # type: ignore
+            
+            # For Tuple[X, ...] (variable-length homogeneous tuple)
+            if len(args) == 2 and args[1] is Ellipsis: # type: ignore
+                item_type = ModelHelper.simplify_type_for_schema_generation(args[0])
+                return Tuple[item_type, ...] # type: ignore
+            
+            # For Tuple[X, Y, Z] (fixed-length heterogeneous tuple)
+            simplified_args_tuple = tuple(ModelHelper.simplify_type_for_schema_generation(arg) for arg in args)
+            return Tuple[simplified_args_tuple] # type: ignore
+
+        # Default for unrecognized generic types or other complex structures
+        return str
     
     @staticmethod
     def extract_common_fields(selected_class: Type[T], instance: BaseModel) -> T:
@@ -186,7 +269,7 @@ class ModelHelper:
     @staticmethod
     def get_structured_output(
         raw_response: Union[dict, str, Any],
-        parser: Type[BaseModel] = BaseModel
+        parser: Type[Union[BaseModel, dict]] = BaseModel
     ) -> Union[dict, BaseModel]:
         """
         Parse the response according to the provided parser.
@@ -790,3 +873,154 @@ class ModelHelper:
         type_repr = type_repr.replace("typing.", "")
         type_repr = re.sub(r"<class '(__main__|builtins)\.(\w+)'>", r"\2", type_repr)
         return type_repr
+
+    @staticmethod
+    def model_has_dict_params(model_class: Optional[Type[BaseModel]]) -> bool:
+        """
+        Checks if any field in the given Pydantic model class is a dictionary type.
+
+        Args:
+            model_class: The Pydantic model class to inspect.
+
+        Returns:
+            True if the model contains at least one dictionary field, False otherwise.
+        """
+        if not model_class:
+            return False
+
+        for field_info in model_class.model_fields.values():
+            # Check the origin of the type annotation
+            origin = get_origin(field_info.annotation)
+            if origin is dict or origin is Dict:
+                return True
+            # Also check if any of the args in a Union are dict or Dict (e.g. Optional[Dict])
+            if origin is Union:
+                for arg in get_args(field_info.annotation):
+                    arg_origin = get_origin(arg)
+                    if arg_origin is dict or arg_origin is Dict:
+                        return True
+        return False
+
+    @staticmethod
+    def create_tool_schema_from_callable(input_function: Callable) -> Tuple[Dict[str, Any], Optional[Type[BaseModel]]]:
+        """
+        Generates function metadata for function calling format and the Pydantic model.
+        (This logic was formerly in JustTool._generate_tool_schema_and_model)
+
+        Args:
+            input_function: The function to extract metadata from
+            
+        Returns:
+            Tuple containing:
+                - Dict with function name, description and parameters (JSON schema)
+                - The generated Pydantic model for the parameters, or None if no parameters
+        """
+        func_name: str = input_function.__name__
+        docstring: Optional[str] = inspect.getdoc(input_function)
+        
+        if docstring:
+            parsed_docstring = parse(docstring)
+        else:
+            # Create a minimal ParsedDocstring if no docstring found
+            parsed_docstring = parse(f"{func_name}()") 
+
+        func_description: str = parsed_docstring.short_description or ""
+
+        param_info = inspect.signature(input_function).parameters
+        pydantic_fields: Dict[str, Any] = {}
+        param_descriptions = {p.arg_name: p.description for p in parsed_docstring.params if p.description}
+
+        for param_name, param in param_info.items():
+            raw_param_type = param.annotation if param.annotation != inspect.Parameter.empty else Any
+            param_type = ModelHelper.simplify_type_for_schema_generation(raw_param_type) # Apply new simplification
+            
+            description = param_descriptions.get(param_name)
+            
+            if param.default == inspect.Parameter.empty:  # Required
+                if description:
+                    pydantic_fields[param_name] = (param_type, Field(..., description=description))
+                else:
+                    pydantic_fields[param_name] = (param_type, ...)
+            else:  # Optional with default
+                if description:
+                    pydantic_fields[param_name] = (param_type, Field(default=param.default, description=description))
+                else:
+                    pydantic_fields[param_name] = (param_type, param.default)
+        
+        schema_properties: Dict[str, Any] = {}
+        schema_required: List[str] = []
+        schema_definitions: Dict[str, Any] = {}
+        model: Optional[Type[BaseModel]] = None
+
+        if pydantic_fields:
+            model_name = f"{func_name}_PydanticParams_{id(input_function)}"
+            created_model = create_model(model_name, **pydantic_fields)
+            model = created_model
+
+            json_schema = model.model_json_schema()
+
+            def _remove_titles_recursive(schema_node: Any) -> None:
+                if isinstance(schema_node, dict):
+                    schema_node.pop('title', None)
+                    for value in schema_node.values():
+                        _remove_titles_recursive(value)
+                elif isinstance(schema_node, list):
+                    for item in schema_node:
+                        _remove_titles_recursive(item)
+            
+            _remove_titles_recursive(json_schema)
+
+            schema_properties = json_schema.get("properties", {})
+            schema_required = json_schema.get("required", [])
+            schema_definitions = json_schema.get("$defs", {})
+        
+        for param_doc in parsed_docstring.params:
+            param_name = param_doc.arg_name
+            if param_name in schema_properties:
+                if param_doc.description and not schema_properties[param_name].get("description"):
+                    schema_properties[param_name]["description"] = param_doc.description
+                
+                if param_doc.type_name:
+                    docstring_type_str_full = param_doc.type_name
+                    # For extracting enum from type like {val1, val2}
+                    if "{" in docstring_type_str_full and "}" in docstring_type_str_full:
+                        match = re.search(r'\{([^}]+)\}', docstring_type_str_full)
+                        if match:
+                            options = [opt.strip() for opt in match.group(1).split(',')]
+                            options = [opt for opt in options if opt] # Remove empty strings if any
+                            if options:
+                                schema_properties[param_name]["enum"] = options
+                                schema_properties[param_name]["type"] = "string" # Enums are typically strings
+                                # Clean up any conflicting Pydantic-generated fields for enums
+                                schema_properties[param_name].pop("anyOf", None)
+                                schema_properties[param_name].pop("items", None) 
+            elif param_name not in schema_properties and param_doc.description:
+                # Parameter in docstring but not in signature. This was previously raising ValueError.
+                # For schema generation, we might choose to ignore or log this discrepancy.
+                pass
+
+        for param_name, prop_schema in schema_properties.items():
+            valid_types = {'integer', 'number', 'boolean', 'array', 'object', 'string', 'null'}
+            if 'type' in prop_schema and prop_schema['type'] not in valid_types:
+                if '$ref' not in prop_schema: # Don't override if it's a reference to another schema part
+                    prop_schema['type'] = 'string'
+            
+            is_generic_or_untyped = not any(k in prop_schema for k in ['type', '$ref', 'anyOf', 'allOf', 'oneOf', 'enum'])
+            is_empty_object = prop_schema.get('type') == 'object' and not prop_schema.get('properties')
+
+            if is_generic_or_untyped or is_empty_object:
+                if "enum" not in prop_schema: # If it's an enum, it might have its own type or be string already
+                    prop_schema["type"] = "string"
+
+        final_parameters: Dict[str, Any] = {"type": "object", "properties": schema_properties}
+        if schema_required:
+            final_parameters["required"] = schema_required
+        if schema_definitions:
+            final_parameters["$defs"] = schema_definitions
+        
+        result_schema: Dict[str, Any] = {
+            "name": func_name,
+            "description": func_description,
+            "parameters": final_parameters,
+        }
+        return result_schema, model

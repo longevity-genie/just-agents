@@ -389,7 +389,12 @@ class JustLogBus(BufferedEventBus):
             **kwargs: Additional parameters to log
         """
         JustLogBus.log_message(message, source, action, severity="WARN", **kwargs)
-        
+
+    @staticmethod
+    def warning(message: str, source: str = 'anonymous', action: str = "log_bus.warn", **kwargs: Any) -> None:
+        """Log a WARN level message. Alias for JustLogBus.warn."""
+        JustLogBus.warn(message, source, action, **kwargs)
+    
     @staticmethod
     def error(message: str, source: str = 'anonymous', action: str = "log_bus.error", **kwargs: Any) -> None:
         """Log an ERROR level message.
@@ -413,6 +418,24 @@ class JustLogBus(BufferedEventBus):
             **kwargs: Additional parameters to log
         """
         JustLogBus.log_message(message, source, action, severity="FATAL", **kwargs)
+    
+    @staticmethod
+    def mask_api_key(key: Optional[str]) -> str:
+        """
+        Masks API key by showing first 1/3 of the key and replacing the rest with asterisks.
+        
+        Args:
+            key: The API key to mask
+            
+        Returns:
+            Optional[str]: Masked API key or None if key is None
+        """
+        if not key:
+            return "None"
+        
+        visible_chars = max(len(key) // 3, 1)  # Show at least 1 character
+        masked_length = len(key) - visible_chars
+        return key[:visible_chars] + '*' * masked_length
 
     @staticmethod
     def debug_binding(func: Callable) -> Callable:

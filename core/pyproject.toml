@@ -29,17 +29,17 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
-litellm = ">=1.67.2"
+litellm = "==1.69.2"
 pydantic = ">=2.0.0,<3.0.0"
-requests = "*"
-docstring_parser = "*"
+docstring_parser = ">=0.16"
 python-dotenv = ">=1.1.0"
 rich = ">=14.0.0"
-numpydoc = "*"
+mcp = ">=1.6.0"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.4"
 poetry-dynamic-versioning = ">=1.0.0,<2.0.0"
+
 
 [[tool.poetry.source]]
 name = "torch-cpu"

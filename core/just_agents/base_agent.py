@@ -1,6 +1,6 @@
 import copy
 from pydantic import Field, PrivateAttr, computed_field, BaseModel, field_serializer, field_validator, model_validator
-from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol, Type
+from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol, Type, Callable, AsyncGenerator
 from functools import partial
 
 from just_agents.data_classes import FinishReason, ToolCall, Message, Role
@@ -121,7 +121,7 @@ class BaseAgent(
     max_tool_calls: int = Field(
         ge=1,
         default=50,
-        description="A safeguard to prevent tool calls stuck in a loop")
+        description="Controls the number of LLM interaction cycles for tool usage.\n- Without `backup_options`: The agent attempts tool resolution up to `max_tool_calls` times using the primary LLM. The final attempt is tool-less if prior attempts continued to request tools.\n- With `backup_options`:\n    - If `max_tool_calls` is 1: Two attempts are made, both using the backup LLM (first with tools, second tool-less if needed).\n    - If `max_tool_calls` > 1: The agent makes `max_tool_calls - 1` attempts with the primary LLM. If tools are still needed, two further attempts are made with the backup LLM (first with tools, second tool-less if needed).\nThis results in `max_tool_calls` iterations if no backup, or `max_tool_calls + 1` iterations if backup is active (for `max_tool_calls >= 1`). Prevents tool call loops.")
 
     raise_on_completion_status_errors: bool = Field(
         default=True,
@@ -355,67 +355,94 @@ class BaseAgent(
             ]
         else:
             opt.pop("tools", None) #Ensure no tools are passed to adapter
+            opt.pop("tool_choice", None) # Also remove tool_choice if no tools are present
+
         if self.use_proxy and self.proxy_address:
             opt["api_base"] = self.proxy_address
         opt.update(kwargs)
         return opt
     
-    def _execute_completion( #TODO: refactor to handle async completion and errors handling
+    def _execute_completion(
             self,
             messages: SupportedMessages,
             stream: bool,
+            active_options_for_this_call: LLMOptions, # New parameter
             **kwargs
     ) -> BaseModelResponse:
         
-        opt = self._prepare_options(self.llm_options, **kwargs)
-        
-        max_tries = self.completion_max_tries or 1  # provide default if None
-        if self._key_getter is not None:
-            if max_tries < 1:
-                max_tries = self._key_getter.len()
-            else:
+        # Prepare option sets to try for this specific call
+        option_sets_to_try = [active_options_for_this_call]
+        # If the active options are the primary ones, and a global backup exists,
+        # add the global backup as a potential fallback for this specific call's retries.
+        if active_options_for_this_call is self.llm_options and self.backup_options:
+            option_sets_to_try.append(self.backup_options)
+
+        last_exception: Optional[Exception] = None
+
+        for opt_set_idx, current_options_config_template in enumerate(option_sets_to_try):
+            opt = self._prepare_options(current_options_config_template, **kwargs)
+            local_key_getter: Optional[RotateKeys] = None
+            if self._key_getter is not None and "api_key" not in opt:
+                local_key_getter = copy.deepcopy(self._key_getter)
+
+            max_tries = self.completion_max_tries if self.completion_max_tries is not None else 1
+            if local_key_getter:
                 if self.completion_remove_key_on_error:
-                    max_tries = min(max_tries, self._key_getter.len())
-            last_exception = None
-            for _ in range(max_tries):
-                opt["api_key"] = self._key_getter()
+                    max_tries = min(max_tries, local_key_getter.len())
+                max_tries = max(1, max_tries)
+            
+            # If this is the second set of options being tried (i.e., internal fallback to self.backup_options),
+            # then only attempt it once.
+            if opt_set_idx == 1: 
+                max_tries = 1 
+
+            for attempt in range(max_tries):
+                current_key = opt.get('api_key', None)
+                if not current_key and local_key_getter:
+                    try:
+                        current_key = local_key_getter()
+                        opt["api_key"] = current_key
+                    except IndexError:
+                        last_exception = last_exception or IndexError("Ran out of API keys during rotation.")
+                        break
+
                 try:
-                    # Directly use the protocol's completion method
+                    # Only one call site for completion, for both primary and backup options
                     return self._protocol.completion(
                         drop_params=self.drop_unsupported_params,
                         raise_on_completion_status_errors=self.raise_on_completion_status_errors,
-                        **opt,
+                        **opt, 
                         messages=messages,
                         stream=stream,
                     )
                 except Exception as e:
                     last_exception = e
-                    if self.completion_remove_key_on_error:
-                        self._key_getter.remove(opt["api_key"])
+                    if hasattr(self, '_log_bus'):
+                        self._log_bus.warn(
+                            source=f"{self.codename}.completion.error",
+                            message=f"Attempt {attempt + 1}/{max_tries} failed with options_set {opt_set_idx}",
+                            api_key=JustLogBus.mask_api_key(current_key),
+                            action="completion.error",
+                            exception=e,
+                            options=current_options_config_template,
+                            attempt=attempt + 1,
+                            max_tries=max_tries
+                        )
+                    if local_key_getter and self.completion_remove_key_on_error and current_key is not None:
+                        local_key_getter.remove(current_key)
 
-            if self.backup_options:
-                opt = self._prepare_options(self.backup_options, **kwargs)
-        
-                return self._protocol.completion(
-                    drop_params=self.drop_unsupported_params,
-                    raise_on_completion_status_errors=self.raise_on_completion_status_errors,
-                    **opt,
-                    messages=messages,
-                    stream=stream,
+            # If we are about to try backup options (because active_options_for_this_call failed), log the fallback
+            if opt_set_idx == 0 and len(option_sets_to_try) > 1 and hasattr(self, '_log_bus'): # opt_set_idx == 0 means primary active_options failed
+                self._log_bus.info(
+                    source=f"{self.codename}.completion.fallback",
+                    message=f"Attempts with initial options failed. Falling back to agent's backup_options for this call.",
+                    action="completion.fallback"
                 )
-            if last_exception:
-                raise last_exception
-            else:
-                raise Exception(
-                    f"Run out of tries to execute completion. Check your keys! Keys {self._key_getter.len()} left.")
+
+        if last_exception:
+            raise last_exception
         else:
-            return self._protocol.completion(
-                drop_params=self.drop_unsupported_params, 
-                raise_on_completion_status_errors=self.raise_on_completion_status_errors,
-                **opt,
-                messages=messages, 
-                stream=stream,
-            )
+            raise RuntimeError("Completion failed after all attempts, but no specific exception was caught.")
 
     def _process_function_calls(
             self,
@@ -490,7 +517,11 @@ class BaseAgent(
             **kwargs
     ) -> str:
         """
-        Query the agent and return the last message
+        Query the agent and return the last message.
+        The method iteratively calls the LLM. If `backup_options` are configured and tool calls persist,
+        the final two attempts (a tool-enabled call, then a potentially tool-less graceful response call)
+        will utilize the backup model. The `_tool_fuse_broken` attribute controls whether tools are
+        stripped in the final attempt to ensure a graceful exit from tool loops.
         """
         memory = self._preprocess_input(
             query_input,
@@ -499,27 +530,50 @@ class BaseAgent(
             continue_conversation=continue_conversation,
         )
 
-        for step in range(self.max_tool_calls):
-            # individual llm call, unpacking the message, processing handlers
-            response = self._execute_completion(memory.messages, stream=False, **kwargs)
-            msg: SupportedMessage = self._protocol.message_from_response(response) # type: ignore
+        self._tool_fuse_broken = False # Ensure a clean slate for the fuse for this specific call
+        effective_max_tool_calls = self.max_tool_calls
+        if self.backup_options:
+            effective_max_tool_calls += 1
+
+        for step in range(effective_max_tool_calls):
+            options_for_this_step = self.llm_options
+            if self.backup_options:
+                # If backup options are available, use them for the last two attempts
+                if step >= effective_max_tool_calls - 2:
+                    options_for_this_step = self.backup_options
+            
+            response = self._execute_completion(
+                memory.messages, 
+                stream=False, 
+                active_options_for_this_call=options_for_this_step,
+                response_format=response_format, # Pass response_format here explicitly
+                **kwargs
+            )
+            msg: SupportedMessages = self._protocol.message_from_response(response) # type: ignore
             self.handle_on_response(msg, action='response', source='llm')
             self.add_to_memory(msg, memory)
 
             if not self.tools or self._tool_fuse_broken:
-               break         # If there are no tool calls or tools available, exit the loop
+               break # If  the fuse is broken or there are no tools available, exit the loop
 
             tool_calls = self._protocol.tool_calls_from_message(msg)
-            # Process each tool call if they exist and re-execute query
+            
+            # Fuse logic: if this is the second-to-last attempt overall, and it has tool calls,
+            # set the fuse to True so the *final* attempt will be tool-less.
+            if step == effective_max_tool_calls - 2: 
+                if tool_calls:
+                    self._tool_fuse_broken = True # Arm fuse for the *final* iteration (next one)
+
+            if not tool_calls:
+                break # Exit loop if no tool calls are made
+            
+            # Process each tool call if they exist
             self._process_function_calls(
                 tool_calls,
                 memory
-            )  # NOTE: no kwargs here as tool calls might need different parameters
-
-            if not tool_calls:
-                break
-            elif step == self.max_tool_calls - 2: #special case where we ran out of tool calls or stuck in a loop
-                self._tool_fuse_broken = True #one last attempt at graceful response
+            ) 
+            
+    
 
         return self._postprocess_query(
             memory,
@@ -538,6 +592,13 @@ class BaseAgent(
             response_format: Optional[str] = None,
             **kwargs
     ) -> Generator[Union[BaseModelResponse, SupportedMessages],None,None]:
+        """
+        Streams responses from the agent.
+        The method iteratively calls the LLM. If `backup_options` are configured and tool calls persist,
+        the final two attempts (a tool-enabled call, then a potentially tool-less graceful response call)
+        will utilize the backup model. The `_tool_fuse_broken` attribute controls whether tools are
+        stripped in the final attempt to ensure a graceful exit from tool loops.
+        """
         memory = self._preprocess_input(
             query_input,
             send_system_prompt=send_system_prompt,
@@ -545,11 +606,29 @@ class BaseAgent(
             continue_conversation=continue_conversation,
         )
 
-        for step in range(self.max_tool_calls):
+        self._tool_fuse_broken = False # Ensure a clean slate for the fuse for this specific call
+        effective_max_tool_calls = self.max_tool_calls
+        if self.backup_options:
+            effective_max_tool_calls += 1
+
+        for step in range(effective_max_tool_calls):
             self._partial_streaming_chunks.clear()
-            response = self._execute_completion(memory.messages, stream=True, response_format=response_format, **kwargs)
+            
+            options_for_this_step = self.llm_options
+            if self.backup_options:
+                # If backup options are available, use them for the last two attempts
+                if step >= effective_max_tool_calls - 2:
+                    options_for_this_step = self.backup_options
+
+            response = self._execute_completion(
+                memory.messages, 
+                stream=True, 
+                active_options_for_this_call=options_for_this_step,
+                response_format=response_format, 
+                **kwargs
+            )
             yielded = False
-            tool_calls = []
+            tool_calls = [] # Initialize tool_calls for this step
             for i, part in enumerate(response):
                 self._partial_streaming_chunks.append(part)
                 msg: SupportedMessages = self._protocol.message_from_response(part)
@@ -586,9 +665,18 @@ class BaseAgent(
                         assembly.model_dump(mode='json')
                     )  # not delta and not tool, pass as is
 
-            if not self.tools or self._tool_fuse_broken or not tool_calls:
-                self._tool_fuse_broken = False
-                break  # If there are no tool calls or tools available, exit the loop
+            if not self.tools: # or self._tool_fuse_broken or not tool_calls: (old logic)
+                # self._tool_fuse_broken = False # (old logic, fuse reset is handled by _postprocess_query)
+                break  # If there are no tools available, exit the loop
+            
+            # Fuse logic: if this is the second-to-last attempt overall, and it has tool calls,
+            # set the fuse to True so the *final* attempt will be tool-less.
+            if step == effective_max_tool_calls - 2: 
+                if tool_calls: # tool_calls should be populated from the assembled response
+                    self._tool_fuse_broken = True # Arm fuse for the *final* iteration (next one)
+
+            if not tool_calls:
+                break # Exit loop if no tool calls are made
             else:
                 tool_messages = self._process_function_calls(tool_calls,memory)
                 if restream_tools:
@@ -598,8 +686,7 @@ class BaseAgent(
                                 tool_message, kwargs.get("model",self.shortname), role=Role.tool.value
                             ).model_dump(mode='json')
                         )
-            if step == self.max_tool_calls - 2:  # special case where we ran out of tool calls or stuck in a loop
-                self._tool_fuse_broken = True  # one last attempt at graceful response without tools
+    
 
         self._postprocess_query(
             memory,
@@ -715,8 +802,8 @@ class BaseAgentWithLogging(BaseAgent):
     _log_tool_result: SubscriberCallback = PrivateAttr(default=None)
     _log_tool_error: SubscriberCallback = PrivateAttr(default=None)
 
-    _log_bus: JustLogBus = PrivateAttr(default_factory=lambda: JustLogBus())
-
+    _log_bus : JustLogBus = PrivateAttr(default_factory= lambda: JustLogBus())
+    
     @property
     def log_function(self) -> LogFunction:
         return lambda message, action, source, *args, **kwargs: (

@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from just_agents import llm_options
 from just_agents.base_agent import ChatAgent, ChatAgentWithLogging
 from just_agents.data_classes import ImageContent, Message, Role, TextContent
-from just_agents.llm_options import LLAMA3_3, OPENAI_GPT4_1NANO, GEMINI_2_5_FLASH
+from just_agents.llm_options import LLAMA3_3, LLAMA4_SCOUT, LLAMA4_MAVERICK, OPENAI_GPT4_1NANO, GEMINI_2_5_FLASH
 from pprint import pprint
 
 from just_agents.tools.db import sqlite_query
@@ -75,14 +75,14 @@ def test_quering(open_genes_db):
                     goal=f"help users by using SQL syntax to form commands to work with the {open_genes_db} sqlite database",
                     task="formulate appropriate commands to operate in the given database and always include the table names in your response.",
                     tools=[sqlite_query],
-                    llm_options=LLAMA3_3,
+                    llm_options=LLAMA4_SCOUT,
                     key_list_env="GROQ_API_KEY"
                     )
     _test_database_tables(agent, open_genes_db)
 
-def test_quering_gemini(open_genes_db):
+def test_querying_gemini(open_genes_db):
     load_dotenv(override = True)
-    agent = ChatAgent(role="helpful agent which knows how operate with databases",
+    agent = ChatAgentWithLogging(role="helpful agent which knows how operate with databases",
                     goal=f"help users by using SQL syntax to form commands to work with the {open_genes_db} sqlite database",
                     task="formulate appropriate commands to operate in the given database using 'sqlite_query' tool and always include the table names in your response.",
                     tools=[sqlite_query],
@@ -221,8 +221,8 @@ def test_vision():
 def test_delegation():
     load_dotenv(override=True)
     agent_db = ChatAgent(role="helpful agent which knows how operate with databases",
-                    goal=f"help users by using SQL syntax to form comands to work with the {db_path} sqlite database",
-                    task="formulate appropriate comands to operate in the given database.",
+                    goal=f"help users by using SQL syntax to form commands to work with the {db_path} sqlite database",
+                    task="formulate appropriate commands to operate in the given database.",
                     tools=[sqlite_query],
                     llm_options=GEMINI_2_5_FLASH
                     )
@@ -232,7 +232,7 @@ def test_delegation():
         role="helpful agent which will only distribute the tasks to it's calling list and make minimal suggestions",
         goal="help users by guiding them to appropriate instances that will answer their questions",
         task=f"You are generalist agent which can delegate tasks to other agents, so far you only know agent_db which can run database queries on your behalf.",
-        format="""all your answers you represent solely as JSON object without any text either beore or after it. The format is the following: 
+        format="""all your answers you represent solely as JSON object without any text either before or after it. The format is the following: 
         {
         "user_question": "question",
         "answer": "your answer", 

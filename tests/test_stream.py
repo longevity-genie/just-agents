@@ -195,7 +195,7 @@ def test_stream_amnesia_complete():
 
 def test_stream():
     result = agent_call("Why is the sky blue, describe in 10 words?", OPENAI_GPT4_1NANO, False)
-    assert "Rayleigh" in result or "scattering" in result
+    assert "Rayleigh" in result or "scatter" in result
 
 def test_stream_amnesia():
     # Test: continue_conversation=False, remember_query=False

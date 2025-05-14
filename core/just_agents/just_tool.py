@@ -1,12 +1,14 @@
-from typing import Callable, Optional, List, Dict, Any, Sequence, Union, TypeVar, Type, Tuple
-from pydantic import BaseModel, Field, PrivateAttr
+from typing import Callable, Optional, List, Dict, Any, Sequence, Union, TypeVar, Type, Tuple, get_origin, get_args
+from pydantic import BaseModel, Field, PrivateAttr, create_model
 from just_agents.just_bus import JustToolsBus, VariArgs, SubscriberCallback
 from importlib import import_module
 import inspect
-from docstring_parser import parse
+
 from pydantic import ConfigDict
 import sys
 import re
+from just_agents.just_async import run_async_function_synchronously
+from just_agents.just_schema import ModelHelper
 
 
 # Create a TypeVar for the class
@@ -18,14 +20,16 @@ else:
 class LiteLLMDescription(BaseModel):
 
     model_config = ConfigDict(populate_by_name=True)
-    name: Optional[str] = Field(..., alias='function', description="The name of the function")
+    name: Optional[str] = Field(..., alias='function', description="The simple name of the function or method (e.g., 'my_function' or 'my_method').")
     description: Optional[str] = Field(None, description="The docstring of the function.")
     parameters: Optional[Dict[str,Any]]= Field(None, description="Parameters of the function.")
 
 class JustTool(LiteLLMDescription):
-    package: str = Field(..., description="The name of the module where the function is located.")
+    package: str = Field(..., description="The name of the module where the function or its containing class is located (e.g., 'my_module').")
+    static_class: Optional[str] = Field(None, description="The qualified name of the class if the tool is a static/class method, relative to the package (e.g., 'MyClass' or 'OuterClass.InnerClass').")
     auto_refresh: bool = Field(True, description="Whether to automatically refresh the tool after initialization.")
     max_calls_per_query: Optional[int] = Field(None, ge=1, description="The maximum number of calls to the function per query.")
+    is_async: bool = Field(False, description="True if the tool is an async (non-generator) function.")
     model_config = ConfigDict(
         extra="allow",
     )
@@ -36,6 +40,8 @@ class JustTool(LiteLLMDescription):
     """The original callable function."""
     _calls_made: int = PrivateAttr(default=0)
     """Counter for tracking how many times this tool has been called."""
+    _pydantic_model: Optional[Type[BaseModel]] = PrivateAttr(default=None)
+    """The dynamically generated Pydantic model for the tool's parameters."""
 
     @property
     def remaining_calls(self) -> int:
@@ -62,39 +68,111 @@ class JustTool(LiteLLMDescription):
         if self.auto_refresh:
             self.refresh()
         if self._callable is None or self._raw_callable is None:
-            self.get_callable() #populate callables on the instance level if unset
+            # Attempt to populate callables if not done by auto_refresh
+            # This will raise ImportError if the tool is unresolvable.
+            self.get_callable_sync(refresh=False, wrap=True) # Ensures _resolve_callable is attempted
 
-    def _wrap_function(self, func: Callable, name: str) -> Callable:
-        """
-        Helper to wrap a function with event publishing logic to JustToolsBus.
-        """
-        def __wrapper(*args: Any, **kwargs: Any) -> Any:
-            bus = JustToolsBus()
-            bus.publish(f"{name}.{id(self)}.execute", *args, kwargs=kwargs)
+    def _max_calls_wrapper(self, wrapped_function: Callable, tool_name: str) -> Callable:
+        """Outer wrapper to enforce max_calls_per_query if set."""
+        def __max_calls_final_wrapper(*args: Any, **kwargs: Any) -> Any:
+            # This check happens *before* calling the underlying wrapped_function
+            if self.max_calls_per_query is not None and self._calls_made >= self.max_calls_per_query:
+                error = RuntimeError(f"Maximum number of calls ({self.max_calls_per_query}) reached for {tool_name}")
+                # Assuming JustToolsBus is accessible or we publish differently if needed.
+                # For simplicity, let's assume bus is available here if events are desired for this specific error.
+                # However, the primary error propagation will be the raised RuntimeError.
+                JustToolsBus().publish(f"{tool_name}.{id(self)}.error", error=error) # Optional: for consistent eventing
+                raise error
             
+            # Call the actual wrapped function (simple or parsing logic)
+            result = wrapped_function(*args, **kwargs)
+            
+            # Increment calls *after* the successful execution (or attempt) of the wrapped function
+            # The wrapped_function itself will handle its own try/except for tool execution errors
+            # and publish .result or .error accordingly.
+            # This counter is for the number of *attempts* under the max_calls_per_query limit.
+            self._calls_made += 1
+            return result
+        return __max_calls_final_wrapper
+
+    def _simple_wrapper_logic(self, func_to_run: Callable, tool_name: str) -> Callable:
+        """Simple wrapper without dictionary parsing. Max calls check is handled by _max_calls_wrapper."""
+        def __simple_wrapper(*args: Any, **kwargs: Any) -> Any:
+            bus = JustToolsBus()
+            bus.publish(f"{tool_name}.{id(self)}.execute", *args, kwargs=kwargs)
             try:
-                # Check for maximum calls
-                if self.max_calls_per_query is not None:
-                    if self._calls_made >= self.max_calls_per_query:
-                        error = RuntimeError(f"Maximum number of calls ({self.max_calls_per_query}) reached for {name}")
-                        bus.publish(f"{name}.{id(self)}.error", error=error)
-                        raise error
-                
-                # Execute function and record call
-                result = func(*args, **kwargs)
-                self._calls_made += 1
-                
-                bus.publish(f"{name}.{id(self)}.result", result_interceptor=result, kwargs=kwargs)
+                # Max calls check and increment removed from here
+                if self.is_async:
+                    result = run_async_function_synchronously(func_to_run, *args, **kwargs)
+                else:
+                    result = func_to_run(*args, **kwargs)
+                # Call increment removed from here
+                bus.publish(f"{tool_name}.{id(self)}.result", result_interceptor=result, kwargs=kwargs)
                 return result
             except Exception as e:
-                bus.publish(f"{name}.{id(self)}.error", error=e)
+                bus.publish(f"{tool_name}.{id(self)}.error", error=e)
                 raise e
-        return __wrapper
+        return __simple_wrapper
+
+    def _parsing_wrapper_logic(self, func_to_run: Callable, tool_name: str) -> Callable:
+        """Wrapper that inspects raw callable and parses string-to-dict for relevant params. Max calls check is handled by _max_calls_wrapper."""
+        raw_func_sig = inspect.signature(self._raw_callable)
+
+        def __parsing_wrapper(*args: Any, **kwargs: Any) -> Any:
+            bus = JustToolsBus()
+            bus.publish(f"{tool_name}.{id(self)}.execute", *args, kwargs=kwargs)
+            
+            processed_kwargs = {}
+            for key, value in kwargs.items():
+                param = raw_func_sig.parameters.get(key)
+                if param and param.annotation != inspect.Parameter.empty:
+                    param_type_origin = get_origin(param.annotation)
+                    if (param_type_origin is dict or param_type_origin is Dict) and isinstance(value, str):
+                        try:
+                            parsed_value = ModelHelper.get_structured_output(value, parser=dict)
+                            processed_kwargs[key] = parsed_value
+                        except ValueError:
+                            processed_kwargs[key] = value 
+                    else:
+                        processed_kwargs[key] = value
+                else:
+                    processed_kwargs[key] = value
+
+            try:
+                # Max calls check and increment removed from here
+                if self.is_async:
+                    result = run_async_function_synchronously(func_to_run, *args, **processed_kwargs)
+                else:
+                    result = func_to_run(*args, **processed_kwargs)
+                # Call increment removed from here
+                bus.publish(f"{tool_name}.{id(self)}.result", result_interceptor=result, kwargs=processed_kwargs)
+                return result
+            except Exception as e:
+                bus.publish(f"{tool_name}.{id(self)}.error", error=e)
+                raise e
+        return __parsing_wrapper
+
+    def _wrap_function(self, func_to_run: Callable, tool_name: str) -> Callable:
+        """
+        Dispatcher: Chooses a core wrapper (simple or parsing) and then optionally applies the max_calls_wrapper.
+        The func_to_run is the already-resolved callable.
+        """
+        core_wrapped_function: Callable
+        if self._pydantic_model and ModelHelper.model_has_dict_params(self._pydantic_model):
+            core_wrapped_function = self._parsing_wrapper_logic(func_to_run, tool_name)
+        else:
+            core_wrapped_function = self._simple_wrapper_logic(func_to_run, tool_name)
+        
+        # Optionally apply the max_calls_per_query wrapper
+        if self.max_calls_per_query is not None:
+            return self._max_calls_wrapper(core_wrapped_function, tool_name)
+        else:
+            return core_wrapped_function
 
     @staticmethod
     def function_to_llm_dict(input_function: Callable) -> Dict[str, Any]:
         """
-        Extract function metadata for function calling format without external dependencies.
+        Extract function metadata for function calling format, leveraging Pydantic for schema generation.
         
         Args:
             input_function: The function to extract metadata from
@@ -102,114 +180,67 @@ class JustTool(LiteLLMDescription):
         Returns:
             Dict with function name, description and parameters
         """
-        # Map Python types to JSON schema types
-        python_to_json_schema_types: Dict[str, str] = {
-            str.__name__: "string",
-            int.__name__: "integer",
-            float.__name__: "number",
-            bool.__name__: "boolean",
-            list.__name__: "array",
-            dict.__name__: "object",
-            "NoneType": "null",
-        }
+        # Call ModelHelper to get schema and model, then return only the schema part
+        schema, _ = ModelHelper.create_tool_schema_from_callable(input_function)
+        return schema
 
-        # Extract basic function information
-        name: str = input_function.__name__
-        docstring: Optional[str] = inspect.getdoc(input_function)
-        
-        # Parse the docstring using docstring_parser
-        if docstring:
-            parsed_docstring = parse(docstring)
+    def _resolve_callable(self) -> Callable:
+        """
+        Helper to import and retrieve the callable based on self.package, self.name, and self.static_class.
+        self.name is expected to be the simple function/method name.
+        self.package is the module path.
+        self.static_class (if provided) is the class name (potentially nested, e.g., 'Outer.Inner').
+        """
+        try:
+            module = import_module(self.package)
+        except ImportError as e:
+            raise ImportError(f"Could not import module '{self.package}'. Error: {e}") from e
+
+        if self.static_class:
+            # Attempt to get a static/class method
+            try:
+                # Resolve potentially nested class
+                current_object = module
+                resolved_class_path_upto = module.__name__ # Keep track of how much of the path we successfully resolved
+                failed_part = ""
+
+                for class_part in self.static_class.split('.'):
+                    try:
+                        current_object = getattr(current_object, class_part)
+                        resolved_class_path_upto += f".{class_part}"
+                    except AttributeError as e:
+                        failed_part = class_part
+                        # This error means a segment of the static_class path failed.
+                        # current_object here is the object *before* failing to find class_part
+                        raise ImportError(f"Could not resolve inner class segment '{failed_part}' in '{resolved_class_path_upto}' while trying to find '{self.static_class}' in module '{self.package}'. Error: {e}") from e
+                
+                class_obj = current_object # This is the fully resolved class
+                
+                # Now try to get the method from the resolved class
+                try:
+                    target_method = getattr(class_obj, self.name)
+                except AttributeError as e:
+                    # This error means the method was not found on the successfully resolved class_obj
+                    raise ImportError(f"Could not resolve method '{self.name}' on class '{self.static_class}' in module '{self.package}'. Error: {e}") from e
+                
+                if callable(target_method):
+                    return target_method
+                else:
+                    raise AttributeError(f"Attribute '{self.name}' on class '{self.static_class}' from module '{self.package}' is not callable.")
+            except AttributeError as e: # Should primarily be from the else clause below if logic is flawed
+                 # This path should ideally not be hit if the loop for class_part handles its AttributeErrors by raising ImportError.
+                 # If it *is* hit, it implies an issue with resolving the class path that wasn't an ImportError from the loop.
+                raise ImportError(f"Unexpected error resolving static method '{self.name}' for class '{self.static_class}' in module '{self.package}'. Error: {e}") from e
         else:
-            raise ValueError("No docstring found for function")
-        
-        # Get the function description from the short description or empty string if none
-        description: str = parsed_docstring.short_description if parsed_docstring else ""
-        #if parsed_docstring and parsed_docstring.long_description:
-        #    description += "\n" + parsed_docstring.long_description
-        
-        # Initialize parameters and required parameters
-        parameters: Dict[str, Dict[str, Any]] = {}
-        required_params: List[str] = []
-        
-        # Get function signature information
-        param_info = inspect.signature(input_function).parameters
-
-        # Process each parameter
-        for param_name, param in param_info.items():
-            # Determine parameter type from annotation
-            param_type: Optional[str] = None
-            if param.annotation != param.empty:
-                # Get the type name if it's a class, otherwise use string representation
-                type_name = getattr(param.annotation, "__name__", str(param.annotation))
-                param_type = python_to_json_schema_types.get(type_name, "string")
-            
-            param_description: Optional[str] = None
-            param_enum: Optional[List[str]] = None
-
-            # Find parameter description from docstring
-            if parsed_docstring:
-                for param_doc in parsed_docstring.params:
-                    if param_doc.arg_name == param_name:
-                        param_description = param_doc.description
-                        
-                        # Check if type is specified in docstring
-                        if param_doc.type_name:
-                            docstring_type = param_doc.type_name
-                            
-                            # Handle optional types
-                            if "optional" in docstring_type.lower():
-                                docstring_type = docstring_type.split(",")[0].strip()
-                            
-                            # Handle enum-like values in curly braces (e.g. "{option1, option2}")
-                            elif "{" in docstring_type and "}" in docstring_type:
-                                # Extract content between curly braces
-                                match = re.search(r'\{([^}]+)}', docstring_type)
-                                if match:
-                                    # Split by comma and clean up whitespace
-                                    options = [opt.strip() for opt in match.group(1).split(',')]
-                                    # Filter out empty strings
-                                    options = [opt for opt in options if opt]
-                                    if options:
-                                        param_enum = options
-                                        param_type = "string"  # Enum values are represented as strings
-                            
-                            # Map to JSON schema type
-                            param_type = python_to_json_schema_types.get(docstring_type, "string")
-
-            # Create parameter dictionary
-            param_dict: Dict[str, Any] = {
-                "type": param_type,
-                "description": param_description,
-                "enum": param_enum,
-            }
-
-            # Filter out None values
-            parameters[param_name] = {k: v for k, v in param_dict.items() if v is not None}
-
-            # Check if parameter is required (no default value)
-            if param.default == param.empty:
-                required_params.append(param_name)
-
-        # Create the final result dictionary
-        result: Dict[str, Any] = {
-            "name": name,
-            "description": description,
-            "parameters": {
-                "type": "object",
-                "properties": parameters,
-            },
-        }
-
-        # Add required parameters if any
-        if required_params:
-            result["parameters"]["required"] = required_params
-        
-        # Verify our implementation matches litellm's result (for debugging during refactoring)
-        # This can be removed later once the implementation is stable
-        # assert result == litellm_result, f"Implementation mismatch with litellm:\nOur result: {result}\nLiteLLM result: {litellm_result}"
-        
-        return result
+            # Attempt to get a regular function from the module
+            try:
+                target_function = getattr(module, self.name)
+                if callable(target_function):
+                    return target_function
+                else:
+                    raise AttributeError(f"Attribute '{self.name}' in module '{self.package}' is not callable.")
+            except AttributeError as e:
+                raise ImportError(f"Could not resolve function '{self.name}' from module '{self.package}'. Error: {e}") from e
 
     def get_litellm_description(self) -> Dict[str, Any]:
         """
@@ -233,22 +264,39 @@ class JustTool(LiteLLMDescription):
         Create a JustTool instance from a callable.
         
         Args:
-            input_function: Function to convert to a JustTool
+            input_function: Function or static/class method to convert to a JustTool
             
         Returns:
             JustTool instance with function metadata
         """
-        package = input_function.__module__
-        function_name = input_function.__name__
+        module_name = input_function.__module__
+        simple_name = input_function.__name__
+        qualified_name = input_function.__qualname__
 
-        # Use our own implementation or fallback based on the flag
-        litellm_description = cls.function_to_llm_dict(input_function)
-        litellm_description['function'] = function_name
+        static_class_name: Optional[str] = None
 
-        return cls(
-            **litellm_description,
-            package=package
+        # Check if it's a method (static, class, or instance - though we primarily target static/class)
+        # simple_name: 'my_method', qualified_name: 'MyClass.my_method' or 'Outer.Inner.my_method'
+        # simple_name: 'my_func', qualified_name: 'my_func'
+        if '.' in qualified_name and qualified_name.endswith(f'.{simple_name}'):
+            # The part before the last dot is the class qualifier.
+            static_class_name = qualified_name[:-len(simple_name)-1]
+
+        # Use ModelHelper to get both schema and model
+        llm_dict_params, generated_pydantic_model = ModelHelper.create_tool_schema_from_callable(input_function)
+
+        # Determine if the function is an async (non-generator) function
+        is_async_regular = inspect.iscoroutinefunction(input_function) and \
+                           not inspect.isasyncgenfunction(input_function)
+
+        instance = cls(
+            **llm_dict_params, 
+            package=module_name,
+            static_class=static_class_name,
+            is_async=is_async_regular,
         )
+        instance._pydantic_model = generated_pydantic_model
+        return instance
 
     def subscribe(self, callback: SubscriberCallback, type: Optional[str]=None) -> bool:
         """
@@ -317,33 +365,42 @@ class JustTool(LiteLLMDescription):
     def refresh(self) -> Self:
         """
         Refresh the JustTool instance to reflect the current state of the actual function.
-        Updates package, function name, description, parameters, and ensures the function is importable.
+        Updates package, function name, description, parameters, is_async, and ensures the function is importable.
         
         Returns:
             JustTool: Returns self to allow method chaining or direct appending.
         """
         try:
-            # Get the function from the module
-            func = getattr(import_module(self.package), self.name)
+            # Get the function from the module or class
+            func = self._resolve_callable()
             
-            # Use our own implementation to get function metadata
-            litellm_description = self.function_to_llm_dict(func)
+            # Use ModelHelper to get schema and model
+            litellm_description_schema, generated_pydantic_model = ModelHelper.create_tool_schema_from_callable(func)
             
+            # Set _raw_callable *before* _wrap_function is called, so _parsing_wrapper_logic can access it.
+            self._raw_callable = func 
+            self._pydantic_model = generated_pydantic_model
+
             # Update the description
-            self.description = litellm_description.get("description")
+            self.description = litellm_description_schema.get("description")
             
             # Update parameters
-            self.parameters = litellm_description.get("parameters")
+            self.parameters = litellm_description_schema.get("parameters")
+
+            # Update the is_async flag based on the (potentially new) callable
+            self.is_async = inspect.iscoroutinefunction(func) and \
+                            not inspect.isasyncgenfunction(func)
             
             # Rewrap with the updated callable
+            # self.name is the simple name, used for event bus topics
             self._callable = self._wrap_function(func, self.name)
-            self._raw_callable = func
             
             return self
-        except (ImportError, AttributeError) as e:
-            raise ImportError(f"Error refreshing {self.name} from {self.package}: {e}") from e
+        except ImportError as e: # _resolve_callable will raise ImportError on failure
+            # The error message from _resolve_callable provides context
+            raise ImportError(f"Error refreshing {self.name} (class: {self.static_class}) from {self.package}: {e}") from e
 
-    def get_callable(self, refresh: bool = False, wrap: bool = True) -> Callable:
+    def get_callable_sync(self, refresh: bool = False, wrap: bool = True) -> Callable:
         """
         Retrieve the callable function.
         
@@ -352,26 +409,35 @@ class JustTool(LiteLLMDescription):
             wrap: If True, the callable is wrapped with the JustToolsBus callbacks
 
         Returns:
-            Wrapped callable function
+            Wrapped callable function if wrap is True, otherwise the raw callable.
             
         Raises:
-            ImportError: If function cannot be imported
+            ImportError: If function cannot be imported or resolved.
         """
         if refresh:
-            self.refresh()
-        if self._callable is not None and wrap:
+            self.refresh() # This populates/updates _callable and _raw_callable, or raises error
+
+        # Check if already populated (by previous call, model_post_init, or successful refresh)
+        if wrap and self._callable is not None:
             return self._callable
-        if self._callable is not None and not wrap:
+        if not wrap and self._raw_callable is not None:
             return self._raw_callable
+
+        # If not populated, resolve them now by refreshing
         try:
-            self._raw_callable = getattr(import_module(self.package), self.name)
-            self._callable = self._wrap_function(self._raw_callable, self.name)
+            self.refresh() 
+            
             if wrap:
                 return self._callable
             else:
                 return self._raw_callable
-        except (ImportError, AttributeError) as e:
-            raise ImportError(f"Error importing {self.name} from {self.package}: {e}")
+        except ImportError as e: # This ImportError is from _resolve_callable
+            # The error message from _resolve_callable is descriptive.
+            raise e
+
+    def get_callable(self, refresh: bool = False, wrap: bool = True) -> Callable:
+        """Alias for get_callable_sync. Retrieves the callable function."""
+        return self.get_callable_sync(refresh=refresh, wrap=wrap)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
@@ -384,7 +450,7 @@ class JustTool(LiteLLMDescription):
         Returns:
             Result of the wrapped function
         """
-        func = self.get_callable(wrap=True)
+        func = self.get_callable(wrap=True) # Now calls the alias
         return func(*args, **kwargs)
 
 
