@@ -126,10 +126,10 @@ def search_documents(query: str, index: str, limit: Optional[int] = 30, semantic
 
     """
     # Get semantic ratio from environment variable or use default
-    semantic_ratio = float(os.getenv("MEILISEARCH_SEMANTIC_RATIO", 0.5))
+    semantic_ratio = float(semantic_ratio) or float(os.getenv("MEILISEARCH_SEMANTIC_RATIO", 0.5))
     
     # Get raw search results
-    hits = search_documents_raw(query, index, limit, semantic_ratio=semantic_ratio)
+    hits = search_documents_raw(query, index, int(limit), semantic_ratio=semantic_ratio)
     
     # Print debug info
     print(f"Found {len(hits)} results for query '{query}' in index '{index}'")

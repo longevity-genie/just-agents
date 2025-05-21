@@ -254,7 +254,7 @@ class JustTool(LiteLLMDescription):
             by_alias=False,
             exclude_none=True,
             serialize_as_any=False,
-            include=set(self.__class__.__bases__[0].model_fields) #Deprecated until v3, blame pydantic for warnings
+            include=set(LiteLLMDescription.model_fields.keys())
         )
         return dump
 

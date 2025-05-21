@@ -136,6 +136,8 @@ def test_parser_serialization(agent_with_parser):
         )
         assert test_model is not None
         assert test_model.__name__ == "SimpleTestModelOutputParser"
+        assert issubclass(original_parser, BaseModel)
+        assert issubclass(test_model, BaseModel)
         assert set(test_model.model_fields.keys()) == set(original_parser.model_fields.keys())
 
 
@@ -151,7 +153,7 @@ def test_validate_assignment():
     assert not isinstance(agent.parser, dict)
     assert isinstance(agent.parser, type) and issubclass(agent.parser, BaseModel)
     assert 'OutputParser' in agent.parser.__name__
-    assert set(agent.parser.model_fields.keys()) == set(['name', 'value'])
+    assert set(agent.parser.model_fields.keys()) == {'name', 'value'}
 
 def test_yaml_to_agent_to_yaml_parser_roundtrip(tmp_path):
     """Test roundtrip of parser field from YAML to agent and back to YAML"""

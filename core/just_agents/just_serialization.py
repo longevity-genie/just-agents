@@ -2,12 +2,10 @@ import yaml
 import importlib
 import sys
 import importlib.util
-from typing import Optional, Dict, Any, ClassVar, Sequence, Union, Set, Type, TypeVar, Union, Callable, Type
+from typing import Optional, Dict, Any, ClassVar, Sequence, Set, TypeVar, Union, Type
 from pathlib import Path
-import types
-from pydantic import BaseModel, Field, field_validator
 from collections.abc import MutableMapping, MutableSequence
-from pydantic import BaseModel, Field, ConfigDict
+from pydantic import BaseModel, Field, ConfigDict, field_validator
 
 
 # Create a TypeVar for the class
@@ -477,7 +475,7 @@ class JustSerializable(BaseModel):
             Dict[str, Any]: A dictionary representation of the instance, including extra fields.
         """
 
-        available_fields = frozenset(self.model_fields.keys())
+        available_fields = frozenset(self.__class__.model_fields.keys())
 
         if exclude_list is not None:
             exclude_set = set(exclude_list) & available_fields
@@ -577,7 +575,7 @@ class JustSerializable(BaseModel):
             if strict:
                 self.validate_keys_match(new_data)
 
-        for field_name, field_info in self.model_fields.items():
+        for field_name, field_info in self.__class__.model_fields.items():
             self_value = getattr(self, field_name, None)
             new_value : Optional[Any] = new_data.pop( field_name, None )
 
@@ -627,14 +625,14 @@ class JustSerializable(BaseModel):
         Dynamic validation of effective model fields compatibility between two instances.
         """
         if isinstance(instance, BaseModel):
-            model_fields = set(instance.model_fields.keys())
+            model_fields = set(instance.__class__.model_fields.keys())
         elif isinstance(instance, dict):
             model_fields=set(instance.keys())
         elif isinstance(instance, Sequence):
             model_fields=set(instance)
         else:
             raise TypeError(f"Unsupported type: {str(instance)}")
-        this_fields = set(self.model_fields.keys())
+        this_fields = set(self.__class__.model_fields.keys())
 
         if model_fields.issubset(this_fields):
             missing_in_this = model_fields - this_fields
@@ -662,12 +660,12 @@ class JustSerializable(BaseModel):
         """
         # Set of settable fields with descriptions
         available_fields = {
-            field_name for field_name, field_info in self.model_fields.items()
+            field_name for field_name, field_info in self.__class__.model_fields.items()
             if field_info.description and not field_info.frozen
         }
 
         excluded_fields = {
-            field_name for field_name, field_info in self.model_fields.items()
+            field_name for field_name, field_info in self.__class__.model_fields.items()
             if field_info.exclude
         }
 
@@ -690,7 +688,7 @@ class JustSerializable(BaseModel):
         eligible_fields = (available_fields - excluded_fields)
 
         # Create the final field_list dictionary using the eligible fields
-        fields_to_populate = {field_name: self.model_fields[field_name].description for field_name in eligible_fields}
+        fields_to_populate = {field_name: self.__class__.model_fields[field_name].description for field_name in eligible_fields}
 
         # Top up with extras if requested
         if extra_list:

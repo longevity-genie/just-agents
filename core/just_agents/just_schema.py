@@ -5,7 +5,6 @@ import ast
 import json
 import inspect
 from docstring_parser import parse
-import typing
 
 T = TypeVar('T', bound=BaseModel)
 ConfigDictExtra = Literal["ignore", "allow", "forbid"]
@@ -110,7 +109,7 @@ class ModelHelper:
             An instance of the selected class populated with the relevant fields from the provided object.
         """
         # Extract only the fields defined in the base class
-        base_fields = {field: getattr(instance, field) for field in selected_class.model_fields}
+        base_fields = {field: getattr(instance, field) for field in selected_class.model_fields.keys()}
 
         # Instantiate and return the base class with these fields
         return selected_class(**base_fields)
@@ -249,15 +248,15 @@ class ModelHelper:
     @staticmethod
     def clean_fallback_result(raw: str) -> str:
         """
-        Remove any markdown code fences from the fallback JSON response.
+        Remove any Markdown code fences from the fallback JSON response.
         This regex checks if the entire string is enclosed within triple-backticks with an
         optional "json" language tag, and if so, returns just the content.
         
         Args:
-            raw: The raw string that might contain markdown code fences
+            raw: The raw string that might contain Markdown code fences
             
         Returns:
-            Cleaned string with markdown code fences removed if present
+            Cleaned string with Markdown code fences removed if present
         """
         raw = raw.strip()
         pattern = re.compile(r"^```(?:json)?\s*(.*?)\s*```$", re.DOTALL)

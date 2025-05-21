@@ -260,8 +260,8 @@ def test_tool_with_string_arg(type_test_agent):
     prompt = create_tool_test_prompt(s_arg='test string')
     type_test_agent.query(prompt)
 
-    assert len(tool_results) == 1
-    tool_output = tool_results[0]
+    assert len(tool_results) >= 1 #allow retries
+    tool_output = tool_results[-1]
     assert tool_output["s_arg_type"] == "str"
     assert tool_output["s_arg_value"] == "test string"
 
@@ -271,8 +271,8 @@ def test_tool_with_integer_arg(type_test_agent):
     prompt = create_tool_test_prompt(i_arg=123)
     type_test_agent.query(prompt)
     
-    assert len(tool_results) == 1
-    tool_output = tool_results[0]
+    assert len(tool_results) >= 1 #allow retries
+    tool_output = tool_results[-1]
     assert tool_output["i_arg_type"] == "int"
     assert tool_output["i_arg_value"] == 123
 
@@ -282,8 +282,8 @@ def test_tool_with_float_arg(type_test_agent):
     prompt = create_tool_test_prompt(f_arg=3.14)
     type_test_agent.query(prompt)
     
-    assert len(tool_results) == 1
-    tool_output = tool_results[0]
+    assert len(tool_results) >= 1 #allow retries
+    tool_output = tool_results[-1]
     assert tool_output["f_arg_type"] == "float"
     assert tool_output["f_arg_value"] == 3.14
 
@@ -292,16 +292,16 @@ def test_tool_with_boolean_arg(type_test_agent):
     bus, tool_results = setup_tool_test_callback()
     prompt_true = create_tool_test_prompt(b_arg=True)
     type_test_agent.query(prompt_true)
-    assert len(tool_results) == 1
-    tool_output_true = tool_results[0]
+    assert len(tool_results) >= 1 #allow retries
+    tool_output_true = tool_results[-1]
     assert tool_output_true["b_arg_type"] == "bool"
     assert tool_output_true["b_arg_value"] is True
     
     tool_results.clear() # Clear for the next call within the same test
     prompt_false = create_tool_test_prompt(b_arg=False)
     type_test_agent.query(prompt_false)
-    assert len(tool_results) == 1
-    tool_output_false = tool_results[0]
+    assert len(tool_results) >= 1 #allow retries
+    tool_output_false = tool_results[-1]
     assert tool_output_false["b_arg_type"] == "bool"
     assert tool_output_false["b_arg_value"] is False
 
@@ -315,8 +315,8 @@ def test_tool_with_list_arg(type_test_agent):
     prompt = create_tool_test_prompt(l_arg=list_val, dict_arg=dict_arg_val)
     type_test_agent.query(prompt)
     
-    assert len(tool_results) == 1
-    tool_output = tool_results[0]
+    assert len(tool_results) >= 1
+    tool_output = tool_results[-1]
     assert tool_output["l_arg_type"] == "list"
     # Expected: Pydantic preserves original types in the list
     expected_l_arg_value = ["item1", 2, True, 3.14]
@@ -333,8 +333,8 @@ def test_tool_with_dict_arg(type_test_agent):
     prompt = create_tool_test_prompt(dict_arg=dict_val, model_arg=model_val)
     type_test_agent.query(prompt)
     
-    assert len(tool_results) == 1
-    tool_output = tool_results[0]
+    assert len(tool_results) >= 1 #allow retries
+    tool_output = tool_results[-1]
     
     # Check dictionary argument
     assert tool_output["dict_arg_type"] == "dict"
@@ -381,8 +381,8 @@ def test_tool_with_combined_args(type_test_agent):
     llm_response = type_test_agent.query(prompt)
     print(f"LLM Response: {llm_response}") # For debugging
 
-    assert len(tool_results) == 1, f"Tool was not called or event not captured. LLM response: {llm_response}"
-    tool_output = tool_results[0]
+    assert len(tool_results) >= 1 #allow retries, f"Tool was not called or event not captured. LLM response: {llm_response}"
+    tool_output = tool_results[-1]
 
     assert tool_output["s_arg_type"] == "str"
     assert tool_output["s_arg_value"] == s_val
@@ -430,8 +430,8 @@ def test_tool_with_composite_list_arg(type_test_agent):
     llm_response = type_test_agent.query(prompt)
     print(f"LLM Response for composite_list_arg test: {llm_response}") # For debugging
 
-    assert len(tool_results) == 1, f"Tool was not called or event not captured. LLM response: {llm_response}"
-    tool_output = tool_results[0]
+    assert len(tool_results) >= 1 #allow retries, f"Tool was not called or event not captured. LLM response: {llm_response}"
+    tool_output = tool_results[-1]
 
     assert tool_output["composite_list_arg_type"] == "list"
     assert tool_output["composite_list_arg_value"] == composite_val

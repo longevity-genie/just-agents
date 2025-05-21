@@ -173,8 +173,8 @@ def main():
     # Compare original and deserialized schemas
     if agent.parser and deserialized_agent.parser:
         print("\n5. Comparing original and deserialized schemas...")
-        original_fields = set(agent.parser.model_fields.keys())
-        deserialized_fields = set(deserialized_agent.parser.model_fields.keys())
+        original_fields = set(agent.parser.__class__.model_fields.keys())
+        deserialized_fields = set(deserialized_agent.parser.__class__.model_fields.keys())
         print(f"   Original schema fields: {original_fields}")
         print(f"   Deserialized schema fields: {deserialized_fields}")
         print(f"   Fields match: {original_fields == deserialized_fields}")
