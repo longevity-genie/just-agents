@@ -4,7 +4,7 @@ from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict, Un
 
 from just_agents.just_serialization import JustSerializable
 from just_agents.data_classes import ModelPromptExample
-from just_agents.just_tool import JustTool, JustTools, SubscriberCallback, JustPromptTool, JustPromptTools
+from just_agents.just_tool import JustTool, JustTools, SubscriberCallback, JustPromptTool, JustPromptTools, JustToolBase, JustToolFactory
 
 
 class JustAgentProfileToolsetMixin(BaseModel):
@@ -33,7 +33,7 @@ class JustAgentProfileToolsetMixin(BaseModel):
         Args:
             fun (callable): The function to add as a tool
         """
-        tool = JustTool.from_callable(fun)
+        tool = JustToolFactory.create_tool(fun)
 
         if self.tools is None:
             self.tools = {tool.name: tool}
@@ -55,11 +55,7 @@ class JustAgentProfileToolsetMixin(BaseModel):
         except (TypeError, OverflowError):
             raise ValueError("Input parameters must be JSON serializable")
 
-        tool = JustTool.from_callable(fun)
-        prompt_tool = JustPromptTool(
-            **tool.model_dump(),
-            call_arguments=call_arguments
-        )
+        prompt_tool = JustToolFactory.create_prompt_tool((fun, call_arguments))
 
         if self.prompt_tools is None:
             self.prompt_tools = {prompt_tool.name: prompt_tool}
@@ -72,25 +68,13 @@ class JustAgentProfileToolsetMixin(BaseModel):
         """
         if not self.tools:
             return
-
+        
         if isinstance(self.tools, dict):
-            return
+            if all(isinstance(tool, JustTool) for tool in self.tools.values()):
+                return
         elif not isinstance(self.tools, Sequence):
             raise TypeError("The 'tools' field must be a sequence of callables or JustTool instances.")
-
-        new_tools = {}
-        for item in self.tools:
-            if isinstance(item, JustTool):
-                if item.auto_refresh:
-                    item = item.refresh()
-                new_tools[item.name] = item
-            elif callable(item):
-                new_tool = JustTool.from_callable(item)
-                new_tools[new_tool.name] = new_tool
-            else:
-                raise TypeError("Items in 'tools' must be callables or JustTool instances.")
-
-        self.tools = new_tools
+        self.tools = JustToolFactory.create_tools_dict(self.tools, type_hint=JustTool)
 
     def _process_prompt_tools_field(self) -> None:
         """
@@ -100,39 +84,12 @@ class JustAgentProfileToolsetMixin(BaseModel):
             return
 
         if isinstance(self.prompt_tools, dict):
-            return
+            if all(isinstance(tool, JustPromptTool) for tool in self.prompt_tools.values()):
+                return
         elif not isinstance(self.prompt_tools, Sequence):
             raise TypeError(
                 "The 'prompt_tools' field must be a sequence of (callable, input_params) tuples or JustPromptTool instances.")
-
-        new_prompt_tools = {}
-        for item in self.prompt_tools:
-            if isinstance(item, JustPromptTool):
-                prompt_tool = item
-            elif isinstance(item, tuple) and len(item) == 2 and callable(item[0]) and isinstance(item[1], dict):
-                func, input_params = item
-                # Ensure input parameters are JSON serializable
-                try:
-                    import json
-                    json.dumps(input_params)
-                except (TypeError, OverflowError):
-                    raise ValueError(f"Input parameters for {func.__name__} must be JSON serializable")
-
-                tool = JustTool.from_callable(func)
-                prompt_tool = JustPromptTool(
-                    **tool.model_dump(),
-                    call_arguments=input_params
-                )
-            else:
-                raise TypeError(
-                    "Items in 'prompt_tools' must be (callable, input_params) tuples or JustPromptTool instances.")
-
-            prompt_tool.max_calls_per_query = None # Force disable
-            if prompt_tool.auto_refresh:
-                prompt_tool = prompt_tool.refresh()
-            new_prompt_tools[prompt_tool.name] = prompt_tool
-
-        self.prompt_tools = new_prompt_tools
+        self.prompt_tools = JustToolFactory.create_prompt_tools_dict(self.prompt_tools)
 
     @model_validator(mode='after')
     def validate_agent_profile(self) -> 'JustAgentProfileToolsetMixin':

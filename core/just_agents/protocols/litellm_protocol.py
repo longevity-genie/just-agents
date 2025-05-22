@@ -6,6 +6,8 @@ from copy import deepcopy
 import os
 
 from openai import APIStatusError
+from openai.types.chat import ChatCompletionToolParam
+
 import litellm
 from litellm import CustomStreamWrapper, completion, acompletion, stream_chunk_builder, \
                     supports_function_calling, supports_response_schema, supports_vision
@@ -217,7 +219,8 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         # Return sanitized arguments
         return args, kwargs
 
-    def tool_from_function(self, tool: Callable, function_dict: Dict[str, Any] = None, use_litellm: bool = False) -> dict:
+    def tool_from_function(self, tool: Callable, function_dict: Dict[str, Any] = None, use_litellm: bool = False
+    ) -> Union[ChatCompletionToolParam, Dict[str, Any]]:
         """
         Convert a function to a tool dictionary.
         """
@@ -255,7 +258,10 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
 
                 
         function_dict = litellm_function_dict or function_dict or ""
-        return {"type": "function","function": function_dict}
+        return ChatCompletionToolParam(
+            type="function",
+            function=function_dict
+        )
 
     def completion(self, *args, **kwargs) -> Union[ModelResponse, CustomStreamWrapper, Generator]:
         # Sanitize arguments before calling the completion method

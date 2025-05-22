@@ -1,9 +1,11 @@
 from enum import Enum
-from typing import List, Union, Optional
+from typing import List, Union, Optional, Dict, Any
 from pydantic import HttpUrl, Field, BaseModel, ConfigDict, AliasPath, field_validator, field_serializer
 from pydantic_core import from_json
 
-""" Common OpenAI-compatible data structures """
+from openai.types.shared_params.function_definition import FunctionDefinition
+
+""" Common OpenAI-compatible data structures """ #TODO: openAI type converters/inheritances
 
 # Content types and enums
 class EnumLiteral(str, Enum):
@@ -135,7 +137,41 @@ class ToolCall(BaseModel):
         except ValueError as e:
             return str(e)
 
+class ToolDefinition(BaseModel): ## Derived from OpenAI's FunctionDefinition TypedDict
 
+    model_config = ConfigDict(populate_by_name=True)
+    name: Optional[str] = Field(..., alias='function', description="The simple name of the function or method (e.g., 'my_function' or 'my_method').")
+    description: Optional[str] = Field(None, description="The docstring of the function.")
+    parameters: Optional[Dict[str,Any]]= Field(None, description="Parameters of the function.")
+    strict: Optional[bool]= Field(None, description="Whether to enable strict schema adherence when generating the function call.")
+    
+    @classmethod
+    def from_openai(
+        cls, 
+        openai_function_definition: FunctionDefinition
+    ) -> 'ToolDefinition':
+        """
+        Creates an instance of this class from an OpenAI FunctionDefinition dictionary.
+
+        This method first validates the input against OpenAI's `FunctionDefinition`
+        TypedDict to ensure compliance with the OpenAI protocol. It then uses the
+        validated data to construct an instance of `cls` (e.g., `OpenAIDescription`
+        or a subclass).
+
+        Args:
+            openai_function_definition: A dictionary adhering to the 
+                                        OpenAI FunctionDefinition structure.
+
+        Returns:
+            An instance of `cls` populated with data from the
+            `openai_function_definition`.
+
+        Raises:
+            pydantic.ValidationError: If `openai_function_definition` does not
+                                    conform to the `FunctionDefinition` schema.
+        """
+        validated_data = TypeAdapter(FunctionDefinition).validate_python(openai_function_definition)
+        return cls.model_validate(validated_data)
 class ModelPromptExample(BaseModel):
     """
     Provides a single prompt example to demonstrate how the model may be used.

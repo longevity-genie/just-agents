@@ -800,14 +800,14 @@ standard = ["email-validator (>=2.0.0)", "fastapi-cli[standard] (>=0.0.5)", "htt
 
 [[package]]
 name = "fastmcp"
-version = "2.3.5"
+version = "2.4.0"
 description = "The fast, Pythonic way to build MCP servers."
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "fastmcp-2.3.5-py3-none-any.whl", hash = "sha256:193e35a8d35a5c6a4af07e764873d8592aadc2f1e32dd8827b57869a83956088"},
-    {file = "fastmcp-2.3.5.tar.gz", hash = "sha256:09e11723c6588d8c13562d5eb04d42b13b91eb32f53cef77cc8c0ee121b2f907"},
+    {file = "fastmcp-2.4.0-py3-none-any.whl", hash = "sha256:fccd0768028a31eec488707fb6bbe4f8659f84ca0c206c4c32dd33947c0faae9"},
+    {file = "fastmcp-2.4.0.tar.gz", hash = "sha256:a08d812939d16c0d4490bdbdaf17ab136f1bdaa8ddcc14a37e33335727343c05"},
 ]
 
 [package.dependencies]
@@ -1466,7 +1466,7 @@ test = ["ipykernel", "pre-commit", "pytest (<8)", "pytest-cov", "pytest-timeout"
 
 [[package]]
 name = "just-agents-coding"
-version = "0.7.3-post.7+4f65f2c"
+version = "0.7.3-post.8+172c30e"
 description = "Just Agents - Coding Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1485,7 +1485,7 @@ url = "coding"
 
 [[package]]
 name = "just-agents-core"
-version = "0.7.3-post.7+4f65f2c"
+version = "0.7.3-post.8+172c30e"
 description = "Just Agents - Base Package"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1507,7 +1507,7 @@ url = "core"
 
 [[package]]
 name = "just-agents-examples"
-version = "0.7.3-post.7+4f65f2c"
+version = "0.7.3-post.8+172c30e"
 description = "Just Agents - Examples code"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1528,7 +1528,7 @@ url = "examples"
 
 [[package]]
 name = "just-agents-router"
-version = "0.7.3-post.7+4f65f2c"
+version = "0.7.3-post.8+172c30e"
 description = "Just Agents - Router Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1545,7 +1545,7 @@ url = "router"
 
 [[package]]
 name = "just-agents-tools"
-version = "0.7.3-post.7+4f65f2c"
+version = "0.7.3-post.8+172c30e"
 description = "Just Agents - Tools Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1562,7 +1562,7 @@ url = "tools"
 
 [[package]]
 name = "just-agents-web"
-version = "0.7.3-post.7+4f65f2c"
+version = "0.7.3-post.8+172c30e"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1643,14 +1643,14 @@ utils = ["numpydoc"]
 
 [[package]]
 name = "llm-sandbox"
-version = "0.2.4"
+version = "0.2.5"
 description = "Lightweight and portable LLM sandbox runtime (code interpreter) Python library"
 optional = false
 python-versions = "<4.0,>=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "llm_sandbox-0.2.4-py3-none-any.whl", hash = "sha256:94b85fb9abee79e31251a3c37566839bad27c05d55e8f08bd4a84dcf0b6e8a45"},
-    {file = "llm_sandbox-0.2.4.tar.gz", hash = "sha256:6bbefecc377b66aef00eb6ce2300f92124f897bddc57b9e8ab7caf7f8ab010a6"},
+    {file = "llm_sandbox-0.2.5-py3-none-any.whl", hash = "sha256:88367690533e26d568df43abc9b7ad2ec3ce0d3bde5194532a2abfaa41a4db74"},
+    {file = "llm_sandbox-0.2.5.tar.gz", hash = "sha256:17b2e30e9a7453a17c0143dbc6253811df73780a16605dec5077ed13116ab31b"},
 ]
 
 [package.dependencies]
@@ -1774,14 +1774,14 @@ traitlets = "*"
 
 [[package]]
 name = "mcp"
-version = "1.9.0"
+version = "1.9.1"
 description = "Model Context Protocol SDK"
 optional = false
 python-versions = ">=3.10"
 groups = ["main", "dev"]
 files = [
-    {file = "mcp-1.9.0-py3-none-any.whl", hash = "sha256:9dfb89c8c56f742da10a5910a1f64b0d2ac2c3ed2bd572ddb1cfab7f35957178"},
-    {file = "mcp-1.9.0.tar.gz", hash = "sha256:905d8d208baf7e3e71d70c82803b89112e321581bcd2530f9de0fe4103d28749"},
+    {file = "mcp-1.9.1-py3-none-any.whl", hash = "sha256:2900ded8ffafc3c8a7bfcfe8bc5204037e988e753ec398f371663e6a06ecd9a9"},
+    {file = "mcp-1.9.1.tar.gz", hash = "sha256:19879cd6dde3d763297617242888c2f695a95dfa854386a6a68676a646ce75e4"},
 ]
 
 [package.dependencies]
@@ -3732,14 +3732,14 @@ files = [
 
 [[package]]
 name = "typing-inspection"
-version = "0.4.0"
+version = "0.4.1"
 description = "Runtime typing introspection tools"
 optional = false
 python-versions = ">=3.9"
 groups = ["main", "dev"]
 files = [
-    {file = "typing_inspection-0.4.0-py3-none-any.whl", hash = "sha256:50e72559fcd2a6367a19f7a7e610e6afcb9fac940c650290eed893d61386832f"},
-    {file = "typing_inspection-0.4.0.tar.gz", hash = "sha256:9765c87de36671694a67904bf2c96e395be9c6439bb6c87b5142569dcdd65122"},
+    {file = "typing_inspection-0.4.1-py3-none-any.whl", hash = "sha256:389055682238f53b04f7badcb49b989835495a96700ced5dab2d8feae4b26f51"},
+    {file = "typing_inspection-0.4.1.tar.gz", hash = "sha256:6ae134cc0203c33377d43188d4064e9b357dba58cff3185f22924610e70a9d28"},
 ]
 
 [package.dependencies]

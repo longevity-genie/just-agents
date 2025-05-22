@@ -5,6 +5,7 @@ import ast
 import json
 import inspect
 from docstring_parser import parse
+from enum import Enum
 
 T = TypeVar('T', bound=BaseModel)
 ConfigDictExtra = Literal["ignore", "allow", "forbid"]
@@ -1023,3 +1024,74 @@ class ModelHelper:
             "parameters": final_parameters,
         }
         return result_schema, model
+
+    @staticmethod
+    def json_schema_to_base_model(schema: Dict[str, Any], model_name: Optional[str] = None) -> Type[BaseModel]:
+        """
+        Converts a JSON schema dictionary to a Pydantic BaseModel class.
+        
+        Args:
+            schema: A JSON schema dictionary
+            model_name: Optional name for the generated model class. If not provided,
+                        uses schema title or defaults to "DynamicModel"
+            
+        Returns:
+            A dynamically created Pydantic BaseModel class
+        """
+        type_mapping: Dict[str, type] = {
+            "string": str,
+            "integer": int,
+            "number": float,
+            "boolean": bool,
+            "array": list,
+            "object": dict,
+        }
+
+        properties = schema.get("properties", {})
+        required_fields = schema.get("required", [])
+        model_fields = {}
+
+        def process_field(field_name: str, field_props: Dict[str, Any]) -> tuple:
+            """Recursively processes a field and returns its type and Field instance."""
+            json_type = field_props.get("type", "string")
+            enum_values = field_props.get("enum")
+
+            # Handle Enums
+            if enum_values:
+                enum_name: str = f"{field_name.capitalize()}Enum"
+                field_type = Enum(enum_name, {v: v for v in enum_values})
+            # Handle Nested Objects
+            elif json_type == "object" and "properties" in field_props:
+                field_type = ModelHelper.json_schema_to_base_model(
+                    field_props
+                )  # Recursively create submodel
+            # Handle Arrays with Nested Objects
+            elif json_type == "array" and "items" in field_props:
+                item_props = field_props["items"]
+                if item_props.get("type") == "object":
+                    item_type = ModelHelper.json_schema_to_base_model(item_props)
+                else:
+                    item_type = type_mapping.get(item_props.get("type"), Any)
+                field_type = List[item_type]  # Use List from typing for consistent typing style
+            else:
+                field_type = type_mapping.get(json_type, Any)
+
+            # Handle default values and optionality
+            default_value = field_props.get("default", ...)
+            nullable = field_props.get("nullable", False)
+            # Prioritize 'description' field, fallback to 'title' if not present
+            description = field_props.get("description", field_props.get("title", ""))
+
+            if nullable:
+                field_type = Optional[field_type]
+
+            if field_name not in required_fields:
+                default_value = field_props.get("default", None)
+
+            return field_type, Field(default_value, description=description)
+
+        # Process each field
+        for field_name, field_props in properties.items():
+            model_fields[field_name] = process_field(field_name, field_props)
+
+        return create_model(model_name or schema.get("title", "DynamicModel"), **model_fields)
