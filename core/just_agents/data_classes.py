@@ -1,6 +1,6 @@
 from enum import Enum
 from typing import List, Union, Optional, Dict, Any
-from pydantic import HttpUrl, Field, BaseModel, ConfigDict, AliasPath, field_validator, field_serializer
+from pydantic import HttpUrl, Field, BaseModel, ConfigDict, AliasPath, TypeAdapter, field_validator, field_serializer
 from pydantic_core import from_json
 
 from openai.types.shared_params.function_definition import FunctionDefinition

@@ -4,7 +4,7 @@ from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict, Un
 
 from just_agents.just_serialization import JustSerializable
 from just_agents.data_classes import ModelPromptExample
-from just_agents.just_tool import JustTool, JustTools, SubscriberCallback, JustPromptTool, JustPromptTools, JustToolBase, JustToolFactory
+from just_agents.just_tool import JustTool, JustTools, SubscriberCallback, JustPromptTool, JustPromptTools, JustToolBase, JustToolFactory, JustMCPToolSetConfig
 
 
 class JustAgentProfileToolsetMixin(BaseModel):
@@ -40,6 +40,23 @@ class JustAgentProfileToolsetMixin(BaseModel):
         else:
             self.tools[tool.name] = tool
 
+    def add_mcp_tools(self, config: 'JustMCPToolSetConfig') -> None:
+        """
+        Adds multiple MCP tools to the agent's tools dictionary based on the provided configuration.
+        
+        Args:
+            config (JustMCPToolSetConfig): Configuration containing MCP endpoint/command and include/exclude lists
+        """
+        mcp_tools = JustToolFactory.create_tools_from_mcp(config)
+        
+        if not mcp_tools:
+            return
+            
+        if self.tools is None:
+            self.tools = mcp_tools
+        else:
+            self.tools.update(mcp_tools)
+
     def add_prompt_tool(self, fun: callable, call_arguments: Dict[str, Any]) -> None:
         """
         Adds a tool to the agent's prompt_tools dictionary with input parameters.
@@ -70,10 +87,10 @@ class JustAgentProfileToolsetMixin(BaseModel):
             return
         
         if isinstance(self.tools, dict):
-            if all(isinstance(tool, JustTool) for tool in self.tools.values()):
+            if all(isinstance(tool, JustToolBase) for tool in self.tools.values()):
                 return
         elif not isinstance(self.tools, Sequence):
-            raise TypeError("The 'tools' field must be a sequence of callables or JustTool instances.")
+            raise TypeError("The 'tools' field must be a sequence of callables, JustTool instances, or JustMCPToolSetConfig instances.")
         self.tools = JustToolFactory.create_tools_dict(self.tools, type_hint=JustTool)
 
     def _process_prompt_tools_field(self) -> None:
