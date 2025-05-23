@@ -1,7 +1,7 @@
 import inspect
 import sys
-import abc
 
+from abc import ABC, abstractmethod
 from typing import Callable, Optional, List, Dict, Any, Sequence, Union, TypeVar, Type, Tuple, get_origin
 from pydantic import ConfigDict, BaseModel, Field, PrivateAttr
 from importlib import import_module
@@ -11,7 +11,7 @@ from just_agents.just_async import run_async_function_synchronously
 from just_agents.just_schema import ModelHelper
 from just_agents.just_bus import JustToolsBus, SubscriberCallback
 
-from just_agents.mcp_client import MCPClient, MCPServerParameters, get_mcp_client_by_inputs
+from just_agents.mcp_client import MCPClient, MCPServerParameters
 
 # Create a TypeVar for the class
 if sys.version_info >= (3, 11):
@@ -19,7 +19,7 @@ if sys.version_info >= (3, 11):
 else:
     Self = TypeVar('Self', bound='JustToolBase')
 
-class JustToolBase(ToolDefinition, abc.ABC): #TODO interface
+class JustToolBase(ToolDefinition, ABC): #TODO interface
     """
     Abstract base class for all Just tools. Defines common interface and functionality.
     """
@@ -171,7 +171,7 @@ class JustToolBase(ToolDefinition, abc.ABC): #TODO interface
         schema, _ = ModelHelper.create_tool_schema_from_callable(input_function)
         return schema
 
-    @abc.abstractmethod
+    @abstractmethod
     def _get_raw_function_info(self) -> Tuple[Callable, Dict[str, Any], Optional[Type[BaseModel]]]:
         """
         Abstract method to resolve the raw callable, its schema, and Pydantic model.
@@ -471,17 +471,19 @@ class JustImportedTool(JustToolBase):
         instance._callable = instance._wrap_function(input_function, instance.name)
         return instance
 
+
 class JustMCPToolSetConfig(MCPServerParameters):
     """
     A configuration for a set of MCP tools.
     """
     only_include_tools: Sequence[str] = Field(
-        default_factory=(), 
+        default=(),
         description="The names of the MCP tools to include, if empty includes every tool provided by server listing, otherwise only includes the tools in this list"
         )
-    exclude_tools: Sequence[str] = Field(default_factory=(), description="The names of the MCP tools to exclude, or empty for none")
+    exclude_tools: Sequence[str] = Field(default=(), description="The names of the MCP tools to exclude, or empty for none")
     raise_on_incorrect_names: bool = Field(True, description="If true, raise an error if any tool name in include/exclude is not found in the server listing")
-class JustMCPTool(JustToolBase, MCPServerParameters):
+
+class JustMCPTool(MCPServerParameters, JustToolBase):
     """
     Tool implementation for MCP (Model Context Protocol) tools.
     Allows integration of remote or stdio-based MCP tools into the Just Agents framework.
@@ -491,7 +493,7 @@ class JustMCPTool(JustToolBase, MCPServerParameters):
     def _ensure_mcp_client_instantiated(self) -> None:
         """Ensures self._mcp_client is instantiated if it's None."""
         if self._mcp_client is None:
-            self._mcp_client = get_mcp_client_by_inputs(self)
+            self._mcp_client = MCPClient.get_client_by_inputs(self)
 
     def refresh(self) -> 'JustMCPTool': 
         """
@@ -528,7 +530,7 @@ class JustMCPTool(JustToolBase, MCPServerParameters):
         parameters_schema = tool_mcp_schema.get("parameters", {})
         pydantic_model: Optional[Type[BaseModel]] = None
         if parameters_schema and parameters_schema.get("properties"):
-            pydantic_model = ModelHelper.create_model_from_schema(self.name, parameters_schema)
+            pydantic_model = ModelHelper.json_schema_to_base_model(parameters_schema, self.name)
 
         # The tool_mcp_schema is what _fetch_tool_info returns, which is used here.
         # It contains {"description": ..., "parameters": {"type": "object", "properties": ..., "required": ...}}
@@ -567,7 +569,47 @@ class JustMCPTool(JustToolBase, MCPServerParameters):
         result = await self._mcp_client.invoke_tool(self.name, kwargs) 
         if result.error_code != 0:
             raise ValueError(f"MCP tool error: {result.content}, error code: {result.error_code}")
-        return result.content
+        
+        # Parse the structured JSON response to extract the actual content
+        # MCP returns content in the format: {"type":"text","text":"actual_value"}
+        try:
+            import json
+            content_lines = result.content.split('\n')
+            if len(content_lines) == 1:
+                # Single content item
+                parsed_content = json.loads(content_lines[0])
+                if isinstance(parsed_content, dict) and "text" in parsed_content:
+                    # If the text field contains JSON, try to parse it
+                    text_content = parsed_content["text"]
+                    try:
+                        # Try to parse as JSON in case it's a serialized dict/object
+                        return json.loads(text_content)
+                    except (json.JSONDecodeError, TypeError):
+                        # If it's not JSON, return as is
+                        return text_content
+                else:
+                    # Return the parsed content directly (for complex objects)
+                    return parsed_content
+            else:
+                # Multiple content items - extract text from each
+                extracted_texts = []
+                for line in content_lines:
+                    if line.strip():  # Skip empty lines
+                        parsed_line = json.loads(line)
+                        if isinstance(parsed_line, dict) and "text" in parsed_line:
+                            text_content = parsed_line["text"]
+                            try:
+                                # Try to parse as JSON
+                                extracted_texts.append(json.loads(text_content))
+                            except (json.JSONDecodeError, TypeError):
+                                extracted_texts.append(text_content)
+                        else:
+                            extracted_texts.append(parsed_line)
+                # If we have only one item, return it directly, otherwise return list
+                return extracted_texts[0] if len(extracted_texts) == 1 else extracted_texts
+        except (json.JSONDecodeError, KeyError, TypeError):
+            # If parsing fails, return the raw content
+            return result.content
     
     @classmethod
     def from_mcp_endpoint(cls, name: str, endpoint: str, **kwargs) -> 'JustMCPTool':
@@ -889,7 +931,8 @@ class JustToolFactory:
             raise ValueError("Either sse_endpoint or stdio_command must be provided")
         
         # Get the MCP client
-        client = get_mcp_client_by_inputs(sse_endpoint=sse_endpoint, stdio_command=stdio_command)
+        server_params = MCPServerParameters(mcp_sse_endpoint=sse_endpoint, mcp_stdio_command=stdio_command)
+        client = MCPClient.get_client_by_inputs(server_params)
         
         # Create and run the coroutine to list tools
         async def get_tools():
@@ -925,7 +968,8 @@ class JustToolFactory:
             raise ValueError("Either sse_endpoint or stdio_command must be provided")
         
         # Get the MCP client
-        client = get_mcp_client_by_inputs(sse_endpoint=sse_endpoint, stdio_command=stdio_command)
+        server_params = MCPServerParameters(mcp_sse_endpoint=sse_endpoint, mcp_stdio_command=stdio_command)
+        client = MCPClient.get_client_by_inputs(server_params)
         
         # Create and run the coroutine to get the tool
         async def get_tool():

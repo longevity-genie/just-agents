@@ -11,6 +11,7 @@ The JustLocator is a type-safe, generalized version of the agent locator pattern
 - **Automatic fallback**: Uses class name if the specified attribute doesn't exist
 - **Weak reference management**: Automatic cleanup when entities are garbage collected
 - **Multiple lookup methods**: By codename, config identifier, class, or custom predicates
+- **Thread safety**: Full concurrency support for multi-threaded and async environments
 
 ## Core Classes
 
@@ -28,6 +29,7 @@ The main locator class that manages entities of type `T`:
 - Configurable `entity_config_identifier_attr` (defaults to "name")
 - Weak reference management for automatic cleanup
 - Comprehensive lookup and search methods
+- **Thread-safe**: All operations protected by `threading.RLock`
 
 ### `JustSingletonLocator[T]`
 
@@ -40,6 +42,71 @@ A concrete implementation that extends `JustLocator[IAgent]` for agent managemen
 - Uses "shortname" as the entity_config_identifier_attr
 - Provides agent-specific methods like `publish_agent()`, `get_agents_by_shortname()`, etc.
 - Uses the same `EntityIdentifier[IAgent]` for type consistency
+
+## Thread Safety 🔒
+
+### Overview
+
+The `JustLocator` class is **thread-safe** and can safely handle concurrent operations from multiple threads and async contexts.
+
+### Critical Sections Protected
+
+All operations are protected by a `threading.RLock` (reentrant lock):
+
+- **Entity Publishing** - `publish_entity()` atomically checks for existing entities and adds new ones
+- **Entity Cleanup** - `_cleanup_entity_codename()` removes entities from all dictionaries atomically
+- **Entity Lookups** - All get methods are thread-safe with automatic cleanup
+- **Entity Removal** - Unpublish operations are atomic
+- **Codename Generation** - Collision detection works under high concurrency
+
+### Why RLock?
+
+We use `threading.RLock` (reentrant lock) because:
+1. **Method Composition**: Many public methods call other protected methods
+2. **Automatic Cleanup**: Weak reference callbacks need to acquire the same lock
+3. **Flexibility**: Allows the same thread to acquire the lock multiple times
+
+### Thread Safety Examples
+
+#### Basic Threading
+```python
+import threading
+from just_agents.just_locator import JustLocator
+
+locator = JustLocator[MyEntity]()
+
+def worker_thread(thread_id):
+    entity = MyEntity(name=f"entity_{thread_id}")
+    codename = locator.publish_entity(entity)
+    found_entity = locator.get_entity_by_codename(codename)
+    success = locator.unpublish_entity(entity)
+
+# Start multiple threads safely
+threads = [threading.Thread(target=worker_thread, args=(i,)) for i in range(10)]
+for thread in threads:
+    thread.start()
+for thread in threads:
+    thread.join()
+```
+
+#### Async Compatibility
+```python
+import asyncio
+
+async def async_worker(worker_id):
+    entity = MyEntity(name=f"async_entity_{worker_id}")
+    codename = locator.publish_entity(entity)  # Thread-safe from async
+    return codename
+
+# Run multiple async workers concurrently
+results = await asyncio.gather(*[async_worker(i) for i in range(5)])
+```
+
+### Performance Considerations
+
+- **Coarse-grained locking**: One lock per locator (simpler and safer)
+- **Minimal overhead**: Lock acquisition only when needed
+- **Memory safety**: Weak references + threading handled correctly
 
 ## Key Features
 
@@ -188,9 +255,36 @@ just-agents/
 │   └── just_locator.py                                    # Main implementation
 ├── just_agents/examples/just_agents/examples/
 │   └── just_locator_example.py                           # Usage examples
-└── tests/
-    └── test_just_locator.py                              # Unit tests
+├── tests/
+│   └── test_just_locator.py                              # Unit tests (includes thread safety)
+└── docs/
+    └── JUST_LOCATOR_README.md                            # This document
 ```
+
+## Testing
+
+### All Tests
+```bash
+python -m pytest tests/test_just_locator.py -v
+```
+
+### Specific Test Categories
+```bash
+# Basic functionality tests
+python -m pytest tests/test_just_locator.py::TestJustLocator -v
+
+# Thread safety tests
+python -m pytest tests/test_just_locator.py::TestThreadSafety -v
+
+# Entity identifier tests
+python -m pytest tests/test_just_locator.py::TestEntityIdentifier -v
+```
+
+The thread safety tests perform:
+- Concurrent operations across multiple threads
+- Async compatibility verification  
+- Race condition detection
+- Memory safety validation
 
 ## Benefits Over Original Implementation
 
@@ -201,6 +295,7 @@ just-agents/
 5. **Consistency**: Same API patterns but with more generic naming
 6. **Backward Compatibility**: Original agent locator API is preserved
 7. **Extensibility**: Easy to subclass and extend for specific use cases
+8. **Thread Safety**: Full concurrency support for modern applications
 
 ## Migration Guide
 
@@ -214,4 +309,13 @@ The JustLocator maintains API compatibility while extending functionality:
 | `AgentIdentifier` | `EntityIdentifier[T]` | `EntityIdentifier[IAgent]` |
 | `shortname` | `entity_config_identifier` | `entity_config_identifier` |
 | `codename` | `entity_codename` | `entity_codename` |
-| `agent_class` | `entity_class` | `entity_class` | 
+| `agent_class` | `entity_class` | `entity_class` |
+
+### Thread Safety Migration
+
+If you're upgrading from a non-thread-safe version:
+
+1. **No API Changes**: All existing code continues to work
+2. **Performance**: Slight overhead due to locking (usually negligible)  
+3. **Behavior**: More deterministic behavior under concurrency
+4. **Memory**: Same memory usage patterns 

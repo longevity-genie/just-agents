@@ -20,7 +20,7 @@ import os
 # Add the parent directory to the path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.just_agents.base_agent import BaseAgent
+from just_agents.base_agent import BaseAgent
 
 
 # Define a sample output schema model

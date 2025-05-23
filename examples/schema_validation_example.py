@@ -18,7 +18,7 @@ from datetime import date
 # Add the parent directory to the path
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
-from core.just_agents.base_agent import BaseAgent
+from just_agents.base_agent import BaseAgent
 
 
 # Define an enum for product categories
@@ -257,7 +257,7 @@ def show_schema_usage_patterns():
         "preferences": "Dict[str, Any]"
     }
     
-    from core.just_agents.just_schema import ModelHelper
+    from just_agents.just_schema import ModelHelper
     CustomParser = ModelHelper.create_model_from_flat_yaml(
         "CustomParser",
         schema_dict,

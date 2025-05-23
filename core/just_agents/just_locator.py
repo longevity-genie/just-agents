@@ -1,5 +1,6 @@
 from typing import Optional, List, Dict, Type, TypeVar, Callable, Set, Generic
 import uuid
+import threading
 from weakref import ReferenceType, WeakSet, ref
 from pydantic import BaseModel, Field
 from just_agents.just_bus import SingletonMeta
@@ -80,6 +81,9 @@ class JustLocator(Generic[T]):
         if entity_config_identifier_attr is not None:
             self.entity_config_identifier_attr = entity_config_identifier_attr
             
+        # Thread safety lock - use RLock to allow re-entrant calls
+        self._lock = threading.RLock()
+            
         # The only dictionary that uses weak references (central point for GC)
         self._entity_codename_to_instance: Dict[str, ReferenceType[T]] = {}
         
@@ -120,24 +124,25 @@ class JustLocator(Generic[T]):
         Args:
             entity_codename: The unique codename of the entity to clean up
         """
-        # Remove from codename->instance mapping first, instance is gone
-        if entity_codename in self._entity_codename_to_instance:
-            del self._entity_codename_to_instance[entity_codename]
-        
-        # Get the identifier to find class
-        if entity_codename in self._entity_codename_to_identifiers:
-            identifier = self._entity_codename_to_identifiers[entity_codename]
-            entity_class = identifier.entity_class
+        with self._lock:
+            # Remove from codename->instance mapping first, instance is gone
+            if entity_codename in self._entity_codename_to_instance:
+                del self._entity_codename_to_instance[entity_codename]
             
-            # Clean up from class mapping
-            if entity_class in self._entity_codenames_by_class:  
-                self._entity_codenames_by_class[entity_class].discard(entity_codename)
-                if not self._entity_codenames_by_class[entity_class]:
-                    del self._entity_codenames_by_class[entity_class]
-        
-        # Safely remove from identifier mapping
-        if entity_codename in self._entity_codename_to_identifiers:
-            del self._entity_codename_to_identifiers[entity_codename]
+            # Get the identifier to find class
+            if entity_codename in self._entity_codename_to_identifiers:
+                identifier = self._entity_codename_to_identifiers[entity_codename]
+                entity_class = identifier.entity_class
+                
+                # Clean up from class mapping
+                if entity_class in self._entity_codenames_by_class:  
+                    self._entity_codenames_by_class[entity_class].discard(entity_codename)
+                    if not self._entity_codenames_by_class[entity_class]:
+                        del self._entity_codenames_by_class[entity_class]
+            
+            # Safely remove from identifier mapping
+            if entity_codename in self._entity_codename_to_identifiers:
+                del self._entity_codename_to_identifiers[entity_codename]
     
     def publish_entity(self, entity: T) -> str:
         """
@@ -149,34 +154,35 @@ class JustLocator(Generic[T]):
         Returns:
             str: The unique codename assigned to the entity
         """
-        # Check if entity is already registered by searching for it
-        for entity_codename, ref_entity in self._entity_codename_to_instance.items():
-            if ref_entity() is entity:
-                return entity_codename
-        
-        # Generate a unique codename for this entity instance
-        entity_codename = self._generate_entity_codename()
-        entity_class = type(entity)
-        
-        # Create and store the entity's identifiers
-        identifier = EntityIdentifier[T](
-            entity_class=entity_class,
-            entity_codename=entity_codename
-        )
-        # Set the locator reference so the identifier can access the entity
-        identifier.set_locator_reference(self, self.entity_config_identifier_attr)
-        
-        # Update main registries with weak references
-        self._entity_codename_to_instance[entity_codename] = ref(entity, self._create_cleanup_callback(entity_codename))
-        self._entity_codename_to_identifiers[entity_codename] = identifier
-        
-        # Update class lookup structure
-        if entity_class not in self._entity_codenames_by_class:
-            self._entity_codenames_by_class[entity_class] = set()
-        
-        self._entity_codenames_by_class[entity_class].add(entity_codename)
-        
-        return entity_codename
+        with self._lock:
+            # Check if entity is already registered by searching for it
+            for entity_codename, ref_entity in self._entity_codename_to_instance.items():
+                if ref_entity() is entity:
+                    return entity_codename
+            
+            # Generate a unique codename for this entity instance
+            entity_codename = self._generate_entity_codename()
+            entity_class = type(entity)
+            
+            # Create and store the entity's identifiers
+            identifier = EntityIdentifier[T](
+                entity_class=entity_class,
+                entity_codename=entity_codename
+            )
+            # Set the locator reference so the identifier can access the entity
+            identifier.set_locator_reference(self, self.entity_config_identifier_attr)
+            
+            # Update main registries with weak references
+            self._entity_codename_to_instance[entity_codename] = ref(entity, self._create_cleanup_callback(entity_codename))
+            self._entity_codename_to_identifiers[entity_codename] = identifier
+            
+            # Update class lookup structure
+            if entity_class not in self._entity_codenames_by_class:
+                self._entity_codenames_by_class[entity_class] = set()
+            
+            self._entity_codenames_by_class[entity_class].add(entity_codename)
+            
+            return entity_codename
     
     def get_entity_codename(self, entity: T) -> Optional[str]:
         """
@@ -188,13 +194,14 @@ class JustLocator(Generic[T]):
         Returns:
             Optional[str]: The entity's codename, or None if the entity is not registered
         """
-        # Defensive copy of items
-        items = list(self._entity_codename_to_instance.items())
-        
-        for entity_codename, ref_entity in items:
-            if ref_entity() is entity:
-                return entity_codename
-        return None
+        with self._lock:
+            # Defensive copy of items
+            items = list(self._entity_codename_to_instance.items())
+            
+            for entity_codename, ref_entity in items:
+                if ref_entity() is entity:
+                    return entity_codename
+            return None
     
     def get_identifier_by_instance(self, entity: T) -> Optional[EntityIdentifier[T]]:
         """
@@ -221,22 +228,23 @@ class JustLocator(Generic[T]):
         Returns:
             List[str]: A list of matching entity codenames
         """
-        # Defensive copy of the keys
-        class_keys = list(self._entity_codenames_by_class.keys())
-        
-        if bounding_class is None:
-            bound_classes: List[Type[T]] = class_keys
-        else:   
-            bound_classes: List[Type[T]] = [
-                bound_type for bound_type in class_keys if issubclass(bound_type, bounding_class)
-            ]
+        with self._lock:
+            # Defensive copy of the keys
+            class_keys = list(self._entity_codenames_by_class.keys())
+            
+            if bounding_class is None:
+                bound_classes: List[Type[T]] = class_keys
+            else:   
+                bound_classes: List[Type[T]] = [
+                    bound_type for bound_type in class_keys if issubclass(bound_type, bounding_class)
+                ]
 
-        entity_codenames = set()
-        for bound_class in bound_classes:
-            # Defensive copy of the values
-            if bound_class in self._entity_codenames_by_class:  # Extra check in case it was removed
-                entity_codenames.update(set(self._entity_codenames_by_class[bound_class]))
-        return list(entity_codenames)
+            entity_codenames = set()
+            for bound_class in bound_classes:
+                # Defensive copy of the values
+                if bound_class in self._entity_codenames_by_class:  # Extra check in case it was removed
+                    entity_codenames.update(set(self._entity_codenames_by_class[bound_class]))
+            return list(entity_codenames)
 
     def get_entity_codenames_by_config_identifier(self, entity_config_identifier: str, bounding_class: Optional[Type[T]] = None) -> List[str]:
         """
@@ -272,14 +280,15 @@ class JustLocator(Generic[T]):
         Returns:
             Optional[T]: The entity instance, or None if no entity with that codename exists
         """
-        ref = self._entity_codename_to_instance.get(entity_codename)
-        if ref is not None:
-            entity = ref()  # Dereference the weakref
-            if entity is not None:
-                return entity
-            # If the weak reference is dead, clean up
-            self._cleanup_entity_codename(entity_codename)
-        return None
+        with self._lock:
+            ref = self._entity_codename_to_instance.get(entity_codename)
+            if ref is not None:
+                entity = ref()  # Dereference the weakref
+                if entity is not None:
+                    return entity
+                # If the weak reference is dead, clean up
+                self._cleanup_entity_codename(entity_codename)
+            return None
 
     def get_entities_by_config_identifier(self, entity_config_identifier: str, bounding_class: Optional[Type[T]] = None) -> List[T]:
         """
@@ -296,6 +305,26 @@ class JustLocator(Generic[T]):
         entities = [self.get_entity_by_codename(entity_codename) for entity_codename in entity_codenames]
         if None in entities:
             raise ValueError(f"Inconsistent locator state")
+        
+        return entities
+    
+    def get_all_entities(self, bounding_class: Optional[Type[T]] = None) -> List[T]:
+        """
+        Get all entities in the locator, optionally filtered by class.
+
+        Args:
+            bounding_class: If provided, only include entities of this class or its subclasses
+            
+        Returns:
+            List[T]: A list of all entity instances
+        """
+        entity_codenames = self.get_entity_codenames_by_class(bounding_class)
+        entities = []
+        
+        for entity_codename in entity_codenames:
+            entity = self.get_entity_by_codename(entity_codename)
+            if entity is not None:  # Filter out garbage collected entities
+                entities.append(entity)
         
         return entities
     
@@ -337,10 +366,11 @@ class JustLocator(Generic[T]):
         Returns:
             bool: True if the entity was successfully unregistered, False if not found
         """
-        if entity_codename in self._entity_codename_to_instance:
-            self._cleanup_entity_codename(entity_codename)
-            return True
-        return False
+        with self._lock:
+            if entity_codename in self._entity_codename_to_instance:
+                self._cleanup_entity_codename(entity_codename)
+                return True
+            return False
 
     def unpublish_entity(self, entity: T) -> bool:
         """
@@ -368,6 +398,9 @@ class JustLocator(Generic[T]):
         Returns:
             int: Number of entities unpublished
         """
+        # Note: This method doesn't need additional locking as it calls other
+        # methods that are already protected by the RLock (which allows re-entrant calls)
+        
         # Get a defensive copy of codenames
         entity_codenames = list(self.get_entity_codenames_by_config_identifier(entity_config_identifier))
         if len(entity_codenames) == 0:

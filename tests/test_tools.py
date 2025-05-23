@@ -9,11 +9,11 @@ from just_agents.llm_options import OPENAI_GPT4_1NANO
 current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(current_dir, '..'))
 
-from core.just_agents.just_tool import JustTool
+from just_agents.just_tool import JustTool
 import tests.tools.tool_test_module as tool_test_module
-from core.just_agents.base_agent import BaseAgentWithLogging
-from core.just_agents.llm_options import LLMOptions, OPENAI_GPT4_1MINI
-from core.just_agents.just_tool import JustToolsBus
+from just_agents.base_agent import BaseAgentWithLogging
+from just_agents.llm_options import LLMOptions, OPENAI_GPT4_1MINI
+from just_agents.just_tool import JustToolsBus
 
 
 @pytest.fixture(scope="module", autouse=True)

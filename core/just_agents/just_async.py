@@ -7,20 +7,25 @@ from typing import Callable, AsyncGenerator, Any, Generator, Coroutine, TypeVar,
 T = TypeVar('T')
 
 
-def _run_coroutine_in_new_loop(coro: Coroutine[Any, Any, T]) -> T:
+def _run_coroutine_in_new_loop(coro: Coroutine[Any, Any, T], keep_loop_alive: bool = False) -> T:
     """
     Internal helper: Creates a new event loop, sets it for the current thread,
-    runs the given coroutine in it, closes the loop, and returns the result.
+    runs the given coroutine in it, optionally keeps the loop alive, and returns the result.
     Exceptions from the coroutine are propagated.
     This function is designed to be the core logic within a function that is
     itself the target of a new thread.
+    
+    Args:
+        coro: The coroutine to run
+        keep_loop_alive: If True, don't close the loop (useful for daemon threads with reusable clients)
     """
     loop = asyncio.new_event_loop()
     asyncio.set_event_loop(loop)
     try:
         return loop.run_until_complete(coro)
     finally:
-        loop.close()
+        if not keep_loop_alive:
+            loop.close()
 
 
 def async_gen_to_sync(async_gen_factory: Callable[..., AsyncGenerator[Any, None]], *args: Any,
@@ -118,6 +123,7 @@ def run_async_function_synchronously(
     timeout : Optional[float]
         Maximum time in seconds to wait for the function to complete.
         None means wait indefinitely. A TimeoutError is raised if the timeout is exceeded.
+
     **kwargs : Any
         Keyword arguments passed to the `async_func`.
 
