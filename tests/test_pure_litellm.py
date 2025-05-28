@@ -39,7 +39,7 @@ def load_env():
 def triple_func_call(opts: dict): #fixed - https://github.com/BerriAI/litellm/issues/7621
     messages = [
         {"role": "system", "content": "You are a helpful AI assistant"},
-        {"role": "user", "content": "What's the weather like in San Francisco, Tokyo, and Paris?"}
+        {"role": "user", "content": "What's the weather like in San Francisco, Tokyo, and Paris? Make three tool calls simultaneously"}
     ]
     tools = [{"type": "function",
               "function": JustTool.function_to_llm_dict(get_current_weather)}]
@@ -92,9 +92,9 @@ def test_response_format_gemini_problem(load_env): #https://github.com/BerriAI/l
     # Check that the response follows the expected structure
 
 #@pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7621")
-#@pytest.mark.skip(reason="until regression fixed in https://github.com/BerriAI/litellm/issues/10034")
+@pytest.mark.skip(reason="until regression fixed in https://github.com/BerriAI/litellm/issues/10034")
 def test_grok_bug_regression(load_env):
     OPENAI_GPT4_1NANO, LLAMA3_3,_ = load_env
-    #triple_func_call(OPENAI_GPT4_1NANO)
-    triple_func_call(LLAMA3_3) #fixed - https://github.com/BerriAI/litellm/issues/7621
+    triple_func_call(OPENAI_GPT4_1NANO)
+    #triple_func_call(LLAMA3_3) #fixed - https://github.com/BerriAI/litellm/issues/7621
 

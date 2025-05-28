@@ -411,12 +411,16 @@ class JustImportedTool(JustToolBase):
                         raise ImportError(f"Could not resolve inner class segment '{failed_part}' in '{resolved_class_path_upto}' while trying to find '{self.static_class}' in module '{self.package}'. Error: {e}") from e
                 
                 class_obj = current_object
-                target_method = getattr(class_obj, self.name)
-                if not callable(target_method):
-                    raise AttributeError(f"Attribute '{self.name}' on class '{self.static_class}' from module '{self.package}' is not callable.")
-                raw_callable = target_method
-            except AttributeError as e:
-                 raise ImportError(f"Unexpected error resolving static method '{self.name}' for class '{self.static_class}' in module '{self.package}'. Error: {e}") from e
+                try:
+                    target_method = getattr(class_obj, self.name)
+                    if not callable(target_method):
+                        raise AttributeError(f"Attribute '{self.name}' on class '{self.static_class}' from module '{self.package}' is not callable.")
+                    raw_callable = target_method
+                except AttributeError as e:
+                    raise ImportError(f"Could not resolve method '{self.name}' on class '{self.static_class}' in module '{self.package}'. Error: {e}") from e
+            except ImportError:
+                # Re-raise ImportError as-is
+                raise
         else:
             try:
                 target_function = getattr(module, self.name)
