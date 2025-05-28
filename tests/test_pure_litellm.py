@@ -2,9 +2,11 @@ import json
 import litellm
 import pytest
 from just_agents.just_tool import JustTool
+from just_agents.protocols.litellm_protocol import LiteLLMAdapter
 from dotenv import load_dotenv
 from typing import Optional, List
 from pydantic import BaseModel, Field
+
 def get_current_weather(location: str):
     """
     Gets the current weather in a given location
@@ -29,26 +31,30 @@ def load_env():
     LLAMA3_3 = {
         "model": "groq/llama-3.3-70b-versatile",
         "temperature": 0.0,
+        "tool_choice": "auto"
     }
     GEMINI_2_5_FLASH = {
-        "model": "ggemini/gemini-2.5-flash-preview-04-17",
+        "model": "gemini/gemini-2.5-flash-preview-04-17",
         "temperature": 0.0,
     }
     return OPENAI_GPT4_1NANO, LLAMA3_3, GEMINI_2_5_FLASH
 
 def triple_func_call(opts: dict): #fixed - https://github.com/BerriAI/litellm/issues/7621
     messages = [
-        {"role": "system", "content": "You are a helpful AI assistant"},
-        {"role": "user", "content": "What's the weather like in San Francisco, Tokyo, and Paris? Make three tool calls simultaneously"}
+        {"role": "system", "content": "You are a helpful AI assistant capable of simultaneous tool calls. You have only one go at function calling, therefore you must always request all the calls you'll need at once"},
+        {"role": "user", "content": "What's the weather like in San Francisco, Tokyo, and Paris?"}
     ]
     tools = [{"type": "function",
               "function": JustTool.function_to_llm_dict(get_current_weather)}]
     partial_streaming_chunks = []
+    litellm._turn_on_debug()
     response_gen = litellm.completion(**opts, tools=tools, stream=True, messages=messages)
     for i, part in enumerate(response_gen):
         partial_streaming_chunks.append(part)
     assembly = litellm.stream_chunk_builder(partial_streaming_chunks)
+    fallback = LiteLLMAdapter.response_from_deltas_regression_fallback(partial_streaming_chunks)
     print(assembly.choices[0].message.tool_calls)
+    print(fallback)
     assert len(assembly.choices[0].message.tool_calls) == 3, assembly.choices[0].message.tool_calls[0].function.arguments[0]
     for i in range(3):
         assert assembly.choices[0].message.tool_calls[i].function.arguments[0]
@@ -92,9 +98,10 @@ def test_response_format_gemini_problem(load_env): #https://github.com/BerriAI/l
     # Check that the response follows the expected structure
 
 #@pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7621")
-@pytest.mark.skip(reason="until regression fixed in https://github.com/BerriAI/litellm/issues/10034")
+#@pytest.mark.skip(reason="until regression fixed in https://github.com/BerriAI/litellm/issues/10034")
 def test_grok_bug_regression(load_env):
     OPENAI_GPT4_1NANO, LLAMA3_3,_ = load_env
     triple_func_call(OPENAI_GPT4_1NANO)
-    #triple_func_call(LLAMA3_3) #fixed - https://github.com/BerriAI/litellm/issues/7621
+    #triple_func_call(LLAMA3_3) # failing after 20 may 2025, groq to blame.
+    #fixed - https://github.com/BerriAI/litellm/issues/7621
 

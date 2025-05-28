@@ -97,7 +97,7 @@ def setup_tool_test_callback(tool_names):
     bus = JustToolsBus()
     tool_results = {}
     
-    def callback(event_name: str, **kwargs):
+    def callback(event_name: str, *args, **kwargs):
         if not event_name.endswith("result") or "result_interceptor" not in kwargs:
             return
         

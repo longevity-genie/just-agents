@@ -1512,7 +1512,7 @@ test = ["ipykernel", "pre-commit", "pytest (<9)", "pytest-cov", "pytest-timeout"
 
 [[package]]
 name = "just-agents-coding"
-version = "0.7.3-post.22+ff9f4f5"
+version = "0.7.3-post.27+efd8ea1"
 description = "Just Agents - Coding Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1531,7 +1531,7 @@ url = "coding"
 
 [[package]]
 name = "just-agents-core"
-version = "0.7.3-post.22+ff9f4f5"
+version = "0.7.3-post.27+efd8ea1"
 description = "Just Agents - Base Package"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1541,7 +1541,7 @@ develop = true
 
 [package.dependencies]
 docstring_parser = ">=0.16"
-litellm = ">=1.70.2"
+litellm = "==1.71.1"
 mcp = ">=1.9.0"
 pydantic = ">=2.0.0,<3.0.0"
 python-dotenv = ">=1.1.0"
@@ -1553,7 +1553,7 @@ url = "core"
 
 [[package]]
 name = "just-agents-examples"
-version = "0.7.3-post.22+ff9f4f5"
+version = "0.7.3-post.27+efd8ea1"
 description = "Just Agents - Examples code"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1574,7 +1574,7 @@ url = "examples"
 
 [[package]]
 name = "just-agents-router"
-version = "0.7.3-post.22+ff9f4f5"
+version = "0.7.3-post.27+efd8ea1"
 description = "Just Agents - Router Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1591,7 +1591,7 @@ url = "router"
 
 [[package]]
 name = "just-agents-tools"
-version = "0.7.3-post.22+ff9f4f5"
+version = "0.7.3-post.27+efd8ea1"
 description = "Just Agents - Tools Components"
 optional = false
 python-versions = ">=3.10,<3.15"
@@ -1608,7 +1608,7 @@ url = "tools"
 
 [[package]]
 name = "just-agents-web"
-version = "0.7.3-post.22+ff9f4f5"
+version = "0.7.3-post.27+efd8ea1"
 description = "Just Agents - Web. It allows runing openai API for the agent in the browser."
 optional = false
 python-versions = ">=3.10,<3.15"

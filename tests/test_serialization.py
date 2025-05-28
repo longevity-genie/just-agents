@@ -211,8 +211,8 @@ def test_yaml_to_agent_to_yaml_parser_roundtrip(tmp_path):
         "is_active": True,
         "metadata": {"last_login": "2024-03-20"}
     }
-    parsed_instance = final_agent.parser(**test_data)
-    assert parsed_instance.dict() == test_data
+    parsed_instance : BaseModel = final_agent.parser(**test_data)
+    assert parsed_instance.model_dump() == test_data
 
 def test_agent_to_yaml_to_agent_complex_parser_roundtrip(tmp_path):
     """Test roundtrip of agent with complex parser models to YAML and back"""

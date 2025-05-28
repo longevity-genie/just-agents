@@ -1,6 +1,5 @@
-from typing import Any, Dict, List, Optional
-from pydantic import Field, HttpUrl, BaseModel
-from pydantic import ConfigDict
+from typing import Any, Dict, List, Optional, Literal
+from pydantic import Field, HttpUrl, BaseModel, ConfigDict
 
 # here we give only the most popular models, 
 # but you can specify any model you want, check https://models.litellm.ai/ for models and providers that are supported
@@ -54,6 +53,10 @@ class ModelOptions(BaseModel):
         le=2.0,
         examples=[0.5],
         description="Frequency penalty, values from -2.0 to 2.0"
+    )
+    tool_choice: Optional[Literal["auto", "none", "required"]] = Field(
+        "auto",
+        description="Whether to automatically select the best tool to use. If set to 'none', the model will not use any tools. If set to 'required', the model will only use tools."
     )
 
 

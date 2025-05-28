@@ -474,10 +474,14 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
 
     @staticmethod
     def response_from_deltas(chunks: List[ModelResponseStream]) -> ModelResponse:
-        # litellm regression #https://github.com/BerriAI/litellm/issues/10034
-        #if "llama" in chunks[-1]["model"] and chunks[-1].choices[0].finish_reason=="tool_calls":
-        #   return LiteLLMAdapter.re_enumerate_tool_call_chunks(chunks) # bug fix
         return stream_chunk_builder(chunks=chunks)
+
+    @staticmethod
+    def response_from_deltas_regression_fallback(chunks: List[ModelResponseStream]) -> ModelResponse:
+        # litellm regression #https://github.com/BerriAI/litellm/issues/10034
+        if "llama" in chunks[-1]["model"] and chunks[-1].choices[0].finish_reason=="tool_calls":
+           return LiteLLMAdapter.re_enumerate_tool_call_chunks(chunks) # bug fix
+        return LiteLLMAdapter.response_from_deltas(chunks=chunks)
 
     @staticmethod
     def get_supported_params(model_name: str) -> Optional[list]:
