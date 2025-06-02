@@ -1,5 +1,6 @@
 import inspect
 import sys
+from functools import wraps
 
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, List, Dict, Any, Sequence, Union, TypeVar, Type, Tuple, get_origin
@@ -12,6 +13,149 @@ from just_agents.just_schema import ModelHelper
 from just_agents.just_bus import JustToolsBus, SubscriberCallback
 
 from just_agents.mcp_client import MCPClient, MCPServerParameters
+
+
+def max_calls_decorator(tool_instance: 'JustToolBase', max_calls: int, tool_name: str):
+    """
+    Decorator to limit the number of calls to a function.
+    
+    Args:
+        tool_instance: The tool instance to track calls for
+        max_calls: Maximum number of calls allowed
+        tool_name: Name of the tool for error messages
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            # Check if max calls reached before calling
+            if tool_instance._calls_made >= max_calls:
+                error = RuntimeError(f"Maximum number of calls ({max_calls}) reached for {tool_name}")
+                JustToolsBus().publish(f"{tool_name}.{id(tool_instance)}.error", error=error)
+                raise error
+            
+            # Call the function
+            result = func(*args, **kwargs)
+            
+            # Increment counter after successful call
+            tool_instance._calls_made += 1
+            return result
+        return wrapper
+    return decorator
+
+
+def event_bus_decorator(tool_instance: 'JustToolBase', tool_name: str):
+    """
+    Decorator to add event bus publishing and async/sync execution handling to a function.
+    
+    Publishes execute, result, and error events to the JustToolsBus and handles
+    both synchronous and asynchronous function execution.
+    
+    Args:
+        tool_instance: The tool instance for accessing is_async and event publishing
+        tool_name: Name of the tool for event publishing
+    """
+    def decorator(func: Callable) -> Callable:
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            bus = JustToolsBus()
+            bus.publish(f"{tool_name}.{id(tool_instance)}.execute", *args, kwargs=kwargs)
+            try:
+                if tool_instance.is_async:
+                    result = run_async_function_synchronously(func, *args, **kwargs)
+                else:
+                    result = func(*args, **kwargs)
+                bus.publish(f"{tool_name}.{id(tool_instance)}.result", result_interceptor=result, kwargs=kwargs)
+                return result
+            except Exception as e:
+                bus.publish(f"{tool_name}.{id(tool_instance)}.error", error=e)
+                raise e
+        return wrapper
+    return decorator
+
+
+def parsing_wrapper_decorator(tool_instance: 'JustToolBase', tool_name: str):
+    """
+    Decorator that parses string-to-dict for relevant parameters and adds event publishing.
+    
+    Args:
+        tool_instance: The tool instance for accessing raw callable signature and event publishing
+        tool_name: Name of the tool for event publishing
+    """
+    def decorator(func: Callable) -> Callable:
+        raw_func_sig = inspect.signature(tool_instance._raw_callable)
+        
+        @wraps(func)
+        def wrapper(*args: Any, **kwargs: Any) -> Any:
+            bus = JustToolsBus()
+            bus.publish(f"{tool_name}.{id(tool_instance)}.execute", *args, kwargs=kwargs)
+            
+            # Process kwargs for dict parsing
+            processed_kwargs = {}
+            for key, value in kwargs.items():
+                param = raw_func_sig.parameters.get(key)
+                if param and param.annotation != inspect.Parameter.empty:
+                    param_type_origin = get_origin(param.annotation)
+                    if (param_type_origin is dict or param_type_origin is Dict) and isinstance(value, str):
+                        try:
+                            parsed_value = ModelHelper.get_structured_output(value, parser=dict)
+                            processed_kwargs[key] = parsed_value
+                        except ValueError:
+                            processed_kwargs[key] = value 
+                    else:
+                        processed_kwargs[key] = value
+                else:
+                    processed_kwargs[key] = value
+
+            try:
+                if tool_instance.is_async:
+                    result = run_async_function_synchronously(func, *args, **processed_kwargs)
+                else:
+                    result = func(*args, **processed_kwargs)
+                bus.publish(f"{tool_name}.{id(tool_instance)}.result", result_interceptor=result, kwargs=processed_kwargs)
+                return result
+            except Exception as e:
+                bus.publish(f"{tool_name}.{id(tool_instance)}.error", error=e)
+                raise e
+        return wrapper
+    return decorator
+
+
+def tool_decorator_composer(tool_instance: 'JustToolBase', tool_name: str):
+    """
+    A decorator composer that applies the appropriate combination of decorators
+    based on the tool instance's configuration.
+    
+    This is a "decorator for decorators" that intelligently combines:
+    - Event bus publishing and execution handling
+    - Parameter parsing (if needed)
+    - Call count limiting (if configured)
+    
+    Can be used with @ notation:
+    @tool_decorator_composer(my_tool_instance, "my_tool")
+    def my_function(param1, param2):
+        return param1 + param2
+    
+    Args:
+        tool_instance: The tool instance with configuration
+        tool_name: Name of the tool for event publishing
+    """
+    def decorator(func: Callable) -> Callable:
+        # Start with the base function
+        wrapped_function = func
+        
+        # Apply parsing wrapper if needed, otherwise apply event bus wrapper
+        if tool_instance._pydantic_model and ModelHelper.model_has_dict_params(tool_instance._pydantic_model):
+            wrapped_function = parsing_wrapper_decorator(tool_instance, tool_name)(wrapped_function)
+        else:
+            wrapped_function = event_bus_decorator(tool_instance, tool_name)(wrapped_function)
+        
+        # Optionally apply the max_calls decorator
+        if tool_instance.max_calls_per_query is not None:
+            wrapped_function = max_calls_decorator(tool_instance, tool_instance.max_calls_per_query, tool_name)(wrapped_function)
+        
+        return wrapped_function
+    return decorator
+
 
 # Create a TypeVar for the class
 if sys.version_info >= (3, 11):
@@ -64,97 +208,6 @@ class JustToolBase(ToolDefinition, ABC): #TODO interface
         if self._callable is None or self._raw_callable is None:
 
             self.get_callable_sync(refresh=self.auto_refresh, wrap=True)
-
-    def _max_calls_wrapper(self, wrapped_function: Callable, tool_name: str) -> Callable:
-        """Outer wrapper to enforce max_calls_per_query if set."""
-        def __max_calls_final_wrapper(*args: Any, **kwargs: Any) -> Any:
-            # This check happens *before* calling the underlying wrapped_function
-            if self.max_calls_per_query is not None and self._calls_made >= self.max_calls_per_query:
-                error = RuntimeError(f"Maximum number of calls ({self.max_calls_per_query}) reached for {tool_name}")
-                JustToolsBus().publish(f"{tool_name}.{id(self)}.error", error=error) # Optional: for consistent eventing
-                raise error
-            
-            # Call the actual wrapped function (simple or parsing logic)
-            result = wrapped_function(*args, **kwargs)
-
-            # This counter is for the number of *attempts* under the max_calls_per_query limit.
-            self._calls_made += 1
-            return result
-        return __max_calls_final_wrapper
-
-    def _simple_wrapper_logic(self, func_to_run: Callable, tool_name: str) -> Callable:
-        """Simple wrapper without dictionary parsing. Max calls check is handled by _max_calls_wrapper."""
-        def __simple_wrapper(*args: Any, **kwargs: Any) -> Any:
-            bus = JustToolsBus()
-            bus.publish(f"{tool_name}.{id(self)}.execute", *args, kwargs=kwargs)
-            try:
-                # Max calls check and increment removed from here
-                if self.is_async:
-                    result = run_async_function_synchronously(func_to_run, *args, **kwargs)
-                else:
-                    result = func_to_run(*args, **kwargs)
-                # Call increment removed from here
-                bus.publish(f"{tool_name}.{id(self)}.result", result_interceptor=result, kwargs=kwargs)
-                return result
-            except Exception as e:
-                bus.publish(f"{tool_name}.{id(self)}.error", error=e)
-                raise e
-        return __simple_wrapper
-
-    def _parsing_wrapper_logic(self, func_to_run: Callable, tool_name: str) -> Callable:
-        """Wrapper that inspects raw callable and parses string-to-dict for relevant params. Max calls check is handled by _max_calls_wrapper."""
-        raw_func_sig = inspect.signature(self._raw_callable)
-
-        def __parsing_wrapper(*args: Any, **kwargs: Any) -> Any:
-            bus = JustToolsBus()
-            bus.publish(f"{tool_name}.{id(self)}.execute", *args, kwargs=kwargs)
-            
-            processed_kwargs = {}
-            for key, value in kwargs.items():
-                param = raw_func_sig.parameters.get(key)
-                if param and param.annotation != inspect.Parameter.empty:
-                    param_type_origin = get_origin(param.annotation)
-                    if (param_type_origin is dict or param_type_origin is Dict) and isinstance(value, str):
-                        try:
-                            parsed_value = ModelHelper.get_structured_output(value, parser=dict)
-                            processed_kwargs[key] = parsed_value
-                        except ValueError:
-                            processed_kwargs[key] = value 
-                    else:
-                        processed_kwargs[key] = value
-                else:
-                    processed_kwargs[key] = value
-
-            try:
-                # Max calls check and increment removed from here
-                if self.is_async:
-                    result = run_async_function_synchronously(func_to_run, *args, **processed_kwargs)
-                else:
-                    result = func_to_run(*args, **processed_kwargs)
-                # Call increment removed from here
-                bus.publish(f"{tool_name}.{id(self)}.result", result_interceptor=result, kwargs=processed_kwargs)
-                return result
-            except Exception as e:
-                bus.publish(f"{tool_name}.{id(self)}.error", error=e)
-                raise e
-        return __parsing_wrapper
-
-    def _wrap_function(self, func_to_run: Callable, tool_name: str) -> Callable:
-        """
-        Dispatcher: Chooses a core wrapper (simple or parsing) and then optionally applies the max_calls_wrapper.
-        The func_to_run is the already-resolved callable.
-        """
-        core_wrapped_function: Callable
-        if self._pydantic_model and ModelHelper.model_has_dict_params(self._pydantic_model):
-            core_wrapped_function = self._parsing_wrapper_logic(func_to_run, tool_name)
-        else:
-            core_wrapped_function = self._simple_wrapper_logic(func_to_run, tool_name)
-        
-        # Optionally apply the max_calls_per_query wrapper
-        if self.max_calls_per_query is not None:
-            return self._max_calls_wrapper(core_wrapped_function, tool_name)
-        else:
-            return core_wrapped_function
 
     @staticmethod
     def function_to_llm_dict(input_function: Callable) -> Dict[str, Any]:
@@ -296,7 +349,7 @@ class JustToolBase(ToolDefinition, ABC): #TODO interface
             
             # Rewrap with the updated callable
             # self.name is the simple name, used for event bus topics
-            self._callable = self._wrap_function(func, self.name)
+            self._callable = tool_decorator_composer(self, self.name)(func)
             
             return self
         except Exception as e:
@@ -472,7 +525,7 @@ class JustImportedTool(JustToolBase):
         )
         instance._pydantic_model = generated_pydantic_model
         instance._raw_callable = input_function
-        instance._callable = instance._wrap_function(input_function, instance.name)
+        instance._callable = tool_decorator_composer(instance, instance.name)(input_function)
         return instance
 
 

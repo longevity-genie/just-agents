@@ -27,7 +27,7 @@ just-agents-router = "*"
 just-agents-examples = "*"
 
 [tool.poetry.group.dev.dependencies]
-pytest = ">=8.3.4"
+pytest = ">=8.3.5"
 langfuse = ">=2.59.7"
 python-dotenv = "*"
 numpydoc = "*"

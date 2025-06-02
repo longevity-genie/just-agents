@@ -59,6 +59,16 @@ class ModelOptions(BaseModel):
         description="Whether to automatically select the best tool to use. If set to 'none', the model will not use any tools. If set to 'required', the model will only use tools."
     )
 
+ANTHROPIC_CLAUDE_4_SONNET: LLMOptions = {
+    "model": "claude-sonnet-4-20250514",
+    "temperature": 0.0
+}
+
+ANTHROPIC_CLAUDE_4_OPUS: LLMOptions = {
+    "model": "claude-opus-4-20250514",
+    "temperature": 0.0
+}
+
 
 ANTHROPIC_CLAUDE_3_7_SONNET: LLMOptions = {
     "model": "claude-3-7-sonnet",
@@ -99,6 +109,37 @@ CERABRAS_LLAMA3_3_70B_INSTRUCT: LLMOptions = {
 GROQ_DEEPSEEK_R1_DISTILL: LLMOptions = {
     "model": "groq/deepseek-r1-distill-llama-70b",
     "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0
+}
+
+MISTRAL_LARGE_2: LLMOptions = {
+    "model": "mistral/mistral-large-2407",
+    "temperature": 0.0
+}
+
+MISTRAL_CODESTRAL_LATEST: LLMOptions = {
+    "model": "mistral/codestral-latest",
+    "temperature": 0.0
+}
+
+
+MISTRAL_CODESTRAL_MAMBA: LLMOptions = {
+    "model": "mistral/codestral-mamba-latest",
+    "temperature": 0.0
+}
+
+MISTRAL_SMALL_LATEST: LLMOptions = {
+    "model": "mistral/mistral-small-latest",
+    "temperature": 0.0
+}
+
+MISTRAL_MEDIUM_LATEST: LLMOptions = {
+    "model": "mistral/mistral-medium-latest",
+    "temperature": 0.0
+}
+
+MISTRAL_LARGE_LATEST: LLMOptions = {
+    "model": "mistral/mistral-large-latest",
     "temperature": 0.0
 }
 

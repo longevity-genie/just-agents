@@ -66,6 +66,19 @@ class Annotation(BaseModel):
     title: str = Field(...)
     source: str = Field(...)
 
+def test_gemini_raw_google_search():
+    load_dotenv(override=True)
+
+    tools = [{"googleSearch": {}}] # 👈 ADD GOOGLE SEARCH
+    response = litellm.completion(
+        model = "gemini/gemini-2.5-flash-preview-04-17",
+        temperature = 0.0,
+        messages=[{"role": "user", "content": "Who is the main female founder of GlucoseDAO? Answer must be Name Surname and nothing else"}],
+        tools=tools,
+    )
+    assert "Livia" in response.choices[0].message.content, "it must have Livia in the response"
+    assert "Zaharia" in response.choices[0].message.content, "it must have Zaharia in the response"
+
 @pytest.mark.skip(reason="until fixed in https://github.com/BerriAI/litellm/issues/7808")
 def test_response_format_gemini_problem(load_env): #https://github.com/BerriAI/litellm/issues/7808
     load_dotenv(override=True)

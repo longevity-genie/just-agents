@@ -20,8 +20,8 @@ license = "MIT"
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
 just-agents-core = "*"
-requests = ">=2.26.0"
-llm-sandbox = {version = ">=0.2.4", extras = ["podman"]}
+requests = ">=2.32.3"
+llm-sandbox = {version = ">=0.3.4", extras = ["podman"]}
 
 # Add this section for development
 [tool.poetry.group.dev.dependencies]
