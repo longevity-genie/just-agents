@@ -230,12 +230,12 @@ GEMINI_2_FLASH: LLMOptions = {
 }
 
 GEMINI_2_5_FLASH: LLMOptions = {
-    "model": "gemini/gemini-2.5-flash-preview-04-17",
+    "model": "gemini/gemini-2.5-flash",
     "temperature": 0.0
 }
 
 GEMINI_2_5_PRO: LLMOptions = {
-    "model": "gemini/gemini-2.5-pro-preview-03-25",
+    "model": "gemini/gemini-2.5-pro",
     "temperature": 0.0
 }
 

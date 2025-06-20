@@ -1,0 +1,28 @@
+ComprehensiveAgent:
+  backup_options:
+    model: gpt-4.1-mini
+    temperature: 0.0
+  class_qualname: just_agents.base_agent.BaseAgentWithLogging
+  llm_options:
+    model: gpt-4.1-nano
+    temperature: 0.0
+    tool_choice: auto
+  max_tool_calls: 5
+  prompt_tools:
+  - call_arguments:
+      x: 1
+      y: 1
+    description: A regular function.
+    function: regular_function
+    package: tests.tools.tool_test_module
+  system_prompt: Comprehensive test agent
+  tools:
+  - description: Built-in tool to search the web
+    function: googleSearch
+  - description: A regular function.
+    function: regular_function
+    package: tests.tools.tool_test_module
+  - description: A static method in a nested class.
+    function: static_method_nested
+    package: tests.tools.tool_test_module
+    static_class: TopLevelClass.NestedClass

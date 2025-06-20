@@ -1,0 +1,11 @@
+TransientToolsAgent:
+  class_qualname: just_agents.base_agent.BaseAgentWithLogging
+  llm_options:
+    model: gpt-4.1-nano
+    temperature: 0.0
+    tool_choice: auto
+  system_prompt: Test agent with transient tools
+  tools:
+  - description: A regular function.
+    function: regular_function
+    package: tests.tools.tool_test_module

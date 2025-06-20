@@ -1,0 +1,12 @@
+GoogleToolsAgent:
+  class_qualname: just_agents.base_agent.BaseAgentWithLogging
+  llm_options:
+    model: gpt-4.1-nano
+    temperature: 0.0
+    tool_choice: auto
+  system_prompt: Test agent with Google tools
+  tools:
+  - description: Built-in tool to search the web
+    function: googleSearch
+  - description: Built-in tool to execute code
+    function: codeExecution

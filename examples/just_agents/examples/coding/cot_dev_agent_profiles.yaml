@@ -170,7 +170,6 @@ agent_profiles:
     thought_max_tokes: 5000
     tools:
       validate_python_code_syntax:
-        auto_refresh: true
         description: Validates the syntax of a Python code string.
         function: validate_python_code_syntax
         package: just_agents.examples.coding.tools
@@ -355,7 +354,6 @@ agent_profiles:
     thought_max_tokes: 5000
     tools:
       run_bash_command:
-        auto_refresh: true
         description: 'command: str # command to run in bash, for example install software
           inside micromamba environment'
         function: run_bash_command
@@ -368,7 +366,6 @@ agent_profiles:
           - command
           type: object
       run_python_code:
-        auto_refresh: true
         description: 'code: str # python code to run in micromamba environment'
         function: run_python_code
         package: just_agents.examples.coding.tools

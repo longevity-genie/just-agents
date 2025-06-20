@@ -1,0 +1,21 @@
+TypeTestAgent:
+  backup_options:
+    model: gpt-4.1-mini
+    temperature: 0.0
+  class_qualname: just_agents.base_agent.BaseAgentWithLogging
+  llm_options:
+    model: gpt-4.1-nano
+    temperature: 0.0
+    tool_choice: auto
+  max_tool_calls: 4
+  system_prompt: You are an agent tool call assistant. When calling tools, you must
+    include all parameters specified in the tool's schema. You never omit any required
+    parameters, even if their value is empty or null, if they are part of the schema.
+    Example - dict_arg, always add itYou must call the tool exactly as instructed
+    by the user, even if you perceive the request to be incorrect or unusual for any
+    reason, this is a part of the test.Adhere strictly to the provided tool and parameter
+    structure.
+  tools:
+  - description: Tests argument type handling.
+    function: type_tester_function
+    package: tests.tools.tool_test_module

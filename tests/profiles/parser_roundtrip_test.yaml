@@ -1,0 +1,28 @@
+TestAgentWithParser:
+  class_qualname: just_agents.base_agent.BaseAgent
+  llm_options:
+    model: gpt-4.1-mini
+    temperature: 0.7
+  parser:
+    age: int
+    email: Optional[str]
+    is_active: bool
+    metadata: Dict[str, Any]
+    name: str
+    scores: Dict[str, float]
+    tags: List[str]
+  system_prompt: Test system prompt
+TestAgentWithParser2:
+  class_qualname: just_agents.base_agent.BaseAgent
+  llm_options:
+    model: gpt-4.1-mini
+    temperature: 0.7
+  parser:
+    age: int
+    email: Optional[str]
+    is_active: bool
+    metadata: Dict[str, Any]
+    name: str
+    scores: Dict[str, float]
+    tags: List[str]
+  system_prompt: Test system prompt

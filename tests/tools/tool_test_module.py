@@ -28,6 +28,96 @@ class TopLevelClass:
                 """A static method in a deeper nested class."""
                 return val * 2.0
 
+
+class StatefulPDFReader:
+    """A stateful class that demonstrates bound instance methods."""
+    
+    def __init__(self, content: str):
+        """Initialize with PDF content."""
+        self.content = content
+        self.pages = content.split('\n---\n')  # Split by page separator
+        self.current_page = 0
+        self.total_pages = len(self.pages)
+    
+    def get_current_page(self) -> str:
+        """Get the current page content."""
+        if self.current_page < self.total_pages:
+            return f"Page {self.current_page + 1}/{self.total_pages}: {self.pages[self.current_page]}"
+        return "No more pages."
+    
+    def get_next_page(self) -> str:
+        """Move to next page and return its content."""
+        if self.current_page < self.total_pages - 1:
+            self.current_page += 1
+            return self.get_current_page()
+        return "Already at last page."
+    
+    def get_previous_page(self) -> str:
+        """Move to previous page and return its content."""
+        if self.current_page > 0:
+            self.current_page -= 1
+            return self.get_current_page()
+        return "Already at first page."
+    
+    def jump_to_page(self, page_number: int) -> str:
+        """Jump to a specific page number (1-based)."""
+        if 1 <= page_number <= self.total_pages:
+            self.current_page = page_number - 1
+            return self.get_current_page()
+        return f"Invalid page number. Available pages: 1-{self.total_pages}"
+    
+    @staticmethod
+    def create_sample_pdf() -> 'StatefulPDFReader':
+        """Create a sample PDF reader with test content."""
+        sample_content = "First page content with magic word: Abra\n---\nSecond page content with magic word: Shwabra\n---\nThird page content with magic word: Kadabra!"
+        return StatefulPDFReader(sample_content)
+    
+    @staticmethod
+    def create_spell_pdf() -> 'StatefulPDFReader':
+        """Create a PDF with spell components for testing agent comprehension."""
+        spell_content = (
+            "Ancient Spell Components - Page 1 of 3\n"
+            "The first incantation word is: Abra\n"
+            "This word must be spoken first to begin the spell.\n"
+            "---\n"
+            "Magical Enhancement - Page 2 of 3\n"
+            "The second power word is: Shwabra\n"
+            "This amplifies the spell's magical energy.\n"
+            "---\n"
+            "Final Invocation - Page 3 of 3\n"
+            "The concluding word is: Kadabra!\n"
+            "Speak this last to complete the ancient spell."
+        )
+        return StatefulPDFReader(spell_content)
+
+
+class SimpleCounterTool:
+    """A simple counter tool for testing transient behavior."""
+    
+    def __init__(self, initial_value: int = 0):
+        """Initialize counter with initial value."""
+        self.count = initial_value
+    
+    def increment(self, amount: int = 1) -> int:
+        """Increment counter by specified amount."""
+        self.count += amount
+        return self.count
+    
+    def decrement(self, amount: int = 1) -> int:
+        """Decrement counter by specified amount."""
+        self.count -= amount
+        return self.count
+    
+    def get_count(self) -> int:
+        """Get current counter value."""
+        return self.count
+    
+    def reset(self) -> int:
+        """Reset counter to zero."""
+        self.count = 0
+        return self.count
+
+
 class SimpleModel(BaseModel):
     """A simple Pydantic model for testing."""
     name: str

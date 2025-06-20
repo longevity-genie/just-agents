@@ -1,0 +1,13 @@
+PromptToolsAgent:
+  class_qualname: just_agents.base_agent.BaseAgentWithLogging
+  llm_options:
+    model: gpt-4.1-nano
+    temperature: 0.0
+  prompt_tools:
+  - call_arguments:
+      x: 5
+      y: 10
+    description: A regular function.
+    function: regular_function
+    package: tests.tools.tool_test_module
+  system_prompt: Test agent with prompt tools

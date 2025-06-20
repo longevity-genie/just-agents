@@ -1,11 +1,13 @@
 from enum import Enum
-from typing import List, Union, Optional, Dict, Any
+from typing import List, Union, Optional, Dict, Any, Literal
 from pydantic import HttpUrl, Field, BaseModel, ConfigDict, AliasPath, TypeAdapter, field_validator, field_serializer
 from pydantic_core import from_json
 
 from openai.types.shared_params.function_definition import FunctionDefinition
 
 """ Common OpenAI-compatible data structures """ #TODO: openAI type converters/inheritances
+
+ReasoningEffort = Literal['low', 'medium', 'high']
 
 # Content types and enums
 class EnumLiteral(str, Enum):
@@ -106,7 +108,7 @@ class Message(BaseModel):
         message.content = self.get_text(delimiter, preserve_trailing)
         return message
 
-
+GoogleBuiltInName = Literal["googleSearch", "codeExecution"]
 class ToolCall(BaseModel):
     """ OpenAI compatible Tool call class """
     model_config = ConfigDict(extra="allow")

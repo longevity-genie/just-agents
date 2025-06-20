@@ -1,0 +1,17 @@
+MixedToolsAgent:
+  class_qualname: just_agents.base_agent.BaseAgentWithLogging
+  llm_options:
+    model: gpt-4.1-nano
+    temperature: 0.0
+    tool_choice: auto
+  system_prompt: Test agent with mixed tools
+  tools:
+  - description: Built-in tool to search the web
+    function: googleSearch
+  - description: A regular function.
+    function: regular_function
+    package: tests.tools.tool_test_module
+  - description: A static method in a top-level class.
+    function: static_method_top
+    package: tests.tools.tool_test_module
+    static_class: TopLevelClass

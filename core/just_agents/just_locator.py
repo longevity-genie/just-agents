@@ -2,7 +2,7 @@ from typing import Optional, List, Dict, Type, TypeVar, Callable, Set, Generic
 import uuid
 import threading
 from weakref import ReferenceType, WeakSet, ref
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, ConfigDict
 from just_agents.just_bus import SingletonMeta
 from just_agents.interfaces.agent import IAgent
 
@@ -12,6 +12,22 @@ try:
     _COOLNAME_AVAILABLE = True
 except ImportError:
     _COOLNAME_AVAILABLE = False
+
+
+def generate_unique_name() -> str:
+    """
+    Generate a unique name using coolname if available, otherwise UUID.
+    
+    Returns:
+        str: A generated name
+    """
+    if _COOLNAME_AVAILABLE:
+        # Generate a human-readable name like "fancy-snake" using coolname
+        return coolname.generate_slug(2)  # Two words like "adjective-noun"
+    else:
+        # Fall back to UUID if coolname isn't available
+        return str(uuid.uuid4())
+
 
 # Type variable for entity types
 T = TypeVar('T')
@@ -27,9 +43,9 @@ class EntityIdentifier(BaseModel, Generic[T]):
     entity_class: Type[T] = Field(description="Class type of the entity")
     entity_codename: str = Field(description="Unique system-generated identifier")
     
-    model_config = {
-        "arbitrary_types_allowed": True  # Allow Type[T] to be used
-    }
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True  # Allow Type[T] to be used
+    )
     
     # Use private attributes that are not fields
     def __init__(self, **data):
@@ -92,9 +108,6 @@ class JustLocator(Generic[T]):
         
         # Maps entity classes to sets of codenames for efficient lookup by type
         self._entity_codenames_by_class: Dict[Type[T], Set[str]] = {}
-        
-        # Track if coolname is available for human-readable codenames
-        self._use_coolname: bool = _COOLNAME_AVAILABLE
         
         # Callback for weak references when entities are collected
         self._create_cleanup_callback = lambda entity_codename: lambda *args: self._cleanup_entity_codename(entity_codename)
@@ -419,19 +432,12 @@ class JustLocator(Generic[T]):
         """
         Generate a unique codename for an entity.
         
-        Uses coolname for human-readable names if available,
-        otherwise falls back to UUID strings.
         Ensures the generated codename is not already in use.
         
         Returns:
             str: A unique codename
         """
-        if self._use_coolname:
-            # Generate a human-readable name like "fancy-snake" using coolname
-            entity_codename = coolname.generate_slug(2)  # Two words like "adjective-noun"
-        else:
-            # Fall back to UUID if coolname isn't available
-            entity_codename = str(uuid.uuid4())
+        entity_codename = generate_unique_name()
         
         # Check if this codename is already in use 
         if entity_codename in self._entity_codename_to_instance:
@@ -617,8 +623,6 @@ class JustAgentsLocator(JustLocator[IAgent], metaclass=SingletonMeta):
         """
         Generate a unique codename for an agent.
         
-        Uses coolname for human-readable names if available,
-        otherwise falls back to UUID strings.
         Ensures the generated codename is not already in use.
         
         Returns:

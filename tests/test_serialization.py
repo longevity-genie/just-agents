@@ -1,4 +1,6 @@
 import pytest
+import os
+from pathlib import Path
 
 import just_agents.llm_options
 from examples.just_agents.examples.tools import get_current_weather
@@ -50,9 +52,11 @@ class UnionTestModel(BaseModel):
 def load_env():
     load_dotenv(override=True)
 
-def test_just_agent_profile(load_env, tmp_path):
+def test_just_agent_profile(load_env):
     # Set up paths
-    config_path = tmp_path / "yaml_initialization_example_new.yaml"
+    profiles_dir = Path(__file__).parent / "profiles"
+    profiles_dir.mkdir(exist_ok=True)
+    config_path = profiles_dir / "yaml_initialization_example_new.yaml"
 
     # Create a JustAgentProfile instance
     profile = JustAgentProfile(
@@ -72,9 +76,11 @@ def test_just_agent_profile(load_env, tmp_path):
     # Optionally, print the JSON representation
     print(loaded_profile.to_json())
 
-def test_just_agent(load_env, tmp_path):
+def test_just_agent(load_env):
     # Set up paths
-    config_path = tmp_path / "yaml_initialization_example_new.yaml"
+    profiles_dir = Path(__file__).parent / "profiles"
+    profiles_dir.mkdir(exist_ok=True)
+    config_path = profiles_dir / "yaml_initialization_example_new.yaml"
 
     # Create a JustAgent instance
     agent = BaseAgent(
@@ -155,10 +161,12 @@ def test_validate_assignment():
     assert 'OutputParser' in agent.parser.__name__
     assert set(agent.parser.model_fields.keys()) == {'name', 'value'}
 
-def test_yaml_to_agent_to_yaml_parser_roundtrip(tmp_path):
+def test_yaml_to_agent_to_yaml_parser_roundtrip():
     """Test roundtrip of parser field from YAML to agent and back to YAML"""
     # Set up paths
-    config_path = tmp_path / "parser_roundtrip_test.yaml"
+    profiles_dir = Path(__file__).parent / "profiles"
+    profiles_dir.mkdir(exist_ok=True)
+    config_path = profiles_dir / "parser_roundtrip_test.yaml"
     
     # Create initial YAML content with parser definition
     yaml_content = {
@@ -177,8 +185,8 @@ def test_yaml_to_agent_to_yaml_parser_roundtrip(tmp_path):
     }
     
     # Save initial YAML
-    agent = BaseAgent(**yaml_content)
-    agent.save_to_yaml("TestAgentWithParser", file_path=config_path)
+    agent = BaseAgent(**yaml_content, config_path=config_path)
+    agent.save_to_yaml("TestAgentWithParser")
     
     # Load agent from YAML
     loaded_agent = BaseAgent.from_yaml("TestAgentWithParser", file_path=config_path)
@@ -194,7 +202,7 @@ def test_yaml_to_agent_to_yaml_parser_roundtrip(tmp_path):
     assert expected_fields == actual_fields
     
     # Save back to YAML and verify parser field
-    loaded_agent.save_to_yaml("TestAgentWithParser2", file_path=config_path)
+    loaded_agent.save_to_yaml("TestAgentWithParser2")
     final_agent = BaseAgent.from_yaml("TestAgentWithParser2", file_path=config_path)
     
     # Verify the final parser matches the original
@@ -214,9 +222,11 @@ def test_yaml_to_agent_to_yaml_parser_roundtrip(tmp_path):
     parsed_instance : BaseModel = final_agent.parser(**test_data)
     assert parsed_instance.model_dump() == test_data
 
-def test_agent_to_yaml_to_agent_complex_parser_roundtrip(tmp_path):
+def test_agent_to_yaml_to_agent_complex_parser_roundtrip():
     """Test roundtrip of agent with complex parser models to YAML and back"""
-    config_path = tmp_path / "complex_parser_roundtrip_test.yaml"
+    profiles_dir = Path(__file__).parent / "profiles"
+    profiles_dir.mkdir(exist_ok=True)
+    config_path = profiles_dir / "complex_parser_roundtrip_test.yaml"
     
     # Create a complex parser model
     class UserProfile(BaseModel):
@@ -232,11 +242,12 @@ def test_agent_to_yaml_to_agent_complex_parser_roundtrip(tmp_path):
     original_agent = BaseAgent(
         llm_options={"model": "gpt-4.1-mini", "temperature": 0.7},
         system_prompt="Test system prompt",
-        parser=UserProfile
+        parser=UserProfile,
+        config_path=config_path
     )
     
     # Save to YAML
-    original_agent.save_to_yaml("ComplexParserAgent", file_path=config_path)
+    original_agent.save_to_yaml("ComplexParserAgent")
     
     # Load back from YAML
     loaded_agent = BaseAgent.from_yaml("ComplexParserAgent", file_path=config_path)
@@ -270,7 +281,7 @@ def test_agent_to_yaml_to_agent_complex_parser_roundtrip(tmp_path):
     assert original_instance.model_dump() == loaded_instance.model_dump()
     
     # Save again and load to verify stability
-    loaded_agent.save_to_yaml("ComplexParserAgent2", file_path=config_path)
+    loaded_agent.save_to_yaml("ComplexParserAgent2")
     final_agent = BaseAgent.from_yaml("ComplexParserAgent2", file_path=config_path)
     
     # Verify the final parser still works

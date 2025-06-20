@@ -29,7 +29,7 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
-litellm = ">=1.72.0"
+litellm = ">=1.72.1"
 pydantic = ">=2.0.0,<3.0.0"
 docstring_parser = ">=0.16"
 python-dotenv = ">=1.1.0"

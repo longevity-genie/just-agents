@@ -1,16 +1,16 @@
-from typing import Any, Dict, List, Optional, Literal
-from urllib.parse import urlparse
+from typing import Any, Dict, List, Optional, Union
+from pathlib import Path
 import asyncio
+import shlex
 
-from mcp import ClientSession, StdioServerParameters
-from mcp.types import Tool as MCPTool
-from mcp.client.sse import sse_client
-from mcp.client.stdio import stdio_client
+from mcp.types import Tool as MCPTool, TextContent, ImageContent, EmbeddedResource
+from fastmcp import Client
+from fastmcp.exceptions import ToolError
 
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr, AnyUrl, ValidationError
 from just_agents.data_classes import ToolDefinition
 from just_agents.just_bus import SingletonMeta
-from just_agents.just_locator import JustLocator
+from just_agents.just_locator import JustLocator, generate_unique_name
 
 
 class MCPClientLocator(JustLocator['MCPClient'], metaclass=SingletonMeta):
@@ -78,21 +78,13 @@ class MCPClientLocator(JustLocator['MCPClient'], metaclass=SingletonMeta):
         dead_clients = []
         
         for client in self.get_all_entities():
-            if client._session:
+            if client._client:
                 try:
-                    # Check if session is bound to a closed loop
-                    session_loop = getattr(client._session, '_receive_loop', None)
-                    if session_loop and session_loop.is_closed():
+                    # Check if client is connected
+                    if not client._client.is_connected():
                         dead_clients.append(client)
-                        continue
-                    
-                    # For STDIO connections, check if process is dead
-                    if hasattr(client._session, '_write_stream') and hasattr(client._session._write_stream, '_transport'):
-                        transport = client._session._write_stream._transport
-                        if hasattr(transport, 'get_returncode') and transport.get_returncode() is not None:
-                            dead_clients.append(client)
                 except (AttributeError, OSError):
-                    # Any error accessing session suggests it's dead
+                    # Any error accessing client suggests it's dead
                     dead_clients.append(client)
         
         # Remove dead clients and close their sessions
@@ -112,8 +104,7 @@ class MCPServerParameters(BaseModel):
     """
     Parameters for an MCP server.
     """
-    mcp_sse_endpoint: Optional[str] = Field(None, description="The MCP endpoint URL for SSE mode")
-    mcp_stdio_command: Optional[List[str]] = Field(None, description="The command with arguments to run for stdio mode")
+    mcp_endpoint: Optional[str] = Field(None, description="The MCP endpoint (URL for SSE, command for stdio, or file path)")
 
 class MCPToolInvocationResult(BaseModel):
     content: str = Field(..., description="Result content as a string")
@@ -130,150 +121,185 @@ class MCPClient(MCPServerParameters):
     client_key: str = Field(..., description="Unique key identifying this client's connection parameters")
 
     # Private attributes using Pydantic 2 PrivateAttr
-    _mode: str = PrivateAttr(default="")
-    _endpoint: Optional[str] = PrivateAttr(default=None)
-    _stdio_params: Optional[StdioServerParameters] = PrivateAttr(default=None)
-    _session: Optional[ClientSession] = PrivateAttr(default=None)
-    _connection_context_manager: Optional[Any] = PrivateAttr(default=None)
-    _client_session_context_manager: Optional[Any] = PrivateAttr(default=None)
+    _transport_spec: Union[AnyUrl, Dict[str, Any], Path, str] = PrivateAttr(default=None)
+    _client: Optional[Client] = PrivateAttr(default=None)
+    _client_context_manager: Optional[Any] = PrivateAttr(default=None)
+    _client_event_loop: Optional[Any] = PrivateAttr(default=None)
 
     def model_post_init(self, __context: Any) -> None:
         """Initialize after Pydantic model initialization."""
-        # Determine connection mode based on parameters
-        if self.mcp_sse_endpoint:
-            self._mode = "sse"
-            self._endpoint = self.mcp_sse_endpoint
-            if urlparse(self._endpoint).scheme not in ("http", "https"):
-                raise ValueError(f"Endpoint {self._endpoint} is not a valid HTTP(S) URL for SSE mode")
-            self._stdio_params = None
-        elif self.mcp_stdio_command:
-            self._mode = "stdio"
-            self._endpoint = None
-            if not self.mcp_stdio_command or len(self.mcp_stdio_command) < 1:
-                raise ValueError("stdio_command must contain at least the command to execute")
-            command = self.mcp_stdio_command[0]
-            args = self.mcp_stdio_command[1:] if len(self.mcp_stdio_command) > 1 else []
-            self._stdio_params = StdioServerParameters(command=command, args=args)
+        # Determine transport specification based on parameters
+        if self.mcp_endpoint:
+            self._transport_spec = self._parse_mcp_endpoint(self.mcp_endpoint)
         else:
-            raise ValueError("Either mcp_sse_endpoint or mcp_stdio_command must be provided")
+            raise ValueError("mcp_endpoint must be provided")
+    
+    @staticmethod
+    def _parse_mcp_endpoint(endpoint: str, server_name: Optional[str] = None) -> Union[AnyUrl, Dict[str, Any], Path]:
+        """
+        Parse the MCP endpoint and return the appropriate transport specification for FastMCP.
+        
+        Args:
+            endpoint: The MCP endpoint string
+            
+        Returns:
+            Union[AnyUrl, Dict[str, Any], Path]: Parsed transport specification:
+                - AnyUrl: for HTTP/HTTPS URLs
+                - Dict[str, Any]: for command specifications (like {"command": "python", "args": ["script.py"]})  
+                - Path: for single script file paths
+        """
+        # Check if it's a URL (HTTP/HTTPS) using Pydantic's AnyUrl
+        try:
+            url = AnyUrl(endpoint)
+            return url
+        except ValidationError:
+            # Not a valid URL, continue to other checks
+            pass
+        
+        # Check if it's a single file path that exists
+        endpoint_path = Path(endpoint)
+        if endpoint_path.exists() and endpoint_path.is_file():
+            return endpoint_path
+        
+        # Check if it's a command string (like "python script.py" or "/path/to/python /path/to/script.py")
+        # This is common for STDIO MCP servers
+        try:
+            # Use shlex to properly split the command while handling quoted arguments
+            parts = shlex.split(endpoint)
+            server_name = server_name or generate_unique_name()
+            if len(parts) >= 2:
+                # Check if the last part looks like a supported script path
+                potential_script = Path(parts[-1])
+                supported_extensions = {'.py', '.js'}
+                if potential_script.exists() and potential_script.suffix in supported_extensions:
+                    # This looks like a command to run a script
+                    # Return it as a command dict for FastMCP
+                    return {
+                        "mcpServers": {
+                            server_name: {
+                                "command": parts[0],
+                                "args": [str(part) for part in parts[1:]]
+                            }
+                        }
+                    }
+        except ValueError:
+            # shlex.split failed, probably not a valid command string
+            pass
+        
+        # Default to returning as-is (let FastMCP handle it)
+        return endpoint
+
 
     @classmethod
-    def get_client_by_inputs(cls, server_params: MCPServerParameters) -> 'MCPClient':
+    def get_client_by_inputs(cls, mcp_endpoint: Optional[str] = None, **kwargs) -> 'MCPClient':
         """
         Factory classmethod to get (or create) an MCPClient instance based on connection parameters.
         Uses the module-level MCPClientLocator to reuse existing clients when possible.
         
         Args:
-            server_params: MCPServerParameters object containing connection parameters
+            mcp_endpoint: The MCP endpoint (URL for SSE, command for stdio, or file path)
+            **kwargs: Additional parameters (ignored, for compatibility with unpacked objects)
             
         Returns:
             An MCPClient instance (either existing or newly created)
             
         Raises:
-            ValueError: If no valid connection parameters are provided in server_params
+            ValueError: If no valid connection parameters are provided
         """
-        # Create a unique key based on the connection parameters
-        if server_params.mcp_sse_endpoint:
-            client_key = f"sse:{server_params.mcp_sse_endpoint}"
-            # SSE connections are lightweight HTTP - no need for reuse, create fresh each time
-            client = cls(client_key=client_key, **server_params.model_dump())
+        if not mcp_endpoint:
+            raise ValueError("mcp_endpoint must be provided")
+            
+        # Parse the endpoint to determine transport type
+        transport_spec = cls._parse_mcp_endpoint(mcp_endpoint)
+        
+        # Check if it's HTTP transport (URLs)
+        if isinstance(transport_spec, AnyUrl) or (isinstance(transport_spec, str) and transport_spec.startswith(("http://", "https://"))):
+            # HTTP/HTTPS endpoints are lightweight - create fresh each time
+            client_key = f"sse:{mcp_endpoint}"
+            client = cls(client_key=client_key, mcp_endpoint=mcp_endpoint)
             return client
-        elif server_params.mcp_stdio_command:
-            command_str = " ".join(server_params.mcp_stdio_command)
-            client_key = f"stdio:{command_str}"
         else:
-            raise ValueError("Either mcp_sse_endpoint or mcp_stdio_command must be provided in server_params")
-        
-        # Re-enable client reuse for STDIO connections with improved session lifecycle management
-        existing_client = _mcp_locator.get_client_by_key(client_key)
-        if existing_client:
-            return existing_client
-        
-        # Create new client with the client_key
-        client = cls(client_key=client_key, **server_params.model_dump())
-        
-        # Register the client with the locator
-        _mcp_locator.publish_client(client)
-        
-        return client
+            # Non-HTTP endpoints (stdio commands, file paths, command dicts) use multiton pattern
+            client_key = f"stdio:{mcp_endpoint}"
+            
+            # Re-enable client reuse for non-HTTP connections
+            existing_client = _mcp_locator.get_client_by_key(client_key)
+            if existing_client:
+                return existing_client
+            
+            # Create new client with the client_key
+            client = cls(client_key=client_key, mcp_endpoint=mcp_endpoint)
+            
+            # Register the client with the locator
+            _mcp_locator.publish_client(client)
+            
+            return client
 
     async def _connect(self) -> None:
-        """Establishes the connection and initializes the MCP session."""
-        if self._session:
-            # Check if the session is still usable by trying to access its event loop
+        """Establishes the connection and initializes the FastMCP client."""
+        # Get current event loop at the start to ensure it's available throughout
+        current_loop = asyncio.get_running_loop()
+        
+        if self._client:
+            # Check if the client is still usable by trying to access its event loop
             try:
-                current_loop = asyncio.get_running_loop()
-                
-                # Get the loop that the session is bound to (ClientSession uses _receive_loop)
-                session_loop = getattr(self._session, '_receive_loop', None)
-                
-                # If session has no loop attribute or loop is closed, recreate session
-                if session_loop is None:
-                    await self._close()
-                elif hasattr(session_loop, 'is_closed') and session_loop.is_closed():
-                    await self._close()
-                elif hasattr(session_loop, '__call__'):
-                    # _receive_loop is a method, but calling it creates a coroutine
-                    # We should not call it as it's an async method that manages the receive loop
-                    # Instead, let's check if the session is still valid in other ways
-                    try:
-                        # For STDIO connections, check if the underlying process is still alive
-                        if hasattr(self._session, '_write_stream') and hasattr(self._session._write_stream, '_transport'):
-                            transport = self._session._write_stream._transport
-                            if hasattr(transport, 'get_returncode'):
-                                returncode = transport.get_returncode()
-                                if returncode is not None:
-                                    # Process has exited, need to recreate
-                                    await self._close()
-                                else:
-                                    return # Session exists and process is alive
-                            else:
-                                return # Session exists, assume it's valid
-                        else:
-                            return # Session exists, assume it's valid
-                    except (AttributeError, OSError):
-                        # Any error accessing session internals suggests issues, recreate
+                # If we have a stored event loop, check if it matches current loop
+                if hasattr(self, '_client_event_loop') and self._client_event_loop is not None:
+                    if self._client_event_loop != current_loop:
+                        # Event loop has changed, close old connection
                         await self._close()
+                    elif hasattr(self._client_event_loop, 'is_closed') and self._client_event_loop.is_closed():
+                        # Event loop is closed, recreate connection
+                        await self._close()
+                    else:
+                        # Event loop is valid, check if client is still connected
+                        try:
+                            if self._client.is_connected():
+                                return # Client is already connected and working
+                            else:
+                                # Client exists but not connected, clean up
+                                await self._close()
+                        except (AttributeError, RuntimeError, OSError):
+                            # Client has issues, recreate
+                            await self._close()
                 else:
-                    await self._close()
+                    # No stored event loop, check if client is connected
+                    try:
+                        if self._client.is_connected():
+                            # Store current loop for future reference
+                            self._client_event_loop = current_loop
+                            return
+                        else:
+                            await self._close()
+                    except (AttributeError, RuntimeError, OSError):
+                        await self._close()
             except (AttributeError, RuntimeError):
-                # Any error suggests session issues, recreate to be safe
+                # Any error suggests client issues, recreate to be safe
                 await self._close()
-
-        # If we get here and still have a session, we can reuse it
-        if self._session:
+        
+        # If we get here and still have a client, we can reuse it
+        if self._client:
             return
 
-        if self._mode == "sse":
-            self._connection_context_manager = sse_client(self._endpoint)
-        elif self._mode == "stdio":
-            self._connection_context_manager = stdio_client(self._stdio_params)
-        else:
-            raise ValueError(f"Unsupported mode: {self._mode}")
-
-        streams_tuple = await self._connection_context_manager.__aenter__()
+        # Create new FastMCP client
+        self._client = Client(self._transport_spec)
+        self._client_context_manager = self._client.__aenter__()
+        await self._client_context_manager
         
-        self._client_session_context_manager = ClientSession(*streams_tuple)
-        self._session = await self._client_session_context_manager.__aenter__()
-        
-        await self._session.initialize()
+        # Store the current event loop for future reference
+        self._client_event_loop = current_loop
 
     async def _close(self) -> None:
-        """Closes the MCP session and tears down the connection."""
-        if self._client_session_context_manager:
+        """Closes the FastMCP client and tears down the connection."""
+        if self._client_context_manager and self._client:
             try:
-                await self._client_session_context_manager.__aexit__(None, None, None)
-            except Exception as e:
-                pass # Ignore errors during close, best effort
-        if self._connection_context_manager:
-            try:
-                await self._connection_context_manager.__aexit__(None, None, None)
-            except Exception as e:
+                await self._client.__aexit__(None, None, None)
+            except Exception:
                 pass # Ignore errors during close, best effort
         
-        self._session = None
-        self._client_session_context_manager = None
-        self._connection_context_manager = None
+        self._client = None
+        self._client_context_manager = None
+        self._client_event_loop = None
 
     async def __aenter__(self) -> "MCPClient":
         await self._connect()
@@ -288,34 +314,36 @@ class MCPClient(MCPServerParameters):
         await self._connect()
         
         try:
-            mcp_call_result = await self._session.call_tool(tool_name, kwargs)
-
+            # FastMCP call_tool returns List[TextContent | ImageContent | EmbeddedResource]
+            content_list = await self._client.call_tool(tool_name, kwargs)
+            
+            # Convert content list to string format as expected by MCPToolInvocationResult
             content_str = ""
-            if mcp_call_result.content:
-                # Ensure each part is serialized to JSON string as per original intent for ToolInvocationResult
-                content_items = [part.model_dump_json(exclude_none=True) for part in mcp_call_result.content]
+            if content_list:
+                content_items = []
+                for content in content_list:
+                    if isinstance(content, (TextContent, ImageContent, EmbeddedResource)):
+                        content_items.append(content.model_dump_json(exclude_none=True))
+                    else:
+                        # Fallback for any other content types
+                        content_items.append(content.model_dump_json(exclude_none=True))
                 content_str = "\\n".join(content_items)
             
             return MCPToolInvocationResult(
                 content=content_str,
-                error_code=1 if mcp_call_result.isError else 0,
+                error_code=0,  # Success
+            )
+        except ToolError as e:
+            # FastMCP raises ToolError for tool execution errors (wrong inputs, etc.)
+            return MCPToolInvocationResult(
+                content=str(e),
+                error_code=1,  # Error
             )
         except Exception as e:
-            # If we get an error, it might be due to a stale session
-            # Try to reconnect once and retry
-            await self._close()
-            await self._connect()
-            
-            mcp_call_result = await self._session.call_tool(tool_name, kwargs)
-
-            content_str = ""
-            if mcp_call_result.content:
-                content_items = [part.model_dump_json(exclude_none=True) for part in mcp_call_result.content]
-                content_str = "\\n".join(content_items)
-            
+            # Connection or other unexpected errors
             return MCPToolInvocationResult(
-                content=content_str,
-                error_code=1 if mcp_call_result.isError else 0,
+                content=f"Connection error: {str(e)}",
+                error_code=1,
             )
 
     async def _fetch_tool_info(self) -> List[MCPTool]:
@@ -328,17 +356,9 @@ class MCPClient(MCPServerParameters):
         # Ensure we have a valid connection, reusing if possible
         await self._connect()
         
-        try:
-            tools_result = await self._session.list_tools() # tools_result is mcp.types.ListToolsResult
-            return tools_result.tools
-        except Exception as e:
-            # If we get an error, it might be due to a stale session
-            # Try to reconnect once and retry
-            await self._close()
-            await self._connect()
-            
-            tools_result = await self._session.list_tools()
-            return tools_result.tools
+        # FastMCP list_tools returns List[mcp.types.Tool] directly
+        tools = await self._client.list_tools()
+        return tools
 
     async def list_tools_openai(self) -> List[ToolDefinition]:
         """

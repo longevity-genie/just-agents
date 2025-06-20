@@ -1,7 +1,7 @@
 from pathlib import Path
 from typing import Dict, List, Union, Optional, Any, Literal
 import os
-from pydantic import BaseModel, Field, RootModel
+from pydantic import BaseModel, Field, RootModel, ConfigDict
 
 from just_agents.just_bus import JustLogBus
 
@@ -34,9 +34,9 @@ class DirectoryTree(RootModel):
         description="Directory tree structure"
     )
     
-    model_config = {
-        "arbitrary_types_allowed": True
-    }
+    model_config = ConfigDict(
+        arbitrary_types_allowed=True
+    )
 
 def validate_path_security(path: str, base_dir: str = "tests/data") -> str:
     """Validates that a path is secure and within the allowed base directory.

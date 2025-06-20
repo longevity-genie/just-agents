@@ -115,6 +115,6 @@ def test_response_format_gemini_problem(load_env): #https://github.com/BerriAI/l
 def test_grok_bug_regression(load_env):
     OPENAI_GPT4_1NANO, LLAMA3_3,_ = load_env
     triple_func_call(OPENAI_GPT4_1NANO)
-    #triple_func_call(LLAMA3_3) # failing after 20 may 2025, groq to blame.
+    triple_func_call(LLAMA3_3) # works again. Groq is strange
     #fixed - https://github.com/BerriAI/litellm/issues/7621
 

@@ -1,10 +1,11 @@
 import inspect
 import sys
+import warnings
 from functools import wraps
-
+from json import JSONDecodeError
 from abc import ABC, abstractmethod
 from typing import Callable, Optional, List, Dict, Any, Sequence, Union, TypeVar, Type, Tuple, get_origin
-from pydantic import ConfigDict, BaseModel, Field, PrivateAttr
+from pydantic import ConfigDict, BaseModel, Field, PrivateAttr, ValidationError, model_serializer
 from importlib import import_module
 
 from just_agents.data_classes import ToolDefinition
@@ -13,7 +14,28 @@ from just_agents.just_schema import ModelHelper
 from just_agents.just_bus import JustToolsBus, SubscriberCallback
 
 from just_agents.mcp_client import MCPClient, MCPServerParameters
+from just_agents.data_classes import GoogleBuiltInName
 
+
+# Google built-in tool stub functions with proper names
+def googleSearch():
+    """Google built-in tool stub - should not be called directly"""
+    raise RuntimeError("Google built-in tool 'googleSearch' should not be called directly - it's handled by the model")
+
+def codeExecution():
+    """Google built-in tool stub - should not be called directly"""
+    raise RuntimeError("Google built-in tool 'codeExecution' should not be called directly - it's handled by the model")
+
+# Map tool names to their stub functions
+_GOOGLE_BUILTIN_STUBS = {
+    "googleSearch": googleSearch,
+    "codeExecution": codeExecution
+}
+
+_GOOGLE_BUILTIN_STUBS_DESCRIPTIONS = {
+    "googleSearch": "Built-in tool to search the web",
+    "codeExecution": "Built-in tool to execute code"
+}
 
 def max_calls_decorator(tool_instance: 'JustToolBase', max_calls: int, tool_name: str):
     """
@@ -163,16 +185,14 @@ if sys.version_info >= (3, 11):
 else:
     Self = TypeVar('Self', bound='JustToolBase')
 
-class JustToolBase(ToolDefinition, ABC): #TODO interface
+class JustToolBase(ToolDefinition, ABC):
     """
     Abstract base class for all Just tools. Defines common interface and functionality.
     """
-    auto_refresh: bool = Field(True, description="Whether to automatically refresh the tool after initialization.")
+    model_config = ConfigDict(extra="allow")
     max_calls_per_query: Optional[int] = Field(None, ge=1, description="The maximum number of calls to the function per query.")
-    is_async: bool = Field(False, description="True if the tool is an async (non-generator) function.")
-    model_config = ConfigDict(
-        extra="allow",
-    )
+    is_async: bool = Field(False, exclude=True, description="True if the tool is an async (non-generator) function.")
+    is_transient: bool = Field(False, description="True if the tool should not be serialized (e.g. is bound to an instance).")
 
     _callable: Optional[Callable] = PrivateAttr(default=None)
     """The callable function wrapped with the JustToolsBus callbacks."""
@@ -203,11 +223,49 @@ class JustToolBase(ToolDefinition, ABC): #TODO interface
         return self
     
     def model_post_init(self, __context: Any) -> None:
-        """Called after the model is initialized. Refreshes the tools meta-info if auto_refresh is True."""
+        """Called after the model is initialized."""
         super().model_post_init(__context)
-        if self._callable is None or self._raw_callable is None:
 
-            self.get_callable_sync(refresh=self.auto_refresh, wrap=True)
+        try:
+            # Get the raw callable, its schema, and pydantic model
+            # using the concrete implementation's method
+            func, tool_description_schema, generated_pydantic_model = self._get_raw_function_info()
+
+            self._raw_callable = func
+            self._pydantic_model = generated_pydantic_model
+
+            # Set description from function if not provided by user
+            if self.description is None:
+                self.description = tool_description_schema.get("description", None)
+
+            # Update parameters
+            self.parameters = tool_description_schema.get("parameters")
+
+            # Update the is_async flag based on the (potentially new) callable
+            self.is_async = inspect.iscoroutinefunction(func) and \
+                            not inspect.isasyncgenfunction(func)
+
+            # Wrap the callable with decorators
+            # self.name is the simple name, used for event bus topics
+            self._callable = tool_decorator_composer(self, self.name)(func)
+
+        except Exception as e:
+            # The specific error type and message depends on the concrete implementation
+            if hasattr(self, 'static_class'):
+                raise type(e)(
+                    f"Error initializing {self.name} (class: {self.static_class}) from {self.package}: {e}") from e
+            elif hasattr(self, 'package'):
+                raise type(e)(f"Error initializing {self.name} from {self.package}: {e}") from e
+            elif isinstance(e, ValidationError):
+                raise e
+            else:
+                raise type(e)(f"Error initializing {self.name}: {e}") from e
+
+        # Ensure callables are properly initialized
+        if self._raw_callable is None:
+            raise RuntimeError(f"Failed to initialize raw callable for tool '{self.name}'")
+        if self._callable is None:
+            raise RuntimeError(f"Failed to initialize wrapped callable for tool '{self.name}'")
 
     @staticmethod
     def function_to_llm_dict(input_function: Callable) -> Dict[str, Any]:
@@ -321,84 +379,32 @@ class JustToolBase(ToolDefinition, ABC): #TODO interface
         if not self.subscribe(callback, "error"):
             raise ValueError(f"Failed to subscribe to {self.name}.error")
 
-    def refresh(self) -> Self:
-        """
-        Refresh the tool instance to reflect the current state of the actual function.
-        Updates description, parameters, is_async, and ensures the function is importable.
-        
-        Returns:
-            Self: Returns self to allow method chaining or direct appending.
-        """
-        try:
-            # Get the raw callable, its schema, and pydantic model
-            # using the concrete implementation's method
-            func, tool_description_schema, generated_pydantic_model = self._get_raw_function_info()
-            
-            self._raw_callable = func
-            self._pydantic_model = generated_pydantic_model
-            
-            # Update the description
-            self.description = tool_description_schema.get("description")
-            
-            # Update parameters
-            self.parameters = tool_description_schema.get("parameters")
 
-            # Update the is_async flag based on the (potentially new) callable
-            self.is_async = inspect.iscoroutinefunction(func) and \
-                            not inspect.isasyncgenfunction(func)
-            
-            # Rewrap with the updated callable
-            # self.name is the simple name, used for event bus topics
-            self._callable = tool_decorator_composer(self, self.name)(func)
-            
-            return self
-        except Exception as e:
-            # The specific error type and message depends on the concrete implementation
-            if hasattr(self, 'static_class'):
-                raise type(e)(f"Error refreshing {self.name} (class: {self.static_class}) from {self.package}: {e}") from e
-            elif hasattr(self, 'package'):
-                raise type(e)(f"Error refreshing {self.name} from {self.package}: {e}") from e
-            else:
-                raise type(e)(f"Error refreshing {self.name}: {e}") from e
-
-    def get_callable_sync(self, refresh: bool = False, wrap: bool = True) -> Callable:
+    def get_callable_sync(self, wrap: bool = True) -> Callable:
         """
         Retrieve the callable function.
         
         Args:
-            refresh: If True, the callable is refreshed before returning
             wrap: If True, the callable is wrapped with the JustToolsBus callbacks
 
         Returns:
             Wrapped callable function if wrap is True, otherwise the raw callable.
             
         Raises:
-            Exception: If function cannot be resolved based on the specific implementation.
+            RuntimeError: If callables are not initialized
         """
-        if refresh:
-            self.refresh() # This populates/updates _callable and _raw_callable, or raises error
-
-        # Check if already populated (by previous call, model_post_init, or successful refresh)
-        if wrap and self._callable is not None:
+        if wrap:
+            if self._callable is None:
+                raise RuntimeError(f"Wrapped callable not initialized for tool '{self.name}'")
             return self._callable
-        if not wrap and self._raw_callable is not None:
+        else:
+            if self._raw_callable is None:
+                raise RuntimeError(f"Raw callable not initialized for tool '{self.name}'")
             return self._raw_callable
 
-        # If not populated, resolve them now by refreshing
-        try:
-            self.refresh() 
-            
-            if wrap:
-                return self._callable
-            else:
-                return self._raw_callable
-        except Exception as e:
-            # Propagate the error from the concrete implementation
-            raise e
-
-    def get_callable(self, refresh: bool = False, wrap: bool = True) -> Callable:
+    def get_callable(self, wrap: bool = True) -> Callable:
         """Alias for get_callable_sync. Retrieves the callable function."""
-        return self.get_callable_sync(refresh=refresh, wrap=wrap)
+        return self.get_callable_sync(wrap=wrap)
 
     def __call__(self, *args: Any, **kwargs: Any) -> Any:
         """
@@ -421,16 +427,6 @@ class JustImportedTool(JustToolBase):
     """
     package: str = Field(..., description="The name of the module where the function or its containing class is located (e.g., 'my_module').")
     static_class: Optional[str] = Field(None, description="The qualified name of the class if the tool is a static/class method, relative to the package (e.g., 'MyClass' or 'OuterClass.InnerClass').")
-
-    def refresh(self) -> 'JustImportedTool':
-        """
-        Refresh the tool instance to reflect the current state of the actual function.
-        Updates description, parameters, is_async, and ensures the function is importable.
-        
-        Returns:
-            Self: Returns self to allow method chaining or direct appending.
-        """
-        return super().refresh()
 
     def _get_raw_function_info(self) -> Tuple[Callable, Dict[str, Any], Optional[Type[BaseModel]]]:
         """
@@ -510,22 +506,62 @@ class JustImportedTool(JustToolBase):
             # The part before the last dot is the class qualifier.
             static_class_name = qualified_name[:-len(simple_name)-1]
 
-        # Use ModelHelper to get both schema and model
-        llm_dict_params, generated_pydantic_model = ModelHelper.create_tool_schema_from_callable(input_function)
-
-        # Determine if the function is an async (non-generator) function
-        is_async_regular = inspect.iscoroutinefunction(input_function) and \
-                           not inspect.isasyncgenfunction(input_function)
-
         instance = cls(
-            **llm_dict_params, 
+            name=simple_name, 
             package=module_name,
             static_class=static_class_name,
-            is_async=is_async_regular,
         )
-        instance._pydantic_model = generated_pydantic_model
-        instance._raw_callable = input_function
-        instance._callable = tool_decorator_composer(instance, instance.name)(input_function)
+   
+        return instance
+
+
+class JustTransientTool(JustToolBase):
+    """
+    A tool that represents a transient callable that should not be serialized.
+    These tools are typically bound to specific object instances or contain state
+    that cannot be reconstructed from serialized data.
+    """
+    
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    raw_callable: Callable = Field(..., exclude=True, description="The raw callable function.")
+
+    def model_post_init(self, __context: Any) -> None:
+        """Called after the model is initialized.""" 
+        self._raw_callable = self.raw_callable
+        super().model_post_init(__context)
+        # Mark as transient
+        self.is_transient = True
+
+    def _get_raw_function_info(self) -> Tuple[Callable, Dict[str, Any], Optional[Type[BaseModel]]]:
+        """
+        Resolves the raw callable, its schema, and Pydantic model for a transient tool.
+        Uses the stored transient callable.
+        """
+        if self._raw_callable is None:
+            raise RuntimeError(f"Missing _raw_callable for transient tool '{self.name}'! Transient tools should be instantiated using from_callable!")
+
+        schema, pydantic_model = ModelHelper.create_tool_schema_from_callable(self._raw_callable)
+        return self._raw_callable, schema, pydantic_model
+    
+    @classmethod 
+    def from_callable(cls, input_function: Callable) -> 'JustTransientTool':
+        """
+        Create a JustTransientTool instance from any callable.
+        
+        Args:
+            input_function: Any callable to convert to a transient tool
+            
+        Returns:
+            JustTransientTool instance with function metadata
+        """
+        simple_name = input_function.__name__
+        # Create instance with minimal data first
+        instance = cls(
+            name=simple_name,
+            is_transient=True,
+            raw_callable=input_function,
+        )
+
         return instance
 
 
@@ -546,23 +582,27 @@ class JustMCPTool(MCPServerParameters, JustToolBase):
     Allows integration of remote or stdio-based MCP tools into the Just Agents framework.
     """
     _mcp_client: Optional[MCPClient] = PrivateAttr(default=None)
-    
-    def _ensure_mcp_client_instantiated(self) -> None:
-        """Ensures self._mcp_client is instantiated if it's None."""
-        if self._mcp_client is None:
-            self._mcp_client = MCPClient.get_client_by_inputs(self)
 
-    def refresh(self) -> 'JustMCPTool': 
+    def model_post_init(self, __context: Any) -> None:
+        """Called after the model is initialized."""
+        # Ensures self._mcp_client is instantiated before calling parent init
+        # The parent init calls _get_raw_function_info() which needs the client
+        if self._mcp_client is None:
+            self._mcp_client = MCPClient.get_client_by_inputs(**self.model_dump())
+        super().model_post_init(__context)
+
+    def reconnect(self) -> 'JustMCPTool': 
         """
-        Refreshes tool metadata by connecting to MCP endpoint and retrieving tool info. 
-        Also resets the client reference
+        Reconnects to the MCP server and reinitializes the tool metadata.
+        Useful when the MCP server has been restarted or tool definitions have changed.
+        
+        Returns:
+            Self: Returns self to allow method chaining.
         """
-        # Reset client reference - we'll get a fresh one on next use
-        self._mcp_client = None
-        # Ensure we're connected to fetch tool info
-        result = super().refresh()
-        self._ensure_mcp_client_instantiated()
-        return result
+        # Reset client reference and create a fresh one
+
+        self._mcp_client = MCPClient.get_client_by_inputs(**self.model_dump())
+        return self
             
     def _get_raw_function_info(self) -> Tuple[Callable, Dict[str, Any], Optional[Type[BaseModel]]]:
         """
@@ -608,7 +648,6 @@ class JustMCPTool(MCPServerParameters, JustToolBase):
         """
         Connects to MCP and retrieves information about the specified tool.
         """
-        self._ensure_mcp_client_instantiated()
         tool_definitions = await self._mcp_client.list_tools_openai()
         
         for tool_def in tool_definitions:
@@ -622,7 +661,6 @@ class JustMCPTool(MCPServerParameters, JustToolBase):
         """
         Asynchronously connects to MCP and invokes the tool with the given parameters.
         """
-        self._ensure_mcp_client_instantiated()
         result = await self._mcp_client.invoke_tool(self.name, kwargs) 
         if result.error_code != 0:
             raise ValueError(f"MCP tool error: {result.content}, error code: {result.error_code}")
@@ -664,79 +702,231 @@ class JustMCPTool(MCPServerParameters, JustToolBase):
                             extracted_texts.append(parsed_line)
                 # If we have only one item, return it directly, otherwise return list
                 return extracted_texts[0] if len(extracted_texts) == 1 else extracted_texts
-        except (json.JSONDecodeError, KeyError, TypeError):
+        except (JSONDecodeError, KeyError, TypeError):
             # If parsing fails, return the raw content
             return result.content
     
-    @classmethod
-    def from_mcp_endpoint(cls, name: str, endpoint: str, **kwargs) -> 'JustMCPTool':
-        """
-        Create a JustMCPTool instance from an MCP SSE endpoint.
-        
-        Args:
-            name: The name of the MCP tool
-            endpoint: The MCP endpoint URL
-            **kwargs: Additional parameters to pass to JustMCPTool constructor
-            
-        Returns:
-            JustMCPTool instance
-        """
-        instance = cls(
-            name=name,
-            mcp_sse_endpoint=endpoint,
-            **kwargs
-        )
-        
-        return instance.refresh()
-    
-    @classmethod
-    def from_mcp_stdio(cls, name: str, command: str, args: Optional[List[str]] = None, **kwargs) -> 'JustMCPTool':
-        """
-        Create a JustMCPTool instance from stdio command.
-        
-        Args:
-            name: The name of the MCP tool
-            command: The command to run
-            args: Command arguments (optional)
-            **kwargs: Additional parameters to pass to JustMCPTool constructor
-            
-        Returns:
-            JustMCPTool instance
-        """
-        stdio_command = [command]
-        if args:
-            stdio_command.extend(args)
-        
-        instance = cls(
-            name=name,
-            mcp_stdio_command=stdio_command,
-            **kwargs
-        )
-        
-        return instance.refresh()
+
 
 
 # For backward compatibility, JustTool becomes an alias to JustImportedTool
 # This allows all existing code using JustTool to continue working
 JustTool = JustImportedTool
 
+class JustGoogleBuiltIn(JustToolBase):
+    """
+    A special tool class for Google built-in tools (googleSearch and codeExecution).
+    These tools are handled natively by the Gemini model and should never be called directly.
+    """
+    name: GoogleBuiltInName = Field(..., alias='function', description="The name of the Google built-in tool")
+    
+    def model_post_init(self, __context: Any) -> None:
+        """Called after the model is initialized."""
+        super().model_post_init(__context)
+        # Google built-in tools have only {} as schema, drop any other fields
+        self.description = _GOOGLE_BUILTIN_STUBS_DESCRIPTIONS[self.name]
+        self.parameters = {} 
+        self.strict = None 
+
+    def _get_raw_function_info(self) -> Tuple[Callable, Dict[str, Any], Optional[Type[BaseModel]]]:
+        """
+        Returns a stub callable that raises an error since these tools should never be called.
+        
+        Returns:
+            A tuple containing:
+                - A stub callable that raises RuntimeError
+                - Empty schema with no description or parameters
+                - None for the Pydantic model
+        """
+        # Use the proper module-level stub function with correct __name__
+        stub_callable = _GOOGLE_BUILTIN_STUBS[self.name]
+        
+        schema = {
+            "name": self.name,
+            "parameters": {}    # Empty parameters as required
+        }
+        
+        return stub_callable, schema, None
+
+
 class JustPromptTool(JustImportedTool):
     call_arguments: Optional[Dict[str,Any]] = Field(..., description="Input parameters to call the function with.")
     """Input parameters to call the function with."""
 
-JustTools = Union[
-    Dict[str, Union[JustImportedTool, JustMCPTool, JustMCPToolSetConfig]],  # A dictionary where keys are strings and values are JustToolBase instances.
-    Sequence[
-        Union[JustImportedTool, JustMCPTool, JustMCPToolSetConfig, Callable]
-    ]  # A sequence (like a list or tuple) containing either JustToolBase instances or callable objects (functions).
+# Raw input types (for validation) - simplified for serialized form
+JustToolsRaw = Union[
+    Dict[str, Union[Callable, Dict[str, Any]]],
+    Sequence[Union[Callable, Dict[str, Any]]]
 ]
 
-JustPromptTools = Union[
-    Dict[str, JustPromptTool],  # A dictionary where keys are strings and values are JustPromptTool instances.
-    Sequence[
-        Union[JustPromptTool, Tuple[Callable, Dict[str,Any]]]
-    ]  # A sequence (like a list or tuple) containing either JustPromptTool instances or callable objects (functions) and input parameters.
+JustPromptToolsRaw = Union[
+    Dict[str, Dict[str, Any]],
+    Sequence[Union[Tuple[Callable, Dict[str, Any]], Dict[str, Any]]]
 ]
+
+class JustTools(BaseModel):
+    """
+    A collection of tools that handles serialization and provides access to individual tools.
+    Always serializes as an array of tools without parameters field.
+    """
+    
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+    
+    _tools_dict: Dict[str, JustToolBase] = PrivateAttr(default_factory=dict)
+    
+    @classmethod
+    def from_tools(cls, tools: JustToolsRaw) -> 'JustTools':
+        """
+        Create a JustTools instance from raw tools input.
+        
+        Args:
+            tools: Raw tools input (list, dict, sequence)
+            
+        Returns:
+            JustTools instance with processed tools
+        """
+        instance = cls()
+        if tools:
+            instance._tools_dict = cls._convert_raw_tools(tools)
+        return instance
+    
+    @staticmethod
+    def _convert_raw_tools(raw_tools: JustToolsRaw) -> Dict[str, JustToolBase]:
+        """Subroutine to convert raw tool inputs to processed tools dictionary."""
+        return JustToolFactory.create_tools_dict(raw_tools)
+    
+    def __getitem__(self, key: str) -> JustToolBase:
+        """Get a tool by name."""
+        return self._tools_dict[key]
+    
+    def __contains__(self, key: str) -> bool:
+        """Check if a tool exists."""
+        return key in self._tools_dict
+    
+    def __len__(self) -> int:
+        """Get the number of tools."""
+        return len(self._tools_dict)
+    
+    def __iter__(self):
+        """Iterate over tool names."""
+        return iter(self._tools_dict)
+    
+    def items(self):
+        """Get (name, tool) pairs."""
+        return self._tools_dict.items()
+    
+    def keys(self):
+        """Get tool names."""
+        return self._tools_dict.keys()
+    
+    def values(self):
+        """Get tool instances."""
+        return self._tools_dict.values()
+    
+    def batch_call(self, tool_names: List[str], *args, **kwargs) -> List[Any]:
+        """Call multiple tools with the same arguments."""
+        results = []
+        for name in tool_names:
+            if name in self:
+                results.append(self[name](*args, **kwargs))
+            else:
+                raise KeyError(f"Tool '{name}' not found")
+        return results
+
+    @model_serializer(mode="wrap", when_used="always")
+    def ser_model(self, serializer, info):
+        """Serialize to a flat list of tool dictionaries without parameters."""
+        # Let Pydantic do its normal serialization (suppress type warnings, mismatch is expected)
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", UserWarning)
+            data = serializer(self._tools_dict)
+        
+        # Convert to list and make atomic changes, excluding transient tools
+        result = []
+        for tool_dict in data.values():
+            if tool_dict.get('is_transient', False):
+                continue
+            tool_dict.pop('parameters', None)  # Atomic removal
+            if 'name' in tool_dict:
+                tool_dict['function'] = tool_dict.pop('name')  # Atomic rename
+            result.append(tool_dict)
+        return result
+
+
+class JustPromptTools(JustTools):
+    """
+    A collection of prompt tools that handles serialization and provides access to individual tools.
+    PromptTools are regular tools + predefined inputs to save LLM calls by pre-populating prompts.
+    Always serializes as an array of prompt tools without parameters field.
+    """
+    
+    _prompt_tools_dict: Dict[str, JustPromptTool] = PrivateAttr(default_factory=dict)
+    
+    @classmethod
+    def from_prompt_tools(cls, prompt_tools: JustPromptToolsRaw) -> 'JustPromptTools':
+        """
+        Create a JustPromptTools instance from raw prompt tools input.
+        
+        Args:
+            prompt_tools: Raw prompt tools input (list, dict, sequence)
+            
+        Returns:
+            JustPromptTools instance with processed prompt tools
+        """
+        instance = cls()
+        if prompt_tools:
+            instance._prompt_tools_dict = cls._convert_raw_prompt_tools(prompt_tools)
+        return instance
+    
+    @staticmethod
+    def _convert_raw_prompt_tools(raw_prompt_tools: JustPromptToolsRaw) -> Dict[str, JustPromptTool]:
+        """Subroutine to convert raw prompt tool inputs to processed prompt tools dictionary."""
+        return JustToolFactory.create_prompt_tools_dict(raw_prompt_tools)
+    
+    def __getitem__(self, key: str) -> JustPromptTool:
+        """Get a prompt tool by name."""
+        return self._prompt_tools_dict[key]
+    
+    def __contains__(self, key: str) -> bool:
+        """Check if a prompt tool exists."""
+        return key in self._prompt_tools_dict
+    
+    def __len__(self) -> int:
+        """Get the number of prompt tools."""
+        return len(self._prompt_tools_dict)
+    
+    def __iter__(self):
+        """Iterate over prompt tool names."""
+        return iter(self._prompt_tools_dict)
+    
+    def items(self):
+        """Get (name, prompt_tool) pairs."""
+        return self._prompt_tools_dict.items()
+    
+    def keys(self):
+        """Get prompt tool names."""
+        return self._prompt_tools_dict.keys()
+    
+    def values(self):
+        """Get prompt tool instances."""
+        return self._prompt_tools_dict.values()
+
+    def batch_call(self, tool_names: List[str], *args, **kwargs) -> List[Any]:
+        """Call multiple prompt tools with the same arguments."""
+        results = []
+        for name in tool_names:
+            if name in self._prompt_tools_dict:
+                results.append(self._prompt_tools_dict[name](*args, **kwargs))
+            else:
+                raise KeyError(f"Prompt tool '{name}' not found")
+        return results
+    
+    @property
+    def _tools_dict(self) -> Dict[str, JustPromptTool]:
+        """Override parent's _tools_dict to use prompt tools dict for serialization."""
+        return self._prompt_tools_dict
+
+
 
 class JustToolFactory:
     """
@@ -762,13 +952,16 @@ class JustToolFactory:
 
         Raises:
             TypeError: If the item is neither a callable, JustToolBase instance, nor a valid dictionary
+            ValueError: If the dictionary parameters are invalid or conflicting
         """
         if isinstance(item, JustToolBase):
-            if item.auto_refresh:
-                item.refresh()
             return item
         elif callable(item):
-            if type_hint == JustImportedTool or type_hint == JustTool:
+            # Check if it's a bound method (instance method bound to an object)
+            if hasattr(item, '__self__') and hasattr(item, '__func__'):
+                # This is a bound method - create a transient tool
+                return JustTransientTool.from_callable(item)
+            elif type_hint == JustImportedTool or type_hint == JustTool:
                 return JustTool.from_callable(item)
             else:
                 # Use the from_callable of the specified type if it exists
@@ -779,38 +972,98 @@ class JustToolFactory:
                 # This assumes the type_hint is a subclass of JustToolBase with similar fields
                 return type_hint(**tool.model_dump())
         elif isinstance(item, dict):
-            # Heuristically determine the class based on dictionary keys
-            tool_class = JustToolBase #abstract, will raise if not overridden.
-            
-            # Check if we have minimum required fields for any tool
-            if not 'name' in item:
-                raise ValueError("Function name must be provided in the dictionary")
-
-            # Check for MCP tool vs ImportedTool
-            if 'mcp_sse_endpoint' in item or 'mcp_stdio_command' in item:
-                tool_class = JustMCPTool
-            elif 'package' in item or 'static_class' in item:
-                if issubclass(type_hint, JustImportedTool) or issubclass(type_hint, JustPromptTool): 
-                   #use type_hint if it's a subclass of JustImportedTool or JustPromptTool
-                   tool_class = type_hint
-                else:
-                   tool_class = JustImportedTool
-
-                # JustPromptTool may have call_arguments
-                if 'call_arguments' in item:
-                    if issubclass(type_hint, JustPromptTool):
-                        tool_class = type_hint
-                    else:
-                        tool_class = JustPromptTool
+            # Detect tool type based on parameter patterns
+            tool_type = JustToolFactory._detect_tool_type(item, type_hint)
             
             try:
                 # Create and return the tool instance
-                tool_instance = tool_class(**item)
+                tool_instance = tool_type(**item)
                 return tool_instance
             except Exception as e:
-                raise ValueError(f"Failed to create tool from dictionary: {e}")
+                raise ValueError(f"Failed to create {tool_type.__name__} tool from dictionary: {e}")
         else:
             raise TypeError("Item must be a callable, JustToolBase instance, or a dictionary with tool parameters.")
+
+    @staticmethod  
+    def _detect_tool_type(item_dict: Dict[str, Any], type_hint: Type[JustToolBase]) -> Type[JustToolBase]:
+        """
+        Detect the appropriate tool type based on dictionary keys and values.
+        
+        Args:
+            item_dict: Dictionary with tool parameters
+            type_hint: Default tool type hint
+            
+        Returns:
+            Type[JustToolBase]: The detected tool class
+            
+        Raises:
+            ValueError: If conflicting parameters are detected or tool type cannot be determined
+        """
+        # Handle both 'name' and 'function' keys (function is the alias for name in ToolDefinition)
+        name = item_dict.get('name', item_dict.get('function', ''))
+        
+        # Check for Google built-in tools (highest priority - these are special)
+        if name in ['googleSearch', 'codeExecution']:
+            for key in item_dict.keys():
+                if key not in ['name', 'function', 'description']:
+                    raise ValueError(f"Invalid parameter '{key}' for Google built-in tool '{name}'")
+        
+            return JustGoogleBuiltIn
+        
+        # Check for MCP tool parameters
+        has_mcp_endpoint = 'mcp_endpoint' in item_dict
+        
+        # Check for imported tool parameters  
+        has_package = 'package' in item_dict
+        has_static_class = 'static_class' in item_dict
+        has_import_params = has_package or has_static_class
+        
+        # Check for prompt tool parameters
+        has_call_arguments = 'call_arguments' in item_dict
+        
+        # Validate parameter combinations and determine tool type
+        if has_mcp_endpoint and has_import_params:
+            raise ValueError(
+                f"Tool '{name}' has conflicting parameters: MCP parameter "
+                f"'mcp_endpoint' cannot be used with import parameters "
+                f"({'package' if has_package else 'static_class'})"
+            )
+        
+        # Determine tool type based on parameters
+        if has_mcp_endpoint:
+            return JustMCPTool
+        
+        if has_import_params:
+            # Handle prompt tools (which are a subtype of imported tools)
+            if has_call_arguments:
+                if issubclass(type_hint, JustPromptTool):
+                    return type_hint
+                else:
+                    return JustPromptTool
+            
+            # Handle regular imported tools
+            if issubclass(type_hint, JustImportedTool):
+                return type_hint
+            else:
+                return JustImportedTool
+        
+        # Handle standalone prompt tools (tools with call_arguments but no import params)
+        if has_call_arguments:
+            if issubclass(type_hint, JustPromptTool):
+                return type_hint
+            else:
+                return JustPromptTool
+        
+        # If no specific parameters are found, check if we can use the type hint
+        if type_hint != JustToolBase and not issubclass(type_hint, JustToolBase):
+            raise ValueError(f"Invalid type_hint: {type_hint} is not a subclass of JustToolBase")
+        
+        # Always raise an error for insufficient parameters - we need explicit tool type indicators
+        raise ValueError(
+            f"Tool '{name}' has insufficient parameters to determine tool type. "
+            f"Expected one of: MCP parameter (mcp_endpoint), "
+            f"import parameters (package/static_class), or call_arguments for prompt tools."
+        )
 
     @staticmethod
     def create_prompt_tool(
@@ -853,31 +1106,32 @@ class JustToolFactory:
                 "Item must be a JustPromptTool instance, a (callable, input_params) tuple, or a dictionary with 'call_arguments'.")
 
         prompt_tool.max_calls_per_query = None  # Force disable
-        if prompt_tool.auto_refresh:
-            prompt_tool = prompt_tool.refresh()
         return prompt_tool
-
     @classmethod
     def create_tools_dict(
             cls,
-            tools: JustTools,
+            tools: Union[JustToolsRaw, JustTools],
             type_hint: Type[JustToolBase] = JustImportedTool
         ) -> Dict[str, JustToolBase]:
         """
-        Process a JustTools input (dict or sequence) to create a dictionary of tool instances.
-
+        Process tools input (dict, sequence, or JustTools instance) to create a dictionary of tool instances.
+        
         Args:
-            tools: Input JustTools (Dict[str, JustToolBase] or Sequence[Union[JustToolBase, Callable, Dict[str, Any]]])
+            tools: Input tools (Dict[str, JustToolBase], Sequence[Union[JustToolBase, Callable, Dict[str, Any]]], or JustTools instance)
             type_hint: The type of tool to create for callable items (defaults to JustImportedTool)
 
         Returns:
             Dict[str, JustToolBase]: Dictionary mapping tool names to tool instances
 
         Raises:
-            TypeError: If tools is not a dictionary or sequence, or if items in a sequence are invalid
+            TypeError: If tools is not a dictionary, sequence, or JustTools instance, or if items are invalid
         """
         if not tools:
             return {}
+        
+        # Handle JustTools instance
+        if isinstance(tools, JustTools):
+            return dict(tools.items())
         
         new_tools = {}
         if isinstance(tools, dict):
@@ -890,6 +1144,13 @@ class JustToolFactory:
                     mcp_tools = cls.create_tools_from_mcp(item)
                     new_tools.update(mcp_tools)
                 elif isinstance(item, Callable):
+                    try:
+                        tool = cls.create_tool(item, type_hint=type_hint)
+                        new_tools[tool.name] = tool
+                    except (TypeError, ValueError) as e:
+                        raise TypeError(f"Invalid item for key '{name}' in tools dictionary: {e}")
+                elif isinstance(item, dict):
+                    # Handle dictionary definitions (including Google built-in tools)
                     try:
                         tool = cls.create_tool(item, type_hint=type_hint)
                         new_tools[tool.name] = tool
@@ -918,23 +1179,27 @@ class JustToolFactory:
     @classmethod
     def create_prompt_tools_dict(
             cls,
-            prompt_tools: JustPromptTools
+            prompt_tools: Union[JustPromptToolsRaw, JustPromptTools]
         ) -> Dict[str, JustPromptTool]:
         """
-        Process a JustPromptTools input (dict or sequence) to create a dictionary of prompt tool instances.
+        Process prompt tools input (dict, sequence, or JustPromptTools instance) to create a dictionary of prompt tool instances.
 
         Args:
-            prompt_tools: Input JustPromptTools (Dict[str, JustPromptTool] or 
-                         Sequence[Union[JustPromptTool, Tuple[Callable, Dict[str, Any]], Dict[str, Any]]])
+            prompt_tools: Input prompt tools (Dict[str, JustPromptTool], 
+                         Sequence[Union[JustPromptTool, Tuple[Callable, Dict[str, Any]], Dict[str, Any]]], or JustPromptTools instance)
 
         Returns:
             Dict[str, JustPromptTool]: Dictionary mapping tool names to prompt tool instances
 
         Raises:
-            TypeError: If prompt_tools is not a dictionary or sequence, or if items in a sequence are invalid
+            TypeError: If prompt_tools is not a dictionary, sequence, or JustPromptTools instance, or if items are invalid
         """
         if not prompt_tools:
             return {}
+
+        # Handle JustPromptTools instance
+        if isinstance(prompt_tools, JustPromptTools):
+            return dict(prompt_tools.items())
 
         if isinstance(prompt_tools, dict):
             # If it's already a dictionary, ensure all values are proper prompt tools
@@ -967,29 +1232,19 @@ class JustToolFactory:
     @classmethod
     def list_mcp_tools(
             cls,
-            sse_endpoint: Optional[str] = None,
-            stdio_command: Optional[List[str]] = None
+            endpoint: str
         ) -> Dict[str, ToolDefinition]:
         """
         List available MCP tools as a dictionary of ToolDefinition objects.
         
         Args:
-            sse_endpoint: The SSE endpoint URL for MCP connection
-            stdio_command: The stdio command and arguments for MCP connection
+            endpoint: The MCP endpoint (URL for SSE, command for stdio, or file path)
             
         Returns:
             Dict[str, ToolDefinition]: Dictionary mapping tool names to ToolDefinition objects
-            
-        Raises:
-            ValueError: If neither sse_endpoint nor stdio_command is provided
         """
-
-        if not sse_endpoint and not stdio_command:
-            raise ValueError("Either sse_endpoint or stdio_command must be provided")
-        
         # Get the MCP client
-        server_params = MCPServerParameters(mcp_sse_endpoint=sse_endpoint, mcp_stdio_command=stdio_command)
-        client = MCPClient.get_client_by_inputs(server_params)
+        client = MCPClient.get_client_by_inputs(mcp_endpoint=endpoint)
         
         # Create and run the coroutine to list tools
         async def get_tools():
@@ -1004,29 +1259,20 @@ class JustToolFactory:
     def get_mcp_tool_by_name(
             cls,
             tool_name: str,
-            sse_endpoint: Optional[str] = None,
-            stdio_command: Optional[List[str]] = None
+            endpoint: str
         ) -> Optional[ToolDefinition]:
         """
         Get a specific MCP tool by name as a ToolDefinition object.
         
         Args:
             tool_name: The name of the tool to retrieve
-            sse_endpoint: The SSE endpoint URL for MCP connection
-            stdio_command: The stdio command and arguments for MCP connection
+            endpoint: The MCP endpoint (URL for SSE, command for stdio, or file path)
             
         Returns:
             Optional[ToolDefinition]: The tool as a ToolDefinition object, or None if not found
-            
-        Raises:
-            ValueError: If neither sse_endpoint nor stdio_command is provided
         """
-        if not sse_endpoint and not stdio_command:
-            raise ValueError("Either sse_endpoint or stdio_command must be provided")
-        
         # Get the MCP client
-        server_params = MCPServerParameters(mcp_sse_endpoint=sse_endpoint, mcp_stdio_command=stdio_command)
-        client = MCPClient.get_client_by_inputs(server_params)
+        client = MCPClient.get_client_by_inputs(mcp_endpoint=endpoint)
         
         # Create and run the coroutine to get the tool
         async def get_tool():
@@ -1051,12 +1297,14 @@ class JustToolFactory:
             Dict[str, JustMCPTool]: Dictionary mapping tool names to JustMCPTool instances
 
         Raises:
-            ValueError: If neither mcp_sse_endpoint nor mcp_stdio_command is provided in config
+            ValueError: If mcp_endpoint is not provided in config
             ValueError: If raise_on_incorrect_names is True and include/exclude contains names not in available tools
         """
+        if not config.mcp_endpoint:
+            raise ValueError("mcp_endpoint must be provided in config")
+            
         # Get the available tools from the MCP server
-        tool_defs = cls.list_mcp_tools(sse_endpoint=config.mcp_sse_endpoint, 
-                                      stdio_command=config.mcp_stdio_command)
+        tool_defs = cls.list_mcp_tools(endpoint=config.mcp_endpoint)
         
         # Convert to a set for easier filtering
         available_tools = set(tool_defs.keys())
@@ -1086,24 +1334,16 @@ class JustToolFactory:
             # Include all available tools
             tools_to_create = available_tools
         
-        # Apply exclude filter
+        # Apply exclusion filter
         tools_to_create -= exclude_set
         
         # Create tool instances
         tool_dict = {}
         for tool_name in tools_to_create:
-            if config.mcp_sse_endpoint:
-                tool = JustMCPTool.from_mcp_endpoint(
-                    name=tool_name,
-                    endpoint=config.mcp_sse_endpoint
-                )
-            else:
-                tool = JustMCPTool.from_mcp_stdio(
-                    name=tool_name,
-                    command=config.mcp_stdio_command[0],
-                    args=config.mcp_stdio_command[1:] if len(config.mcp_stdio_command) > 1 else None
-                )
-            
+            tool = JustMCPTool(
+                name=tool_name,
+                mcp_endpoint=config.mcp_endpoint
+            )
             tool_dict[tool_name] = tool
         
         return tool_dict

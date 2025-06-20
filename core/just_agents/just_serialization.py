@@ -508,6 +508,7 @@ class JustSerializable(BaseModel):
             parent_section: str = None,
             file_path: Path = None,
             include_extras: bool = True,
+            rename_instance: bool = True,
             include: Optional[Set[str]] = None,
             exclude: Optional[Set[str]] = None,
             by_alias: bool = True,
@@ -525,6 +526,7 @@ class JustSerializable(BaseModel):
             parent_section (str): The parent section name in the YAML file.
             file_path (Path): The path to the YAML file.
             include_extras (bool): Whether to exclude Extra fields of Pydantic model.
+            rename_instance (bool): Whether to rename the instance's shortname to the specified section_name.
             See pydantic documentation of the following flags:
             include (Optional[Set[str]]): Set of fields to include in the output, acts as Allowlist
             exclude (Optional[Set[str]]): Set of fields to exclude from the output, acts as Deny-list
@@ -541,6 +543,10 @@ class JustSerializable(BaseModel):
             parent_section = self.config_parent_section
         if not section_name:
             section_name = self.shortname #Set configured
+        else:
+            # Update the instance's shortname to the specified section_name (save vs save_as logic)
+            if rename_instance:
+                self.shortname = section_name
 
         section_data = self.to_json(
             include_extras=include_extras,

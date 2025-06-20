@@ -4,7 +4,11 @@ from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict, Un
 
 from just_agents.just_serialization import JustSerializable
 from just_agents.data_classes import ModelPromptExample
-from just_agents.just_tool import JustTool, JustTools, SubscriberCallback, JustPromptTool, JustPromptTools, JustToolBase, JustToolFactory, JustMCPToolSetConfig
+from just_agents.just_tool import (
+    JustTool, JustTools, JustToolsRaw, 
+    JustPromptTool, JustPromptTools, JustPromptToolsRaw,
+    JustToolBase, JustToolFactory, JustMCPToolSetConfig, SubscriberCallback
+)
 
 
 class JustAgentProfileToolsetMixin(BaseModel):
@@ -12,37 +16,39 @@ class JustAgentProfileToolsetMixin(BaseModel):
     A mixin class that provides tool-related functionality for agent profiles.
     """
     litellm_tool_description: Optional[bool] = Field(
-        False, exclude=True,
-        description="Whether to use the litellm tool description utility fallback, requires numpydoc")
+        False, 
+        deprecated=True,
+        exclude=True,
+        description="DEPRECATED: Whether to use the litellm tool description utility fallback, requires numpydoc")
     """Whether to use the litellm tool description utility fallback, requires numpydoc"""
 
-    tools: Optional[JustTools] = Field(
+    tools: Optional[Union[JustToolsRaw, JustTools]] = Field(
         None,
-        description="A List[Callable] of tools available to the agent and their descriptions")
-    """A List[Callable] of tools available to the agent and their descriptions"""
+        description="A collection of tools available to the agent")
+    """A collection of tools available to the agent"""
 
-    prompt_tools: Optional[JustPromptTools] = Field(
+    prompt_tools: Optional[Union[JustPromptToolsRaw, JustPromptTools]] = Field(
         None,
-        description="A List[Callable] of tools that will be executed to append results to the prompt before completion call")
-    """A List[Callable] of tools that will be executed to append results to the prompt before completion call"""
+        description="A collection of prompt tools that will be executed to append results to the prompt before completion call")
+    """A collection of prompt tools that will be executed to append results to the prompt before completion call"""
 
     def add_tool(self, fun: callable) -> None:
         """
-        Adds a tool to the agent's tools dictionary.
+        Adds a tool to the agent's tools collection.
 
         Args:
             fun (callable): The function to add as a tool
         """
-        tool = JustToolFactory.create_tool(fun)
-
         if self.tools is None:
-            self.tools = {tool.name: tool}
+            self.tools = JustTools.from_tools([fun])
         else:
-            self.tools[tool.name] = tool
+            # Extract existing tools and add the new one
+            existing_tools = list(self.tools.values())
+            self.tools = JustTools.from_tools(existing_tools + [fun])
 
     def add_mcp_tools(self, config: 'JustMCPToolSetConfig') -> None:
         """
-        Adds multiple MCP tools to the agent's tools dictionary based on the provided configuration.
+        Adds multiple MCP tools to the agent's tools collection based on the provided configuration.
         
         Args:
             config (JustMCPToolSetConfig): Configuration containing MCP endpoint/command and include/exclude lists
@@ -53,13 +59,15 @@ class JustAgentProfileToolsetMixin(BaseModel):
             return
             
         if self.tools is None:
-            self.tools = mcp_tools
+            self.tools = JustTools.from_tools(list(mcp_tools.values()))
         else:
-            self.tools.update(mcp_tools)
+            # Add to the existing tools and rebuild
+            existing_tools = list(self.tools.values())
+            self.tools = JustTools.from_tools(existing_tools + list(mcp_tools.values()))
 
     def add_prompt_tool(self, fun: callable, call_arguments: Dict[str, Any]) -> None:
         """
-        Adds a tool to the agent's prompt_tools dictionary with input parameters.
+        Adds a tool to the agent's prompt_tools collection with input parameters.
 
         Args:
             fun (callable): The function to add as a prompt tool
@@ -72,41 +80,45 @@ class JustAgentProfileToolsetMixin(BaseModel):
         except (TypeError, OverflowError):
             raise ValueError("Input parameters must be JSON serializable")
 
-        prompt_tool = JustToolFactory.create_prompt_tool((fun, call_arguments))
+        prompt_tool_tuple = (fun, call_arguments)
 
         if self.prompt_tools is None:
-            self.prompt_tools = {prompt_tool.name: prompt_tool}
+            self.prompt_tools = JustPromptTools.from_prompt_tools([prompt_tool_tuple])
         else:
-            self.prompt_tools[prompt_tool.name] = prompt_tool
+            # Add to the existing prompt tools and rebuild
+            existing_prompt_tools = list(self.prompt_tools.values())
+            self.prompt_tools = JustPromptTools.from_prompt_tools([prompt_tool_tuple] + [
+                (tool.get_callable(wrap=False), tool.call_arguments) 
+                for tool in existing_prompt_tools
+            ])
 
     def _process_tools_field(self) -> None:
         """
-        Process the tools field to convert callables to JustTool instances
+        Process the tools field to convert raw input to JustTools instance
         """
         if not self.tools:
             return
         
-        if isinstance(self.tools, dict):
-            if all(isinstance(tool, JustToolBase) for tool in self.tools.values()):
-                return
-        elif not isinstance(self.tools, Sequence):
-            raise TypeError("The 'tools' field must be a sequence of callables, JustTool instances, or JustMCPToolSetConfig instances.")
-        self.tools = JustToolFactory.create_tools_dict(self.tools, type_hint=JustTool)
+        # If it's already a JustTools instance, nothing to do
+        if isinstance(self.tools, JustTools):
+            return
+            
+        # Convert raw input to JustTools instance
+        self.tools = JustTools.from_tools(self.tools)
 
     def _process_prompt_tools_field(self) -> None:
         """
-        Process the prompt_tools field to convert callables with input parameters to JustPromptTool instances
+        Process the prompt_tools field to convert raw input to JustPromptTools instance
         """
         if not self.prompt_tools:
             return
 
-        if isinstance(self.prompt_tools, dict):
-            if all(isinstance(tool, JustPromptTool) for tool in self.prompt_tools.values()):
-                return
-        elif not isinstance(self.prompt_tools, Sequence):
-            raise TypeError(
-                "The 'prompt_tools' field must be a sequence of (callable, input_params) tuples or JustPromptTool instances.")
-        self.prompt_tools = JustToolFactory.create_prompt_tools_dict(self.prompt_tools)
+        # If it's already a JustPromptTools instance, nothing to do
+        if isinstance(self.prompt_tools, JustPromptTools):
+            return
+            
+        # Convert raw input to JustPromptTools instance
+        self.prompt_tools = JustPromptTools.from_prompt_tools(self.prompt_tools)
 
     @model_validator(mode='after')
     def validate_agent_profile(self) -> 'JustAgentProfileToolsetMixin':
@@ -129,7 +141,7 @@ class JustAgentProfileToolsetMixin(BaseModel):
         """
         if not self.tools:
             return None
-        return [tool.get_callable(refresh=tool.auto_refresh) for tool in self.tools.values()]
+        return [tool.get_callable() for tool in self.tools.values()]
 
     def get_prompt_tools_with_inputs(self) -> Optional[List[Tuple[Callable, Dict[str, Any]]]]:
         """
@@ -140,7 +152,7 @@ class JustAgentProfileToolsetMixin(BaseModel):
         """
         if not self.prompt_tools:
             return None
-        return [(tool.get_callable(refresh=tool.auto_refresh), tool.call_arguments)
+        return [(tool.get_callable(), tool.call_arguments)
                 for tool in self.prompt_tools.values()]
 
     def subscribe_to_tool_call(self, callback: SubscriberCallback) -> None:

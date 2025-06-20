@@ -1,4 +1,4 @@
-from typing import Optional, Union, ClassVar, Type, Sequence, List, Dict, Any, AsyncGenerator, Generator, Callable
+from typing import Optional, Union, ClassVar, Type, Sequence, List, Dict, Any, AsyncGenerator, Generator, Callable, get_args
 
 from pydantic import Field, PrivateAttr, BaseModel
 from functools import singledispatchmethod
@@ -10,13 +10,13 @@ from openai.types.chat import ChatCompletionToolParam
 
 import litellm
 from litellm import CustomStreamWrapper, completion, acompletion, stream_chunk_builder, \
-                    supports_function_calling, supports_response_schema, supports_vision
+                    supports_function_calling, supports_response_schema, supports_vision, supports_reasoning
 from litellm.utils import Delta, Message, ModelResponse, ModelResponseStream, function_to_dict  
 from litellm.litellm_core_utils.get_supported_openai_params import get_supported_openai_params
 
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
-from just_agents.data_classes import Role, ToolCall, FinishReason
+from just_agents.data_classes import Role, ToolCall, FinishReason, GoogleBuiltInName
 from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.types import MessageDict
 from just_agents.just_bus import JustLogBus
@@ -195,7 +195,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
             )
             kwargs["response_format"] = fallback
 
-        if not supports_function_calling(model):
+        if "tools" in kwargs and not supports_function_calling(model):
             kwargs.pop("tools", None)
             kwargs.pop("tool_choice", None)
             self._log_bus.warn(
@@ -205,6 +205,14 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
                 model=model
             )
 
+        if "reasoning_effort" in kwargs and not supports_reasoning(model):
+            kwargs.pop("reasoning_effort", None)
+            self._log_bus.warn(
+                f"reasoning_effort not supported by model",
+                source=source,
+                action="param_drop",
+                model=model
+            )
         if not kwargs.get("tools", None):
             kwargs.pop("tool_choice", None)
         
@@ -225,6 +233,17 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         Convert a function to a tool dictionary.
         """
         source = f"{self.log_name}.tool_from_function"
+        
+        #isinstance(tool, JustGoogleBuiltIn) is expensive, plus unncessary coupling
+        if not function_dict and tool.__name__ in get_args(GoogleBuiltInName): 
+            self._log_bus.info(
+                f"Google built-in tool {tool.__name__} provided",
+                source=source,
+                action="google_built_in_tool",
+                tool_name=tool.__name__
+            )
+            return {} #special case for google built-in tools
+        
         if function_dict:
             self._log_bus.log_message(
                 f"Built-in function_dict for {tool.__name__} provided",
@@ -233,7 +252,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
                 input_dict=function_dict
             )
         litellm_function_dict = ""
-        if use_litellm or function_dict is None:
+        if use_litellm or not function_dict:
             try:
                 self._log_bus.log_message(
                     "Attempting to use fallback LiteLLM implementation",
@@ -256,8 +275,8 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
                     error=e
                 )
 
-                
-        function_dict = litellm_function_dict or function_dict or ""
+        function_dict = litellm_function_dict or function_dict or {}
+
         return ChatCompletionToolParam(
             type="function",
             function=function_dict
@@ -491,6 +510,10 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
     def supports_system_messages(model_name: str) -> Optional[list]:
         return get_supported_openai_params(model_name) 
 
+    @staticmethod
+    def supports_reasoning(model_name: str) -> bool:
+        return supports_reasoning(model_name)
+    
     @staticmethod
     def supports_response_schema(model_name: str) -> bool:
         return supports_response_schema(model_name)

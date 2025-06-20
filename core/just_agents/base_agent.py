@@ -3,7 +3,7 @@ from pydantic import Field, PrivateAttr, computed_field, BaseModel, field_serial
 from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol, Type, Callable, AsyncGenerator
 from functools import partial
 
-from just_agents.data_classes import FinishReason, ToolCall, Message, Role
+from just_agents.data_classes import FinishReason, ToolCall, Message, Role, ReasoningEffort
 from just_agents.types import MessageDict, SupportedMessages
 
 from just_agents.llm_options import LLMOptions
@@ -46,7 +46,6 @@ class BaseAgent(
     # Fallback options if primary LLM call fails
     backup_options: Optional[LLMOptions] = Field(
         default=None,
-        exclude=True,
         description="options that will be used after we give up with main options, one more completion call will be done with backup options")
 
     parser: Optional[
@@ -113,6 +112,10 @@ class BaseAgent(
         default=None,
         exclude=True,
         description="Environment variable name containing comma-separated API keys")
+
+    reasoning_effort: Optional[ReasoningEffort] = Field(
+        default=None,
+        description="The effort level for reasoning. One of: 'low', 'medium', 'high'")
 
     drop_unsupported_params: bool = Field(
         default=True,
@@ -359,6 +362,10 @@ class BaseAgent(
 
         if self.use_proxy and self.proxy_address:
             opt["api_base"] = self.proxy_address
+        
+        if self.reasoning_effort:
+            opt["reasoning_effort"] = self.reasoning_effort
+
         opt.update(kwargs)
         return opt
     

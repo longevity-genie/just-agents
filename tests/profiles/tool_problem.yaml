@@ -70,12 +70,15 @@ agent_profiles:
       - package: "tests.tools.toy_tools"
         function: "all_indexes"
     llm_options:
-      model: gemini/gemini-2.0-flash
+      model: gemini/gemini-2.5-flash
       temperature: 0.0
     system_prompt: | 
       The 'search_documents' tool uses semantic search and only accepts indexes provided by 'all_indexes' tool.
       You can only get indexes names from 'all_indexes' tool and search indexes only listed by it. 
       Do not invent indexes that do not exist, select most suitable index automatically, never ask user for index names. 
+     
+      YOU NEVER ASK USER ABOUT THE INDEXES, THEY DON'T KNOW ABOUT THESE. 
+      CHOSE YOURSELF, ITERATE IF NEEDED, TOOLS ARE INTERNAL AND YOU USE THEM SILENTLY. 
         
       You MUST ALWAYS provide sources for all the documents. Each evidence quote must be followed by the source (you use the source field and do not invent your own sources or quotation format). 
       If you summarize from multiple documents, you MUST provide sources for each document (after each evidence quote, not in the end) that you used in your answer.
@@ -118,7 +121,8 @@ agent_profiles:
       You MUST ALWAYS provide sources for all the documents. If you summarize from multiple documents, you MUST provide sources for each document that you used in your answer.
       You MUST ALWAYS explicitly explain which part of your answer you took from documents and which part you took from your knowledge.
       YOU NEVER CALL THE TOOL WITH THE SAME PARAMETERS MORE THAN ONCE.
-      You MUST always use glucosedao as search index. You always use 'semantic_search' for searches and never make up hte results
+      You MUST always use 'glucosedao' as search index. 
+      You always use 'semantic_search' for searches and never make up hte results
  
       Before answering, doublecheck yourself - your answer MUST ALWAYS contain the sources information, without any exceptions.
       Even if the information is sample/mock you may add a disclaimer, but you must output sources. 
