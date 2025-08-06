@@ -88,13 +88,28 @@ LLAMA3_3: dict[str, Any] = {
 
 LLAMA4_MAVERICK: dict[str, Any] = {
     "model": "groq/meta-llama/llama-4-scout-17b-16e-instruct",
+    "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0,
 }
 
 LLAMA4_SCOUT: dict[str, Any] = {
     "model": "groq/meta-llama/llama-4-scout-17b-16e-instruct",
+    "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0,
 }
+
+GPT_OSS_20B: dict[str, Any] = {
+    "model": "groq/openai/gpt-oss-20b",
+    "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0,
+}
+
+GPT_OSS_120B: dict[str, Any] = {
+    "model": "groq/openai/gpt-oss-120b",
+    "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0,
+}
+
 
 CERABRAS_LLAMA3_3_70B: LLMOptions = {
     "model": "cerebras/meta/llama3-70b-instruct",

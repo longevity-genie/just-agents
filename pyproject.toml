@@ -30,8 +30,8 @@ just-agents-examples = "*"
 pytest = ">=8.3.5"
 langfuse = ">=2.59.7"
 python-dotenv = "*"
-numpydoc = "*"
 ipykernel = "^6.29.5"
+numpydoc = "^1.9.0"
 just-agents-core = {path = "core", develop = true}
 just-agents-tools = {path = "tools", develop = true}
 just-agents-coding = {path = "coding", develop = true}
