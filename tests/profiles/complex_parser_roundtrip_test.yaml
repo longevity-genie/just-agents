@@ -1,0 +1,28 @@
+ComplexParserAgent:
+  class_qualname: just_agents.base_agent.BaseAgent
+  llm_options:
+    model: gpt-4.1-mini
+    temperature: 0.7
+  parser:
+    email: Optional[str]
+    id: int
+    preferences: Dict[str, Any]
+    roles: List[str]
+    scores: Dict[str, float]
+    settings: Optional[Dict[str, Union[int, str, bool]]]
+    username: str
+  system_prompt: Test system prompt
+ComplexParserAgent2:
+  class_qualname: just_agents.base_agent.BaseAgent
+  llm_options:
+    model: gpt-4.1-mini
+    temperature: 0.7
+  parser:
+    email: Optional[str]
+    id: int
+    preferences: Dict[str, Any]
+    roles: List[str]
+    scores: Dict[str, float]
+    settings: Optional[Dict[str, Union[int, str, bool]]]
+    username: str
+  system_prompt: Test system prompt

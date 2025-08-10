@@ -37,6 +37,8 @@ _GOOGLE_BUILTIN_STUBS_DESCRIPTIONS = {
     "codeExecution": "Built-in tool to execute code"
 }
 
+
+
 def max_calls_decorator(tool_instance: 'JustToolBase', max_calls: int, tool_name: str):
     """
     Decorator to limit the number of calls to a function.
@@ -83,7 +85,12 @@ def event_bus_decorator(tool_instance: 'JustToolBase', tool_name: str):
             bus.publish(f"{tool_name}.{id(tool_instance)}.execute", *args, kwargs=kwargs)
             try:
                 if tool_instance.is_async:
-                    result = run_async_function_synchronously(func, *args, **kwargs)
+                    # If this is an MCP tool, try to run on the dedicated MCP loop
+                    preferred_loop = getattr(tool_instance, "_preferred_event_loop", None)
+                    result = run_async_function_synchronously(
+                        func, *args, **kwargs,
+                        target_loop=preferred_loop
+                    )
                 else:
                     result = func(*args, **kwargs)
                 bus.publish(f"{tool_name}.{id(tool_instance)}.result", result_interceptor=result, kwargs=kwargs)
@@ -130,7 +137,11 @@ def parsing_wrapper_decorator(tool_instance: 'JustToolBase', tool_name: str):
 
             try:
                 if tool_instance.is_async:
-                    result = run_async_function_synchronously(func, *args, **processed_kwargs)
+                    preferred_loop = getattr(tool_instance, "_preferred_event_loop", None)
+                    result = run_async_function_synchronously(
+                        func, *args, **processed_kwargs,
+                        target_loop=preferred_loop
+                    )
                 else:
                     result = func(*args, **processed_kwargs)
                 bus.publish(f"{tool_name}.{id(tool_instance)}.result", result_interceptor=result, kwargs=processed_kwargs)
@@ -582,6 +593,7 @@ class JustMCPTool(MCPServerParameters, JustToolBase):
     Allows integration of remote or stdio-based MCP tools into the Just Agents framework.
     """
     _mcp_client: Optional[MCPClient] = PrivateAttr(default=None)
+    _preferred_event_loop: Optional[Any] = PrivateAttr(default=None)
 
     def model_post_init(self, __context: Any) -> None:
         """Called after the model is initialized."""
@@ -589,6 +601,11 @@ class JustMCPTool(MCPServerParameters, JustToolBase):
         # The parent init calls _get_raw_function_info() which needs the client
         if self._mcp_client is None:
             self._mcp_client = MCPClient.get_client_by_inputs(**self.model_dump())
+        # Store the dedicated loop for this specific MCP client
+        try:
+            self._preferred_event_loop = self._mcp_client.get_loop()
+        except Exception:
+            self._preferred_event_loop = None
         super().model_post_init(__context)
 
     def reconnect(self) -> 'JustMCPTool': 
@@ -621,7 +638,10 @@ class JustMCPTool(MCPServerParameters, JustToolBase):
             ImportError: If the tool is not found in MCP or schema cannot be processed.
         """
 
-        tool_mcp_schema = run_async_function_synchronously(self._fetch_tool_info) # This returns the full schema including desc
+        tool_mcp_schema = run_async_function_synchronously(
+            self._fetch_tool_info,
+            target_loop=getattr(self, "_preferred_event_loop", None)
+        ) # This returns the full schema including desc
 
         # tool_mcp_schema["parameters"] is the part needed for model creation
         parameters_schema = tool_mcp_schema.get("parameters", {})

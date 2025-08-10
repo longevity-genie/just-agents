@@ -2,7 +2,7 @@ import copy
 from pydantic import Field, PrivateAttr, computed_field, BaseModel, field_serializer, field_validator, model_validator
 from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol, Type, Callable, AsyncGenerator
 from functools import partial
-
+from pydantic_core import PydanticSerializationUnexpectedValue
 from just_agents.data_classes import FinishReason, ToolCall, Message, Role, ReasoningEffort
 from just_agents.types import MessageDict, SupportedMessages
 
@@ -344,13 +344,18 @@ class BaseAgent(
         return instance
 
     def _prepare_options(self, options: LLMOptions, **kwargs) -> Dict[str, Any]:
+        import warnings
+        use_litellm = False
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore", category=DeprecationWarning)
+            use_litellm = getattr(self, "litellm_tool_description", False)
         opt: LLMOptions = copy.deepcopy(options)
         if self.tools is not None and not self._tool_fuse_broken:  # populate llm_options based on available tools
             opt["tools"] = [
                 self._protocol.tool_from_function(
                     self.tools[tool].get_callable(wrap=False),
                     function_dict = self.tools[tool].get_litellm_description(),
-                    use_litellm=self.litellm_tool_description
+                    use_litellm=use_litellm
                 ) for tool in self.tools if (
                     not self.tools[tool].max_calls_per_query
                         or self.tools[tool].remaining_calls > 0

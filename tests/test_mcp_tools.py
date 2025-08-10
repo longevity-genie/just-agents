@@ -3,6 +3,7 @@ import sys
 import os
 import json
 from typing import Dict, Any
+from dotenv import load_dotenv
 
 from just_agents.llm_options import OPENAI_GPT4_1NANO
 
@@ -15,6 +16,11 @@ import tests.tools.tool_test_module as tool_test_module
 from just_agents.base_agent import BaseAgentWithLogging
 from just_agents.llm_options import LLMOptions, OPENAI_GPT4_1MINI
 from just_agents.just_tool import JustToolsBus
+
+
+@pytest.fixture(scope="module", autouse=True)
+def load_env():
+    load_dotenv(override=True)
 
 
 @pytest.fixture(scope="session")

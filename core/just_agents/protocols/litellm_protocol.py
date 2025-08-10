@@ -4,6 +4,8 @@ from pydantic import Field, PrivateAttr, BaseModel
 from functools import singledispatchmethod
 from copy import deepcopy
 import os
+from importlib.metadata import version, PackageNotFoundError
+from packaging.version import Version
 
 from openai import APIStatusError
 from openai.types.chat import ChatCompletionToolParam
@@ -369,11 +371,22 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         if enable:
             # Check if Langfuse credentials are set
             if os.environ.get("LANGFUSE_PUBLIC_KEY") and os.environ.get("LANGFUSE_SECRET_KEY"):
-                callbacks.append("langfuse")
+                try:
+                    is_v3_plus = Version(version("langfuse")).major >= 3
+                    if is_v3_plus:
+                        callbacks.append("langfuse_otel")
+                    else:
+                        callbacks.append("langfuse")
+                except PackageNotFoundError:
+                    pass  # Langfuse not installed, skip
                 
             # Check if Opik credentials are set    
             if os.environ.get("OPIK_API_KEY") and os.environ.get("OPIK_WORKSPACE"):
-                callbacks.append("opik")
+                try:
+                    version("opik")  # Just check if installed
+                    callbacks.append("opik")
+                except PackageNotFoundError:
+                    pass  # Opik not installed, skip
             
         # Set unified callbacks if any integrations are enabled
         litellm.success_callback = callbacks
@@ -406,6 +419,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         """
         return response.choices[0].delta.model_dump(
             mode="json",
+            warnings='error',
             exclude_none=True,
             exclude_unset=True,
             by_alias=True,
@@ -419,6 +433,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         """
         message = response.choices[0].message.model_dump(
             mode="json",
+            warnings='error',
             exclude_none=True,
             exclude_unset=True,
             by_alias=True,

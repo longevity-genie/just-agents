@@ -107,6 +107,7 @@ def run_async_function_synchronously(
     async_func: Callable[..., Coroutine[Any, Any, T]], 
     *args: Any, 
     timeout: Optional[float] = None,
+    target_loop: Optional[asyncio.AbstractEventLoop] = None,
     **kwargs: Any
 ) -> T:
     """
@@ -140,6 +141,11 @@ def run_async_function_synchronously(
         Any exception raised by the `async_func` during its execution, including
         system exit, keyboard interrupts, and other non-Exception types.
     """
+    # If a target loop is provided, schedule directly onto it and wait synchronously here
+    if target_loop is not None:
+        fut = asyncio.run_coroutine_threadsafe(async_func(*args, **kwargs), target_loop)
+        return fut.result(timeout=timeout)
+
     # First, check if we're already in an event loop
     try:
         # If there's a running loop in this thread, use run_in_executor to avoid
@@ -150,7 +156,9 @@ def run_async_function_synchronously(
                 pool, 
                 lambda: asyncio.run(async_func(*args, **kwargs))
             )
-            return loop.run_until_complete(asyncio.wait_for(future, timeout))
+            # Create the wait_for coroutine and run it properly
+            wait_coro = asyncio.wait_for(future, timeout)
+            return loop.run_until_complete(wait_coro)
     except RuntimeError:
         # No running event loop, we can create a new one
         pass

@@ -2,9 +2,11 @@ from typing import Any, Dict, List, Optional, Union
 from pathlib import Path
 import asyncio
 import shlex
+import threading
 
 from mcp.types import Tool as MCPTool, TextContent, ImageContent, EmbeddedResource
 from fastmcp import Client
+from fastmcp.client.client import CallToolResult
 from fastmcp.exceptions import ToolError
 
 from pydantic import BaseModel, Field, PrivateAttr, AnyUrl, ValidationError
@@ -22,6 +24,41 @@ class MCPClientLocator(JustLocator['MCPClient'], metaclass=SingletonMeta):
         """Initialize the MCP client locator with empty registries."""
         # Initialize the parent JustLocator with 'client_key' as the config identifier attribute
         super().__init__(entity_config_identifier_attr="client_key")
+        # Dedicated background loop for all MCP work
+        self._loop: Optional[asyncio.AbstractEventLoop] = None
+        self._loop_thread: Optional[threading.Thread] = None
+        self._loop_ready: threading.Event = threading.Event()
+        self._start_loop_thread()
+
+    def _start_loop_thread(self) -> None:
+        if self._loop_thread and self._loop_thread.is_alive():
+            return
+
+        def _worker() -> None:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            self._loop = loop
+            self._loop_ready.set()
+            try:
+                loop.run_forever()
+            finally:
+                try:
+                    loop.stop()
+                except Exception:
+                    pass
+                loop.close()
+
+        self._loop_thread = threading.Thread(target=_worker, daemon=True, name="MCPBackgroundLoop")
+        self._loop_thread.start()
+        self._loop_ready.wait()
+
+    def get_loop(self) -> asyncio.AbstractEventLoop:
+        """Return the dedicated MCP background asyncio loop."""
+        # Ensure loop is started
+        if self._loop is None:
+            self._start_loop_thread()
+        assert self._loop is not None
+        return self._loop
     
     def publish_client(self, client: 'MCPClient') -> str:
         """
@@ -125,6 +162,10 @@ class MCPClient(MCPServerParameters):
     _client: Optional[Client] = PrivateAttr(default=None)
     _client_context_manager: Optional[Any] = PrivateAttr(default=None)
     _client_event_loop: Optional[Any] = PrivateAttr(default=None)
+    # Per-client dedicated loop/thread
+    _loop: Optional[asyncio.AbstractEventLoop] = PrivateAttr(default=None)
+    _loop_thread: Optional[threading.Thread] = PrivateAttr(default=None)
+    _loop_ready: Optional[threading.Event] = PrivateAttr(default=None)
 
     def model_post_init(self, __context: Any) -> None:
         """Initialize after Pydantic model initialization."""
@@ -133,6 +174,57 @@ class MCPClient(MCPServerParameters):
             self._transport_spec = self._parse_mcp_endpoint(self.mcp_endpoint)
         else:
             raise ValueError("mcp_endpoint must be provided")
+        # Initialize per-client loop signaling
+        if self._loop_ready is None:
+            self._loop_ready = threading.Event()
+
+    # ---------------- Per-client loop management ----------------
+    def _start_loop_thread(self) -> None:
+        if self._loop_thread and self._loop_thread.is_alive():
+            return
+
+        def _worker() -> None:
+            loop = asyncio.new_event_loop()
+            asyncio.set_event_loop(loop)
+            self._loop = loop
+            if self._loop_ready:
+                self._loop_ready.set()
+            try:
+                loop.run_forever()
+            finally:
+                try:
+                    loop.stop()
+                except Exception:
+                    pass
+                loop.close()
+
+        self._loop_thread = threading.Thread(target=_worker, daemon=True, name=f"MCPClientLoop:{self.client_key}")
+        self._loop_thread.start()
+        if self._loop_ready:
+            self._loop_ready.wait()
+
+    def _ensure_loop(self) -> asyncio.AbstractEventLoop:
+        if self._loop is None:
+            self._start_loop_thread()
+        assert self._loop is not None
+        return self._loop
+
+    def get_loop(self) -> asyncio.AbstractEventLoop:
+        """Public accessor for the client's loop."""
+        return self._ensure_loop()
+
+    async def _run_on_client_loop(self, coro: Any) -> Any:
+        loop = self._ensure_loop()
+        # If already on client loop, await directly
+        try:
+            current = asyncio.get_running_loop()
+            if current is loop:
+                return await coro
+        except RuntimeError:
+            pass
+        # Schedule on client loop and await from current loop
+        cfut = asyncio.run_coroutine_threadsafe(coro, loop)
+        return await asyncio.wrap_future(cfut)
     
     @staticmethod
     def _parse_mcp_endpoint(endpoint: str, server_name: Optional[str] = None) -> Union[AnyUrl, Dict[str, Any], Path]:
@@ -236,67 +328,44 @@ class MCPClient(MCPServerParameters):
             return client
 
     async def _connect(self) -> None:
-        """Establishes the connection and initializes the FastMCP client."""
-        # Get current event loop at the start to ensure it's available throughout
-        current_loop = asyncio.get_running_loop()
-        
-        if self._client:
-            # Check if the client is still usable by trying to access its event loop
-            try:
-                # If we have a stored event loop, check if it matches current loop
-                if hasattr(self, '_client_event_loop') and self._client_event_loop is not None:
-                    if self._client_event_loop != current_loop:
-                        # Event loop has changed, close old connection
-                        await self._close()
-                    elif hasattr(self._client_event_loop, 'is_closed') and self._client_event_loop.is_closed():
-                        # Event loop is closed, recreate connection
-                        await self._close()
-                    else:
-                        # Event loop is valid, check if client is still connected
-                        try:
-                            if self._client.is_connected():
-                                return # Client is already connected and working
-                            else:
-                                # Client exists but not connected, clean up
-                                await self._close()
-                        except (AttributeError, RuntimeError, OSError):
-                            # Client has issues, recreate
-                            await self._close()
-                else:
-                    # No stored event loop, check if client is connected
-                    try:
-                        if self._client.is_connected():
-                            # Store current loop for future reference
-                            self._client_event_loop = current_loop
-                            return
-                        else:
-                            await self._close()
-                    except (AttributeError, RuntimeError, OSError):
-                        await self._close()
-            except (AttributeError, RuntimeError):
-                # Any error suggests client issues, recreate to be safe
-                await self._close()
-        
-        # If we get here and still have a client, we can reuse it
-        if self._client:
-            return
+        """Establishes the connection and initializes the FastMCP client on its own loop."""
+        async def _inner() -> None:
+            # Reuse if connected
+            if self._client:
+                try:
+                    if self._client.is_connected():
+                        self._client_event_loop = self._loop
+                        return
+                except Exception:
+                    pass
+                try:
+                    await self._client.close()
+                except Exception:
+                    pass
+                self._client = None
+                self._client_context_manager = None
+            # Create client
+            self._client = Client(self._transport_spec)
+            self._client_context_manager = self._client.__aenter__()
+            await self._client_context_manager
+            self._client_event_loop = self._loop
 
-        # Create new FastMCP client
-        self._client = Client(self._transport_spec)
-        self._client_context_manager = self._client.__aenter__()
-        await self._client_context_manager
-        
-        # Store the current event loop for future reference
-        self._client_event_loop = current_loop
+        await self._run_on_client_loop(_inner())
 
     async def _close(self) -> None:
         """Closes the FastMCP client and tears down the connection."""
-        if self._client_context_manager and self._client:
+        if self._client:
+            async def _inner_close():
+                try:
+                    await self._client.close()
+                except Exception:
+                    pass
             try:
-                await self._client.__aexit__(None, None, None)
+                await self._run_on_client_loop(_inner_close())
             except Exception:
-                pass # Ignore errors during close, best effort
-        
+                pass
+
+        # Always clean up references
         self._client = None
         self._client_context_manager = None
         self._client_event_loop = None
@@ -310,41 +379,37 @@ class MCPClient(MCPServerParameters):
 
     async def invoke_tool(self, tool_name: str, kwargs: Dict[str, Any]) -> MCPToolInvocationResult:
         """Invoke a specific tool with parameters, returning a ToolInvocationResult."""
-        # Ensure we have a valid connection, reusing if possible
-        await self._connect()
-        
-        try:
-            # FastMCP call_tool returns List[TextContent | ImageContent | EmbeddedResource]
-            content_list = await self._client.call_tool(tool_name, kwargs)
-            
-            # Convert content list to string format as expected by MCPToolInvocationResult
-            content_str = ""
-            if content_list:
-                content_items = []
-                for content in content_list:
-                    if isinstance(content, (TextContent, ImageContent, EmbeddedResource)):
-                        content_items.append(content.model_dump_json(exclude_none=True))
-                    else:
-                        # Fallback for any other content types
-                        content_items.append(content.model_dump_json(exclude_none=True))
-                content_str = "\\n".join(content_items)
-            
-            return MCPToolInvocationResult(
-                content=content_str,
-                error_code=0,  # Success
-            )
-        except ToolError as e:
-            # FastMCP raises ToolError for tool execution errors (wrong inputs, etc.)
-            return MCPToolInvocationResult(
-                content=str(e),
-                error_code=1,  # Error
-            )
-        except Exception as e:
-            # Connection or other unexpected errors
-            return MCPToolInvocationResult(
-                content=f"Connection error: {str(e)}",
-                error_code=1,
-            )
+        async def _inner() -> MCPToolInvocationResult:
+            await self._connect()
+            try:
+                call_result: CallToolResult = await self._client.call_tool(tool_name, kwargs)
+                if call_result.is_error:
+                    error_message = "Tool execution failed"
+                    if call_result.content:
+                        content_items = []
+                        for content in call_result.content:
+                            if isinstance(content, (TextContent, ImageContent, EmbeddedResource)):
+                                content_items.append(content.model_dump_json(exclude_none=True))
+                            else:
+                                content_items.append(str(content))
+                        error_message = "\\n".join(content_items)
+                    return MCPToolInvocationResult(content=error_message, error_code=1)
+                content_str = ""
+                if call_result.content:
+                    content_items = []
+                    for content in call_result.content:
+                        if isinstance(content, (TextContent, ImageContent, EmbeddedResource)):
+                            content_items.append(content.model_dump_json(exclude_none=True))
+                        else:
+                            content_items.append(str(content))
+                    content_str = "\\n".join(content_items)
+                return MCPToolInvocationResult(content=content_str, error_code=0)
+            except ToolError as e:
+                return MCPToolInvocationResult(content=str(e), error_code=1)
+            except Exception as e:
+                return MCPToolInvocationResult(content=f"Connection error: {str(e)}", error_code=1)
+
+        return await self._run_on_client_loop(_inner())
 
     async def _fetch_tool_info(self) -> List[MCPTool]:
         """
@@ -353,12 +418,11 @@ class MCPClient(MCPServerParameters):
         Returns:
             List[MCPTool]: Raw tool information from MCP
         """
-        # Ensure we have a valid connection, reusing if possible
-        await self._connect()
-        
-        # FastMCP list_tools returns List[mcp.types.Tool] directly
-        tools = await self._client.list_tools()
-        return tools
+        async def _inner() -> List[MCPTool]:
+            await self._connect()
+            tools = await self._client.list_tools()
+            return tools
+        return await self._run_on_client_loop(_inner())
 
     async def list_tools_openai(self) -> List[ToolDefinition]:
         """

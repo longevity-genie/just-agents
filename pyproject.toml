@@ -28,7 +28,7 @@ just-agents-examples = "*"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.5"
-langfuse = ">=2.59.7"
+langfuse = "<3.0.0"
 python-dotenv = "*"
 ipykernel = "^6.29.5"
 numpydoc = "^1.9.0"

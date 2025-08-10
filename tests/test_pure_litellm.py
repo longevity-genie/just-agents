@@ -71,7 +71,7 @@ def test_gemini_raw_google_search():
 
     tools = [{"googleSearch": {}}] # 👈 ADD GOOGLE SEARCH
     response = litellm.completion(
-        model = "gemini/gemini-2.5-flash-preview-04-17",
+        model = "gemini/gemini-2.5-flash",
         temperature = 0.0,
         messages=[{"role": "user", "content": "Who is the main female founder of GlucoseDAO? Answer must be Name Surname and nothing else"}],
         tools=tools,

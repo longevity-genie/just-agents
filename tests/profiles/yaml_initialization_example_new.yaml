@@ -1,0 +1,16 @@
+SimpleWeatherAgent:
+  class_qualname: just_agents.base_agent.BaseAgent
+  llm_options:
+    model: gpt-4.1-nano
+    temperature: 0.0
+    tool_choice: auto
+  tools:
+  - description: Gets the current weather in a given location.
+    function: get_current_weather
+    package: examples.just_agents.examples.tools
+TestProfileA:
+  class_qualname: just_agents.just_profile.JustAgentProfile
+  tools:
+  - description: A test function for testing type handling
+    function: krex_pex_fex
+    package: tests.test_serialization
