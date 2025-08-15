@@ -1,8 +1,10 @@
-from typing import Any, Dict, List, Optional, Union
+from typing import Any, Dict, List, Optional, Union, cast
+
 from pathlib import Path
 import asyncio
 import shlex
 import threading
+import json
 
 from mcp.types import Tool as MCPTool, TextContent, ImageContent, EmbeddedResource
 from fastmcp import Client
@@ -13,7 +15,13 @@ from pydantic import BaseModel, Field, PrivateAttr, AnyUrl, ValidationError
 from just_agents.data_classes import ToolDefinition
 from just_agents.just_bus import SingletonMeta
 from just_agents.just_locator import JustLocator, generate_unique_name
+from just_agents.data_classes import JustMCPServerParameters, MCPServersConfig
 
+AcceptedMCPClientConfig = Union[AnyUrl, str, MCPServersConfig, Path]
+
+class MCPToolInvocationResult(BaseModel):
+    content: str = Field(..., description="Result content as a string")
+    error_code: int = Field(..., description="Error code (0 for success, 1 for error)")
 
 class MCPClientLocator(JustLocator['MCPClient'], metaclass=SingletonMeta):
     """
@@ -137,28 +145,15 @@ class MCPClientLocator(JustLocator['MCPClient'], metaclass=SingletonMeta):
 _mcp_locator = MCPClientLocator()
 
 
-class MCPServerParameters(BaseModel):
-    """
-    Parameters for an MCP server.
-    """
-    mcp_endpoint: Optional[str] = Field(None, description="The MCP endpoint (URL for SSE, command for stdio, or file path)")
 
-class MCPToolInvocationResult(BaseModel):
-    content: str = Field(..., description="Result content as a string")
-    error_code: int = Field(..., description="Error code (0 for success, 1 for error)")
-
-
-
-
-
-class MCPClient(MCPServerParameters):
+class MCPClient(JustMCPServerParameters):
     """Client for interacting with Model Context Protocol (MCP) endpoints using either SSE or STDIO."""
 
     # Client key for locator identification
     client_key: str = Field(..., description="Unique key identifying this client's connection parameters")
 
     # Private attributes using Pydantic 2 PrivateAttr
-    _transport_spec: Union[AnyUrl, Dict[str, Any], Path, str] = PrivateAttr(default=None)
+    _transport_spec: AcceptedMCPClientConfig = PrivateAttr(default=None)
     _client: Optional[Client] = PrivateAttr(default=None)
     _client_context_manager: Optional[Any] = PrivateAttr(default=None)
     _client_event_loop: Optional[Any] = PrivateAttr(default=None)
@@ -170,14 +165,24 @@ class MCPClient(MCPServerParameters):
     def model_post_init(self, __context: Any) -> None:
         """Initialize after Pydantic model initialization."""
         # Determine transport specification based on parameters
-        if self.mcp_endpoint:
-            self._transport_spec = self._parse_mcp_endpoint(self.mcp_endpoint)
+        if self.mcp_client_config:
+            self._transport_spec = self._parse_mcp_client_config(self.mcp_client_config)
         else:
-            raise ValueError("mcp_endpoint must be provided")
+            raise ValueError("mcp_client_config must be provided")
         # Initialize per-client loop signaling
         if self._loop_ready is None:
             self._loop_ready = threading.Event()
+        # Update the config to unified representation
+        self.mcp_client_config = self._serialize_transport_spec_for_key(self._transport_spec)
 
+    def get_standardized_client_config(self, serialize_dict: bool = False) -> str:
+        """Get the client key for the client.""" 
+        reparsed_config = self._serialize_transport_spec_for_key(self._transport_spec)
+        if isinstance(self._transport_spec, dict) and serialize_dict:
+            return json.loads(reparsed_config)
+        return reparsed_config
+    
+    
     # ---------------- Per-client loop management ----------------
     def _start_loop_thread(self) -> None:
         if self._loop_thread and self._loop_thread.is_alive():
@@ -227,12 +232,12 @@ class MCPClient(MCPServerParameters):
         return await asyncio.wrap_future(cfut)
     
     @staticmethod
-    def _parse_mcp_endpoint(endpoint: str, server_name: Optional[str] = None) -> Union[AnyUrl, Dict[str, Any], Path]:
+    def _parse_mcp_client_config(endpoint: Union[str, MCPServersConfig], server_name: Optional[str] = None) -> AcceptedMCPClientConfig:
         """
         Parse the MCP endpoint and return the appropriate transport specification for FastMCP.
         
         Args:
-            endpoint: The MCP endpoint string
+            endpoint: The MCP endpoint string or a multi-server config dictionary
             
         Returns:
             Union[AnyUrl, Dict[str, Any], Path]: Parsed transport specification:
@@ -240,16 +245,33 @@ class MCPClient(MCPServerParameters):
                 - Dict[str, Any]: for command specifications (like {"command": "python", "args": ["script.py"]})  
                 - Path: for single script file paths
         """
+        # Direct dict input is treated as config dict (e.g., {"mcpServers": {...}})
+        if isinstance(endpoint, dict):
+            if "mcpServers" in endpoint:
+                return cast(MCPServersConfig, endpoint)
+            else:
+                raise ValueError("Invalid MCP client config: must contain 'mcpServers' key")
+
+        endpoint_str: str = endpoint
+
+        # Check if it's a JSON string representing a config dict with mcpServers
+        try:
+            parsed = json.loads(endpoint_str)
+            if isinstance(parsed, dict) and "mcpServers" in parsed:
+                return cast(MCPServersConfig, parsed)
+        except (json.JSONDecodeError, TypeError):
+            # Not JSON or not a dict; continue with other checks
+            pass
         # Check if it's a URL (HTTP/HTTPS) using Pydantic's AnyUrl
         try:
-            url = AnyUrl(endpoint)
+            url = AnyUrl(endpoint_str)
             return url
         except ValidationError:
             # Not a valid URL, continue to other checks
             pass
         
         # Check if it's a single file path that exists
-        endpoint_path = Path(endpoint)
+        endpoint_path = Path(endpoint_str)
         if endpoint_path.exists() and endpoint_path.is_file():
             return endpoint_path
         
@@ -257,7 +279,7 @@ class MCPClient(MCPServerParameters):
         # This is common for STDIO MCP servers
         try:
             # Use shlex to properly split the command while handling quoted arguments
-            parts = shlex.split(endpoint)
+            parts = shlex.split(endpoint_str)
             server_name = server_name or generate_unique_name()
             if len(parts) >= 2:
                 # Check if the last part looks like a supported script path
@@ -266,30 +288,57 @@ class MCPClient(MCPServerParameters):
                 if potential_script.exists() and potential_script.suffix in supported_extensions:
                     # This looks like a command to run a script
                     # Return it as a command dict for FastMCP
-                    return {
+                    return cast(MCPServersConfig, {
                         "mcpServers": {
                             server_name: {
                                 "command": parts[0],
                                 "args": [str(part) for part in parts[1:]]
                             }
                         }
-                    }
+                    })
         except ValueError:
             # shlex.split failed, probably not a valid command string
             pass
         
         # Default to returning as-is (let FastMCP handle it)
-        return endpoint
+        return endpoint_str
+
+    @staticmethod
+    def _serialize_transport_spec_for_key(transport_spec: AcceptedMCPClientConfig) -> str:
+        """
+        Produce a deterministic string key from the parsed transport specification.
+        - Paths: absolute resolved path string
+        - URLs: canonical string representation
+        - Dict configs: fully compact, sorted representation (stable order), including server names
+        - Strings: returned as-is
+        """
+        # Dict config: produce a stable, compact, sorted JSON
+        if isinstance(transport_spec, dict):
+            return json.dumps(transport_spec, separators=(",", ":"), sort_keys=True)
+
+        # Path: resolve to absolute
+        if isinstance(transport_spec, Path):
+            try:
+                return str(transport_spec.resolve())
+            except Exception:
+                return str(transport_spec)
+
+        # URL: use its string form
+        if isinstance(transport_spec, AnyUrl):
+            return str(transport_spec)
+
+        # Default string form
+        return str(transport_spec)
 
 
     @classmethod
-    def get_client_by_inputs(cls, mcp_endpoint: Optional[str] = None, **kwargs) -> 'MCPClient':
+    def get_client_by_inputs(cls, mcp_client_config: Optional[Union[str, MCPServersConfig]] = None, **kwargs) -> 'MCPClient':
         """
         Factory classmethod to get (or create) an MCPClient instance based on connection parameters.
         Uses the module-level MCPClientLocator to reuse existing clients when possible.
         
         Args:
-            mcp_endpoint: The MCP endpoint (URL for SSE, command for stdio, or file path)
+            mcp_client_config: The MCP endpoint (URL for SSE, command for stdio, file path, or config dict)
             **kwargs: Additional parameters (ignored, for compatibility with unpacked objects)
             
         Returns:
@@ -298,34 +347,24 @@ class MCPClient(MCPServerParameters):
         Raises:
             ValueError: If no valid connection parameters are provided
         """
-        if not mcp_endpoint:
-            raise ValueError("mcp_endpoint must be provided")
+        if not mcp_client_config:
+            raise ValueError("mcp_client_config must be provided")
             
         # Parse the endpoint to determine transport type
-        transport_spec = cls._parse_mcp_endpoint(mcp_endpoint)
-        
-        # Check if it's HTTP transport (URLs)
-        if isinstance(transport_spec, AnyUrl) or (isinstance(transport_spec, str) and transport_spec.startswith(("http://", "https://"))):
-            # HTTP/HTTPS endpoints are lightweight - create fresh each time
-            client_key = f"sse:{mcp_endpoint}"
-            client = cls(client_key=client_key, mcp_endpoint=mcp_endpoint)
-            return client
-        else:
-            # Non-HTTP endpoints (stdio commands, file paths, command dicts) use multiton pattern
-            client_key = f"stdio:{mcp_endpoint}"
-            
-            # Re-enable client reuse for non-HTTP connections
-            existing_client = _mcp_locator.get_client_by_key(client_key)
-            if existing_client:
-                return existing_client
-            
-            # Create new client with the client_key
-            client = cls(client_key=client_key, mcp_endpoint=mcp_endpoint)
-            
-            # Register the client with the locator
-            _mcp_locator.publish_client(client)
-            
-            return client
+        transport_spec = cls._parse_mcp_client_config(mcp_client_config)
+
+        # Build a deterministic client key from the parsed transport specification
+        client_key = cls._serialize_transport_spec_for_key(transport_spec)
+
+        # Reuse existing client if present (applies to all transports)
+        existing_client = _mcp_locator.get_client_by_key(client_key)
+        if existing_client:
+            return existing_client
+
+        # Create and register new client
+        client = cls(client_key=client_key, mcp_client_config=mcp_client_config)
+        _mcp_locator.publish_client(client)
+        return client
 
     async def _connect(self) -> None:
         """Establishes the connection and initializes the FastMCP client on its own loop."""

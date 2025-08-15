@@ -959,16 +959,32 @@ class ModelHelper:
 
             json_schema = model.model_json_schema()
 
-            def _remove_titles_recursive(schema_node: Any) -> None:
+            def _remove_titles_recursive(schema_node: Any, is_properties_dict: bool = False) -> None:
+                """
+                Recursively remove Pydantic's auto-generated 'title' keys from the schema,
+                but preserve actual property names that happen to be called 'title'.
+                
+                Args:
+                    schema_node: The current node in the schema being processed
+                    is_properties_dict: True if we're processing the top-level 'properties' dict
+                                      where 'title' might be an actual property name, not metadata
+                """
                 if isinstance(schema_node, dict):
-                    schema_node.pop('title', None)
-                    for value in schema_node.values():
-                        _remove_titles_recursive(value)
+                    # Only remove 'title' keys if we're NOT in the top-level properties dictionary
+                    # In the properties dict, 'title' might be an actual property name, not metadata
+                    if not is_properties_dict:
+                        schema_node.pop('title', None)
+                    
+                    # Recursively process values
+                    for key, value in schema_node.items():
+                        # If we're processing the 'properties' key, mark the next level appropriately
+                        next_is_properties = (key == 'properties')
+                        _remove_titles_recursive(value, next_is_properties)
                 elif isinstance(schema_node, list):
                     for item in schema_node:
-                        _remove_titles_recursive(item)
+                        _remove_titles_recursive(item, False)
             
-            _remove_titles_recursive(json_schema)
+            _remove_titles_recursive(json_schema, False)
 
             schema_properties = json_schema.get("properties", {})
             schema_required = json_schema.get("required", [])

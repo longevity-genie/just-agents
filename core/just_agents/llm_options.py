@@ -80,31 +80,31 @@ ANTHROPIC_CLAUDE_3_5_SONNET: LLMOptions = {
     "temperature": 0.0
 }
 
-LLAMA3_3: dict[str, Any] = {
+LLAMA3_3: LLMOptions = {
     "model": "groq/llama-3.3-70b-versatile",
     "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0
 }
 
-LLAMA4_MAVERICK: dict[str, Any] = {
+LLAMA4_MAVERICK: LLMOptions = {
     "model": "groq/meta-llama/llama-4-scout-17b-16e-instruct",
     "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0,
 }
 
-LLAMA4_SCOUT: dict[str, Any] = {
+LLAMA4_SCOUT: LLMOptions = {
     "model": "groq/meta-llama/llama-4-scout-17b-16e-instruct",
     "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0,
 }
 
-GPT_OSS_20B: dict[str, Any] = {
+GPT_OSS_20B: LLMOptions = {
     "model": "groq/openai/gpt-oss-20b",
     "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0,
 }
 
-GPT_OSS_120B: dict[str, Any] = {
+GPT_OSS_120B: LLMOptions = {
     "model": "groq/openai/gpt-oss-120b",
     "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0,
@@ -188,6 +188,33 @@ OPENAI_GPT4oMINI: LLMOptions = {
     "model": "gpt-4o-mini",
     "temperature": 0.0
 }
+
+
+OPENAI_GPT5: LLMOptions = {
+    "model": "gpt-5",
+    "temperature": 0.0
+}
+
+OPENAI_GPT5_MINI: LLMOptions = {
+    "model": "gpt-5-mini",
+    "temperature": 0.0
+}
+
+OPENAI_GPT5_NANO: LLMOptions = {
+    "model": "gpt-5-nano",
+    "temperature": 0.0
+}
+
+OPENAI_GPT5_CHAT: LLMOptions = {
+    "model": "gpt-5-chat",
+    "temperature": 0.0
+}
+
+OPENAI_GPT5_CHAT_LATEST: LLMOptions = {
+    "model": "gpt-5-chat-latest",
+    "temperature": 0.0
+}
+
 
 OPENAI_O1_MINI: LLMOptions = {
     "model": "o1-mini",

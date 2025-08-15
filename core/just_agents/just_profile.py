@@ -3,11 +3,11 @@ from pydantic import Field, model_validator, BaseModel
 from typing import Optional, List, ClassVar, Tuple, Sequence, Callable, Dict, Union, Type, Any
 
 from just_agents.just_serialization import JustSerializable
-from just_agents.data_classes import ModelPromptExample
+from just_agents.data_classes import ModelPromptExample, JustMCPServerParameters
 from just_agents.just_tool import (
     JustTool, JustTools, JustToolsRaw, 
     JustPromptTool, JustPromptTools, JustPromptToolsRaw,
-    JustToolBase, JustToolFactory, JustMCPToolSetConfig, SubscriberCallback
+    JustToolBase, JustToolFactory, SubscriberCallback
 )
 
 
@@ -46,12 +46,12 @@ class JustAgentProfileToolsetMixin(BaseModel):
             existing_tools = list(self.tools.values())
             self.tools = JustTools.from_tools(existing_tools + [fun])
 
-    def add_mcp_tools(self, config: 'JustMCPToolSetConfig') -> None:
+    def add_mcp_tools(self, config: JustMCPServerParameters) -> None:
         """
         Adds multiple MCP tools to the agent's tools collection based on the provided configuration.
         
         Args:
-            config (JustMCPToolSetConfig): Configuration containing MCP endpoint/command and include/exclude lists
+            config (JustMCPServerParameters): Configuration containing MCP endpoint/command and include/exclude lists
         """
         mcp_tools = JustToolFactory.create_tools_from_mcp(config)
         
@@ -91,6 +91,22 @@ class JustAgentProfileToolsetMixin(BaseModel):
                 (tool.get_callable(wrap=False), tool.call_arguments) 
                 for tool in existing_prompt_tools
             ])
+    def list_tools(self) -> Dict[str, Type]:
+        """
+        Returns a dictionary mapping tool names to their classes.
+        
+        Returns:
+            Dict[str, Type]: Dictionary with tool names as keys and tool classes as values.
+                            Empty dict if no tools are available.
+        """
+        tools_dict = {}
+        
+        # Add regular tools
+        if self.tools is not None:
+            for name, tool in self.tools.items():
+                tools_dict[name] = type(tool)
+        
+        return tools_dict
 
     def _process_tools_field(self) -> None:
         """

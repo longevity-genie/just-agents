@@ -1,8 +1,8 @@
 from enum import Enum
-from typing import List, Union, Optional, Dict, Any, Literal
+from typing import List, Union, Optional, Dict, Any, Literal, Sequence
 from pydantic import HttpUrl, Field, BaseModel, ConfigDict, AliasPath, TypeAdapter, field_validator, field_serializer
 from pydantic_core import from_json
-
+from typing_extensions import TypedDict
 from openai.types.shared_params.function_definition import FunctionDefinition
 
 """ Common OpenAI-compatible data structures """ #TODO: openAI type converters/inheritances
@@ -205,3 +205,48 @@ class ModelPromptExample(BaseModel):
             content=self.prompt
         )
         return message.model_dump(mode='json')
+
+class MCPServerConfig(TypedDict, total=False):
+    transport: str
+    url: str
+    headers: Dict[str, Any]
+    auth: Any
+    command: str
+    args: List[str]
+    env: Dict[str, str]
+    cwd: str
+
+class MCPServersConfig(TypedDict):
+    mcpServers: Dict[str, MCPServerConfig]
+
+
+class JustMCPServerParameters(BaseModel):
+    """
+    Parameters for an MCP server.
+    """
+    mcp_client_config: Union[str, MCPServersConfig] = Field(
+        ...,
+        description=(
+            "The MCP endpoint configuration: URL for SSE, command for STDIO, file path, "
+            "or a config dictionary (e.g., {'mcpServers': {...}})."
+        ),
+    )
+    only_include_tools: Optional[Sequence[str]] = Field(
+        default=None,
+        description="The names of the MCP tools to include, if empty includes every tool provided by server listing, otherwise only includes the tools in this list"
+        )
+    exclude_tools: Optional[Sequence[str]] = Field(
+        default=None, 
+        description="The names of the MCP tools to exclude, or empty for none"
+        )
+    raise_on_incorrect_names: bool = Field(
+        default=True, 
+        description="If true, raise an error if any tool name in include/exclude is not found in the server listing"
+        )
+
+    @classmethod
+    def single_tool(cls, tool_name: str, mcp_client_config: Union[str, MCPServersConfig]) -> 'JustMCPServerParameters':
+        """
+        Simplified method to get a single MCP tool from a server.
+        """
+        return cls(mcp_client_config=mcp_client_config, only_include_tools=[tool_name])

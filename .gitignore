@@ -176,3 +176,4 @@ output/**
 logs/*
 env/*
 models.d/*
+.envrc

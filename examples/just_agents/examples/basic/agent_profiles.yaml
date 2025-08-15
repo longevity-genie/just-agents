@@ -46,3 +46,114 @@ agent_profiles:
           required:
           - location
           type: object
+comprehensive_agent:
+  class_qualname: just_agents.base_agent.BaseAgentWithLogging
+  llm_options:
+    model: gemini/gemini-2.5-flash
+    temperature: 0.0
+    tool_choice: auto
+  prompt_tools:
+  - call_arguments:
+      location: San Francisco
+    description: Gets the current weather in a given location.
+    function: get_current_weather
+    package: just_agents.examples.tools
+  - call_arguments:
+      analysis_type: detailed
+      text: This is a sample text for detailed analysis with multiple sentences and
+        various words.
+    description: Analyze text and return various metrics.
+    function: text_analyzer
+    package: just_agents.examples.tools
+  - call_arguments:
+      from_unit: celsius
+      temperature: 25.0
+      to_unit: fahrenheit
+    description: Convert temperature between different units.
+    function: convert_temperature
+    package: just_agents.examples.tools
+    static_class: MathUtilities
+  - call_arguments:
+      n: 8
+    description: Calculate the nth Fibonacci number.
+    function: calculate_fibonacci
+    package: just_agents.examples.tools
+  - call_arguments:
+      letter: m
+      word: programming
+    description: 'returns number of letters in the word '
+    function: letter_count
+    package: just_agents.examples.tools
+  system_prompt: |
+    You are a comprehensive tool assistant demonstrating just-agents tool types.
+                    Pay attention to tools names and input arguments, never omit required arguments.
+                    Use the appropriate tools based on user requests and output results in concise format.
+  tools:
+  - description: Gets the current weather in a given location.
+    function: get_current_weather
+    package: just_agents.examples.tools
+  - description: Calculate the nth Fibonacci number.
+    function: calculate_fibonacci
+    package: just_agents.examples.tools
+  - description: Analyze text and return various metrics.
+    function: text_analyzer
+    package: just_agents.examples.tools
+  - description: 'returns number of letters in the word '
+    function: letter_count
+    package: just_agents.examples.tools
+  - description: Calculate the area of a circle.
+    function: calculate_circle_area
+    package: just_agents.examples.tools
+    static_class: MathUtilities
+  - description: Convert temperature between different units.
+    function: convert_temperature
+    package: just_agents.examples.tools
+    static_class: MathUtilities
+  - description: Calculate the area of a triangle.
+    function: calculate_triangle_area
+    package: just_agents.examples.tools
+    static_class: MathUtilities.GeometryTools
+  - description: Calculate the perimeter of a rectangle.
+    function: calculate_rectangle_perimeter
+    package: just_agents.examples.tools
+    static_class: MathUtilities.GeometryTools
+  - description: Built-in tool to search the web
+    function: googleSearch
+  - description: Built-in tool to execute code
+    function: codeExecution
+  - description: Make a bip sound
+    function: bip
+    mcp_client_config: /data/sources/just-agents/examples/just_agents/examples/bip_bop_server.py
+  - description: Make a bop sound
+    function: bop
+    mcp_client_config: /data/sources/just-agents/examples/just_agents/examples/bip_bop_server.py
+  - description: Add two numbers
+    function: add
+    mcp_client_config: /data/sources/just-agents/examples/just_agents/examples/mcp_stdio_server.py
+  - description: Decompose a number into prime factors and return detailed analysis
+    function: prime_factorization_summer
+    mcp_client_config: /data/sources/just-agents/examples/just_agents/examples/mcp_stdio_server.py
+  - description: Generate chaotic trigonometric calculations with multiple transformations
+    function: trigonometric_chaos_generator
+    mcp_client_config: /data/sources/just-agents/examples/just_agents/examples/mcp_stdio_server.py
+  - description: Calculate the nth Fibonacci number using complex iterative approach
+      to ensure tool execution
+    function: fibonacci_calculator
+    mcp_client_config: /data/sources/just-agents/examples/just_agents/examples/mcp_stdio_server.py
+  - description: Analyze polynomial characteristics and find approximate roots using
+      numerical methods
+    function: polynomial_root_detective
+    mcp_client_config: /data/sources/just-agents/examples/just_agents/examples/mcp_stdio_server.py
+  - description: Modulo operation with detailed analysis and verification
+    function: modulo
+    mcp_client_config: '{"mcpServers":{"math_wizardry":{"args":["mcp_stdio_server.py","--verbose"],"command":"python3","cwd":"/data/sources/just-agents/examples/just_agents/examples","env":{"DEBUG":"true"},"transport":"stdio"}}}'
+  - description: Safe division with remainder and verification signatures
+    function: divide
+    mcp_client_config: '{"mcpServers":{"math_wizardry":{"args":["mcp_stdio_server.py","--verbose"],"command":"python3","cwd":"/data/sources/just-agents/examples/just_agents/examples","env":{"DEBUG":"true"},"transport":"stdio"}}}'
+  - description: Calculate Greatest Common Divisor using Euclidean algorithm with
+      step tracking
+    function: gcd_calculator
+    mcp_client_config: '{"mcpServers":{"math_wizardry":{"args":["mcp_stdio_server.py","--verbose"],"command":"python3","cwd":"/data/sources/just-agents/examples/just_agents/examples","env":{"DEBUG":"true"},"transport":"stdio"}}}'
+  - description: Calculate Least Common Multiple with step-by-step verification
+    function: lcm_calculator
+    mcp_client_config: '{"mcpServers":{"math_wizardry":{"args":["mcp_stdio_server.py","--verbose"],"command":"python3","cwd":"/data/sources/just-agents/examples/just_agents/examples","env":{"DEBUG":"true"},"transport":"stdio"}}}'

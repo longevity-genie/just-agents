@@ -2,7 +2,7 @@ from pathlib import Path
 from dotenv import load_dotenv
 from just_agents import llm_options
 from just_agents.patterns.chain_of_throught import ChainOfThoughtAgent
-from examples.just_agents.examples.tools import letter_count
+from just_agents.examples.tools import letter_count
 import pprint
 
 # Get the directory path where this example is located

@@ -13,7 +13,7 @@ from just_agents.just_async import run_async_function_synchronously
 from just_agents.just_schema import ModelHelper
 from just_agents.just_bus import JustToolsBus, SubscriberCallback
 
-from just_agents.mcp_client import MCPClient, MCPServerParameters
+from just_agents.mcp_client import MCPClient, JustMCPServerParameters
 from just_agents.data_classes import GoogleBuiltInName
 
 
@@ -574,20 +574,7 @@ class JustTransientTool(JustToolBase):
         )
 
         return instance
-
-
-class JustMCPToolSetConfig(MCPServerParameters):
-    """
-    A configuration for a set of MCP tools.
-    """
-    only_include_tools: Sequence[str] = Field(
-        default=(),
-        description="The names of the MCP tools to include, if empty includes every tool provided by server listing, otherwise only includes the tools in this list"
-        )
-    exclude_tools: Sequence[str] = Field(default=(), description="The names of the MCP tools to exclude, or empty for none")
-    raise_on_incorrect_names: bool = Field(True, description="If true, raise an error if any tool name in include/exclude is not found in the server listing")
-
-class JustMCPTool(MCPServerParameters, JustToolBase):
+class JustMCPTool(JustMCPServerParameters, JustToolBase):
     """
     Tool implementation for MCP (Model Context Protocol) tools.
     Allows integration of remote or stdio-based MCP tools into the Just Agents framework.
@@ -604,8 +591,12 @@ class JustMCPTool(MCPServerParameters, JustToolBase):
         # Store the dedicated loop for this specific MCP client
         try:
             self._preferred_event_loop = self._mcp_client.get_loop()
+            # Update the client config to be in the right format for serialization
+            self.mcp_client_config = self._mcp_client.get_standardized_client_config(serialize_dict=False)
         except Exception:
             self._preferred_event_loop = None
+
+
         super().model_post_init(__context)
 
     def reconnect(self) -> 'JustMCPTool': 
@@ -775,8 +766,8 @@ class JustPromptTool(JustImportedTool):
 
 # Raw input types (for validation) - simplified for serialized form
 JustToolsRaw = Union[
-    Dict[str, Union[Callable, Dict[str, Any]]],
-    Sequence[Union[Callable, Dict[str, Any]]]
+    Dict[str, Union[Callable, str, Dict[str, Any], JustMCPServerParameters]],
+    Sequence[Union[Callable, str, Dict[str, Any], JustMCPServerParameters]]
 ]
 
 JustPromptToolsRaw = Union[
@@ -1031,7 +1022,7 @@ class JustToolFactory:
             return JustGoogleBuiltIn
         
         # Check for MCP tool parameters
-        has_mcp_endpoint = 'mcp_endpoint' in item_dict
+        has_mcp_client_config = 'mcp_client_config' in item_dict
         
         # Check for imported tool parameters  
         has_package = 'package' in item_dict
@@ -1042,15 +1033,15 @@ class JustToolFactory:
         has_call_arguments = 'call_arguments' in item_dict
         
         # Validate parameter combinations and determine tool type
-        if has_mcp_endpoint and has_import_params:
+        if has_mcp_client_config and has_import_params:
             raise ValueError(
                 f"Tool '{name}' has conflicting parameters: MCP parameter "
-                f"'mcp_endpoint' cannot be used with import parameters "
+                f"'mcp_client_config' cannot be used with import parameters "
                 f"({'package' if has_package else 'static_class'})"
             )
         
         # Determine tool type based on parameters
-        if has_mcp_endpoint:
+        if has_mcp_client_config:
             return JustMCPTool
         
         if has_import_params:
@@ -1081,7 +1072,7 @@ class JustToolFactory:
         # Always raise an error for insufficient parameters - we need explicit tool type indicators
         raise ValueError(
             f"Tool '{name}' has insufficient parameters to determine tool type. "
-            f"Expected one of: MCP parameter (mcp_endpoint), "
+            f"Expected one of: MCP parameter (mcp_client_config), "
             f"import parameters (package/static_class), or call_arguments for prompt tools."
         )
 
@@ -1159,7 +1150,7 @@ class JustToolFactory:
             for name, item in tools.items():
                 if isinstance(item, JustToolBase):
                     new_tools[name] = item
-                elif isinstance(item, JustMCPToolSetConfig):
+                elif isinstance(item, JustMCPServerParameters) or isinstance(item, str):
                     # Handle MCP tool set config - generate multiple tools
                     mcp_tools = cls.create_tools_from_mcp(item)
                     new_tools.update(mcp_tools)
@@ -1182,7 +1173,7 @@ class JustToolFactory:
         elif isinstance(tools, Sequence):
             for item in tools:
                 try:
-                    if isinstance(item, JustMCPToolSetConfig):
+                    if isinstance(item, JustMCPServerParameters) or isinstance(item, str):
                         # Handle MCP tool set config - generate multiple tools
                         mcp_tools = cls.create_tools_from_mcp(item)
                         new_tools.update(mcp_tools)
@@ -1192,7 +1183,7 @@ class JustToolFactory:
                 except (TypeError, ValueError) as e:
                     raise TypeError(f"Invalid item in tools sequence: {e}")
         else:
-            raise TypeError("The 'tools' input must be a sequence or a valid dictionary of JustToolBase or JustMCPToolSetConfig instances.")
+            raise TypeError("The 'tools' input must be a sequence or a valid dictionary of JustToolBase or JustMCPServerParameters instances.")
 
         return new_tools
 
@@ -1264,7 +1255,7 @@ class JustToolFactory:
             Dict[str, ToolDefinition]: Dictionary mapping tool names to ToolDefinition objects
         """
         # Get the MCP client
-        client = MCPClient.get_client_by_inputs(mcp_endpoint=endpoint)
+        client = MCPClient.get_client_by_inputs(mcp_client_config=endpoint)
         
         # Create and run the coroutine to list tools
         async def get_tools():
@@ -1292,7 +1283,7 @@ class JustToolFactory:
             Optional[ToolDefinition]: The tool as a ToolDefinition object, or None if not found
         """
         # Get the MCP client
-        client = MCPClient.get_client_by_inputs(mcp_endpoint=endpoint)
+        client = MCPClient.get_client_by_inputs(mcp_client_config=endpoint)
         
         # Create and run the coroutine to get the tool
         async def get_tool():
@@ -1305,33 +1296,36 @@ class JustToolFactory:
     @classmethod
     def create_tools_from_mcp(
             cls,
-            config: JustMCPToolSetConfig
+            config: Union[JustMCPServerParameters, str]
         ) -> Dict[str, JustMCPTool]:
         """
         Creates a dictionary of JustMCPTool instances from an MCP server configuration.
 
         Args:
-            config: JustMCPToolSetConfig with server parameters and tool filtering options
+            config: JustMCPServerParameters with server parameters and tool filtering options
 
         Returns:
             Dict[str, JustMCPTool]: Dictionary mapping tool names to JustMCPTool instances
 
         Raises:
-            ValueError: If mcp_endpoint is not provided in config
+            ValueError: If mcp_client_config is not provided in config
             ValueError: If raise_on_incorrect_names is True and include/exclude contains names not in available tools
         """
-        if not config.mcp_endpoint:
-            raise ValueError("mcp_endpoint must be provided in config")
+        if isinstance(config, str):
+            config = JustMCPServerParameters(mcp_client_config=config)
+
+        if not config.mcp_client_config:
+            raise ValueError("mcp_client_config must be provided in config")
             
         # Get the available tools from the MCP server
-        tool_defs = cls.list_mcp_tools(endpoint=config.mcp_endpoint)
+        tool_defs = cls.list_mcp_tools(endpoint=config.mcp_client_config)
         
         # Convert to a set for easier filtering
         available_tools = set(tool_defs.keys())
         
         # Check if include/exclude names are valid
-        include_set = set(config.only_include_tools)
-        exclude_set = set(config.exclude_tools)
+        include_set = set(config.only_include_tools) if config.only_include_tools is not None else set()
+        exclude_set = set(config.exclude_tools) if config.exclude_tools is not None else set()
         
         if include_set and config.raise_on_incorrect_names:
             missing = include_set - available_tools
@@ -1362,7 +1356,7 @@ class JustToolFactory:
         for tool_name in tools_to_create:
             tool = JustMCPTool(
                 name=tool_name,
-                mcp_endpoint=config.mcp_endpoint
+                mcp_client_config=config.mcp_client_config
             )
             tool_dict[tool_name] = tool
         

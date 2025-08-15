@@ -6,17 +6,18 @@ from typing import Dict, Any
 from dotenv import load_dotenv
 
 from just_agents.llm_options import OPENAI_GPT4_1NANO
+from just_agents.mcp_client import MCPClient
 
-# Add the workspace root to sys.path for imports
-current_dir = os.path.dirname(os.path.abspath(__file__))
-sys.path.insert(0, os.path.join(current_dir, '..'))
-
-from just_agents.just_tool import JustTool, JustMCPTool, JustMCPToolSetConfig, JustToolFactory
+from just_agents.data_classes import JustMCPServerParameters
+from just_agents.just_tool import JustTool, JustMCPTool, JustToolFactory
 import tests.tools.tool_test_module as tool_test_module
 from just_agents.base_agent import BaseAgentWithLogging
 from just_agents.llm_options import LLMOptions, OPENAI_GPT4_1MINI
 from just_agents.just_tool import JustToolsBus
+import just_agents.examples.mcp_stdio_server as mcp_server
 
+# Get the server path dynamically from the imported module
+_MCP_SERVER_PATH = mcp_server.__file__
 
 @pytest.fixture(scope="module", autouse=True)
 def load_env():
@@ -26,17 +27,16 @@ def load_env():
 @pytest.fixture(scope="session")
 def mcp_server_available():
     """Fixture to check if the MCP server script is available"""
-    server_path = os.path.join(os.path.dirname(__file__), "tools", "mcp_stdio_server.py")
-    if not os.path.exists(server_path):
-        pytest.skip(f"MCP server script not found at {server_path}")
+    if not os.path.exists(_MCP_SERVER_PATH):
+        pytest.skip(f"MCP server script not found at {_MCP_SERVER_PATH}")
     return True
 
 
 @pytest.fixture(scope="function")
-def mcp_endpoint():
+def mcp_client_config():
     """Fixture that returns the MCP endpoint for connecting to the test MCP server"""
-    server_path = os.path.join(os.path.dirname(__file__), "tools", "mcp_stdio_server.py")
-    return f"{sys.executable} {server_path}"
+#    return f"{sys.executable} {_MCP_SERVER_PATH}"
+    return f"{_MCP_SERVER_PATH}"
 
 
 @pytest.fixture(scope="function")
@@ -122,25 +122,25 @@ def setup_tool_test_callback(tool_names):
 class TestMCPToolsBasic:
     """Basic tests for MCP tool functionality"""
     
-    def test_mcp_tool_creation_stdio(self, mcp_endpoint):
+    def test_mcp_tool_creation_stdio(self, mcp_client_config):
         """Test creating a single MCP tool from stdio"""
         tool = JustMCPTool(
             name="add",
-            mcp_endpoint=mcp_endpoint
+            mcp_client_config=mcp_client_config
         )
         
         assert tool.name == "add"
-        assert tool.mcp_endpoint == mcp_endpoint
+        assert tool.mcp_client_config == mcp_client_config
         assert tool.description == "Add two numbers"
         assert "a" in tool.parameters["properties"]
         assert "b" in tool.parameters["properties"]
     
-    def test_mcp_tool_invocation(self, mcp_server_available, mcp_endpoint):
+    def test_mcp_tool_invocation(self, mcp_server_available, mcp_client_config):
         """Test actually calling an MCP tool"""
         # Create tool manually for this test
         tool = JustMCPTool(
             name="add",
-            mcp_endpoint=mcp_endpoint
+            mcp_client_config=mcp_client_config
         )
         
         # Manually set up the tool description for this test
@@ -160,20 +160,21 @@ class TestMCPToolsBasic:
 
 
 class TestMCPToolSetConfig:
-    """Tests for JustMCPToolSetConfig and bulk tool creation"""
+    """Tests for JustMCPServerParameters and bulk tool creation"""
     
-    def test_create_all_mcp_tools(self, mcp_server_available, mcp_endpoint):
+    def test_create_all_mcp_tools(self, mcp_server_available, mcp_client_config):
         """Test creating all available MCP tools"""
-        config = JustMCPToolSetConfig(
-            mcp_endpoint=mcp_endpoint
+        config = JustMCPServerParameters(
+            mcp_client_config=mcp_client_config
         )
         
         tools = JustToolFactory.create_tools_from_mcp(config)
         
-        # Should have all 5 tools from our server
+        # Should have all 10 tools from our server
         expected_tools = {
             "add", "fibonacci_calculator", "prime_factorization_summer", 
-            "trigonometric_chaos_generator", "polynomial_root_detective"
+            "trigonometric_chaos_generator", "polynomial_root_detective",
+            "divide", "modulo", "div_mod_combo", "gcd_calculator", "lcm_calculator"
         }
         assert set(tools.keys()) == expected_tools
         
@@ -181,10 +182,10 @@ class TestMCPToolSetConfig:
         for tool in tools.values():
             assert isinstance(tool, JustMCPTool)
     
-    def test_create_subset_mcp_tools(self, mcp_server_available, mcp_endpoint):
+    def test_create_subset_mcp_tools(self, mcp_server_available, mcp_client_config):
         """Test creating only specific MCP tools"""
-        config = JustMCPToolSetConfig(
-            mcp_endpoint=mcp_endpoint,
+        config = JustMCPServerParameters(
+            mcp_client_config=mcp_client_config,
             only_include_tools=["add", "fibonacci_calculator"]
         )
         
@@ -193,10 +194,10 @@ class TestMCPToolSetConfig:
         assert set(tools.keys()) == {"add", "fibonacci_calculator"}
         assert len(tools) == 2
     
-    def test_exclude_mcp_tools(self, mcp_server_available, mcp_endpoint):
+    def test_exclude_mcp_tools(self, mcp_server_available, mcp_client_config):
         """Test excluding specific MCP tools"""
-        config = JustMCPToolSetConfig(
-            mcp_endpoint=mcp_endpoint,
+        config = JustMCPServerParameters(
+            mcp_client_config=mcp_client_config,
             exclude_tools=["add", "polynomial_root_detective"]
         )
         
@@ -204,17 +205,19 @@ class TestMCPToolSetConfig:
         
         expected_tools = {
             "fibonacci_calculator", "prime_factorization_summer", 
-            "trigonometric_chaos_generator"
+            "trigonometric_chaos_generator", "divide", "modulo", 
+            "div_mod_combo", "gcd_calculator", "lcm_calculator"
         }
         assert set(tools.keys()) == expected_tools
     
-    def test_exclude_all_mcp_tools(self, mcp_server_available, mcp_endpoint):
+    def test_exclude_all_mcp_tools(self, mcp_server_available, mcp_client_config):
         """Test excluding all MCP tools (should result in empty set)"""
-        config = JustMCPToolSetConfig(
-            mcp_endpoint=mcp_endpoint,
+        config = JustMCPServerParameters(
+            mcp_client_config=mcp_client_config,
             exclude_tools=[
                 "add", "fibonacci_calculator", "prime_factorization_summer", 
-                "trigonometric_chaos_generator", "polynomial_root_detective"
+                "trigonometric_chaos_generator", "polynomial_root_detective",
+                "divide", "modulo", "div_mod_combo", "gcd_calculator", "lcm_calculator"
             ]
         )
         
@@ -223,10 +226,10 @@ class TestMCPToolSetConfig:
         assert len(tools) == 0
         assert tools == {}
     
-    def test_incorrect_tool_names_with_raise_flag(self, mcp_server_available, mcp_endpoint):
+    def test_incorrect_tool_names_with_raise_flag(self, mcp_server_available, mcp_client_config):
         """Test error handling for incorrect tool names when raise_on_incorrect_names=True"""
-        config = JustMCPToolSetConfig(
-            mcp_endpoint=mcp_endpoint,
+        config = JustMCPServerParameters(
+            mcp_client_config=mcp_client_config,
             only_include_tools=["add", "nonexistent_tool"],
             raise_on_incorrect_names=True
         )
@@ -234,10 +237,10 @@ class TestMCPToolSetConfig:
         with pytest.raises(ValueError, match="Requested tools not available from MCP server: nonexistent_tool"):
             JustToolFactory.create_tools_from_mcp(config)
     
-    def test_incorrect_tool_names_without_raise_flag(self, mcp_server_available, mcp_endpoint):
+    def test_incorrect_tool_names_without_raise_flag(self, mcp_server_available, mcp_client_config):
         """Test graceful handling of incorrect tool names when raise_on_incorrect_names=False"""
-        config = JustMCPToolSetConfig(
-            mcp_endpoint=mcp_endpoint,
+        config = JustMCPServerParameters(
+            mcp_client_config=mcp_client_config,
             only_include_tools=["add", "nonexistent_tool"],
             raise_on_incorrect_names=False
         )
@@ -251,11 +254,11 @@ class TestMCPToolSetConfig:
 class TestMCPToolsWithAgents:
     """Tests for using MCP tools with agents"""
     
-    def test_agent_with_single_mcp_tool(self, mcp_server_available, mcp_endpoint):
+    def test_agent_with_single_mcp_tool(self, mcp_server_available, mcp_client_config):
         """Test agent using a single MCP tool"""
         tool = JustMCPTool(
             name="add",
-            mcp_endpoint=mcp_endpoint
+            mcp_client_config=mcp_client_config
         )
         
         agent = create_agent_with_tools([tool])
@@ -268,11 +271,11 @@ class TestMCPToolsWithAgents:
         assert (isinstance(tool_results["add"][-1], str) and ('{"type":"text","text":"20"}' in tool_results["add"][-1] or tool_results["add"][-1] == "20")) or tool_results["add"][-1] == 20
         assert "20" in response
     
-    def test_agent_with_complex_mcp_tool(self, mcp_server_available, mcp_endpoint):
+    def test_agent_with_complex_mcp_tool(self, mcp_server_available, mcp_client_config):
         """Test agent using a complex MCP tool (fibonacci_calculator)"""
         tool = JustMCPTool(
             name="fibonacci_calculator",
-            mcp_endpoint=mcp_endpoint
+            mcp_client_config=mcp_client_config
         )
         
         agent = create_agent_with_tools([tool])
@@ -289,9 +292,9 @@ class TestMCPToolsWithAgents:
         expected_result = 55 * 10007 + ((55 * 31 + 10 * 17) % 10007)
         assert result == expected_result
     
-    def test_agent_with_all_mcp_tools(self, mcp_server_available, mcp_endpoint):
+    def test_agent_with_all_mcp_tools(self, mcp_server_available, mcp_client_config):
         """Test agent with all MCP tools loaded"""
-        config = JustMCPToolSetConfig(mcp_endpoint=mcp_endpoint)
+        config = JustMCPServerParameters(mcp_client_config=mcp_client_config)
         mcp_tools = JustToolFactory.create_tools_from_mcp(config)
         
         agent = create_agent_with_tools(list(mcp_tools.values()))
@@ -309,11 +312,11 @@ class TestMCPToolsWithAgents:
         assert result["sum_of_factors"] == 7
         assert result["product_check"] == 12
     
-    def test_agent_with_combined_mcp_and_regular_tools(self, mcp_server_available, mcp_endpoint):
+    def test_agent_with_combined_mcp_and_regular_tools(self, mcp_server_available, mcp_client_config):
         """Test agent with both MCP tools and regular Python tools"""
         # Get some MCP tools
-        mcp_config = JustMCPToolSetConfig(
-            mcp_endpoint=mcp_endpoint,
+        mcp_config = JustMCPServerParameters(
+            mcp_client_config=mcp_client_config,
             only_include_tools=["add", "fibonacci_calculator"]
         )
         mcp_tools = JustToolFactory.create_tools_from_mcp(mcp_config)
@@ -341,14 +344,15 @@ class TestMCPToolsWithAgents:
         assert len(tool_results["regular_function"]) >= 1
         assert tool_results["regular_function"][-1] == 25
     
-    def test_agent_with_no_mcp_tools_excluded_all(self, mcp_server_available, mcp_endpoint):
+    def test_agent_with_no_mcp_tools_excluded_all(self, mcp_server_available, mcp_client_config):
         """Test agent behavior when all MCP tools are excluded"""
         # Create config that excludes all tools
-        config = JustMCPToolSetConfig(
-            mcp_endpoint=mcp_endpoint,
+        config = JustMCPServerParameters(
+            mcp_client_config=mcp_client_config,
             exclude_tools=[
                 "add", "fibonacci_calculator", "prime_factorization_summer", 
-                "trigonometric_chaos_generator", "polynomial_root_detective"
+                "trigonometric_chaos_generator", "polynomial_root_detective",
+                "divide", "modulo", "div_mod_combo", "gcd_calculator", "lcm_calculator"
             ]
         )
         mcp_tools = JustToolFactory.create_tools_from_mcp(config)
@@ -372,11 +376,11 @@ class TestMCPToolsWithAgents:
 class TestMCPToolsComplexScenarios:
     """Advanced tests for complex MCP tool scenarios"""
     
-    def test_trigonometric_chaos_tool(self, mcp_server_available, mcp_endpoint):
+    def test_trigonometric_chaos_tool(self, mcp_server_available, mcp_client_config):
         """Test the complex trigonometric tool to ensure execution vs hallucination"""
         tool = JustMCPTool(
             name="trigonometric_chaos_generator",
-            mcp_endpoint=mcp_endpoint
+            mcp_client_config=mcp_client_config
         )
         
         agent = create_agent_with_tools([tool])
@@ -401,11 +405,11 @@ class TestMCPToolsComplexScenarios:
         assert isinstance(result["chaos_signature"], int)
         assert 0 <= result["chaos_signature"] < 99991
     
-    def test_polynomial_root_detective_tool(self, mcp_server_available, mcp_endpoint):
+    def test_polynomial_root_detective_tool(self, mcp_server_available, mcp_client_config):
         """Test the polynomial analysis tool with complex calculations"""
         tool = JustMCPTool(
             name="polynomial_root_detective",
-            mcp_endpoint=mcp_endpoint
+            mcp_client_config=mcp_client_config
         )
         
         agent = create_agent_with_tools([tool])
@@ -430,10 +434,10 @@ class TestMCPToolsComplexScenarios:
             assert any(abs(root - 2.0) < 0.1 for root in roots)
             assert any(abs(root - 3.0) < 0.1 for root in roots)
     
-    def test_multiple_mcp_tools_in_sequence(self, mcp_server_available, mcp_endpoint):
+    def test_multiple_mcp_tools_in_sequence(self, mcp_server_available, mcp_client_config):
         """Test using multiple MCP tools in sequence within a single query"""
-        config = JustMCPToolSetConfig(
-            mcp_endpoint=mcp_endpoint,
+        config = JustMCPServerParameters(
+            mcp_client_config=mcp_client_config,
             only_include_tools=["add", "fibonacci_calculator", "prime_factorization_summer"]
         )
         mcp_tools = JustToolFactory.create_tools_from_mcp(config)
@@ -475,16 +479,16 @@ class TestMCPToolErrors:
         with pytest.raises(Exception):  # Should raise some kind of connection error
             tool = JustMCPTool(
                 name="add",
-                mcp_endpoint="nonexistent_command"
+                mcp_client_config="nonexistent_command"
             )
             tool(a=1, b=2)  # This should fail when trying to connect
     
-    def test_mcp_tool_with_invalid_tool_name(self, mcp_server_available, mcp_endpoint):
+    def test_mcp_tool_with_invalid_tool_name(self, mcp_server_available, mcp_client_config):
         """Test error handling for invalid tool names"""
         with pytest.raises(ImportError, match="Tool 'nonexistent_tool' not found in MCP"):
             tool = JustMCPTool(
                 name="nonexistent_tool",
-                mcp_endpoint=mcp_endpoint
+                mcp_client_config=mcp_client_config
             )
             # The error should occur during refresh/initialization 
 
@@ -492,7 +496,7 @@ class TestMCPToolErrors:
 class TestMCPServerReuse:
     """Tests specifically for STDIO server reuse functionality"""
     
-    def test_stdio_server_reuse(self, mcp_server_available, mcp_endpoint, mcp_client_tracker, caplog):
+    def test_stdio_server_reuse(self, mcp_server_available, mcp_client_config, mcp_client_tracker, caplog):
         """Test that STDIO servers are reused across multiple tool calls"""
         import logging
         
@@ -502,8 +506,8 @@ class TestMCPServerReuse:
             initial_state = mcp_client_tracker.get_current_state()
             
             # Create multiple tools that should use the same server
-            config = JustMCPToolSetConfig(
-                mcp_endpoint=mcp_endpoint,
+            config = JustMCPServerParameters(
+                mcp_client_config=mcp_client_config,
                 only_include_tools=["add", "fibonacci_calculator"]
             )
             tools = JustToolFactory.create_tools_from_mcp(config)
@@ -542,14 +546,14 @@ class TestMCPServerReuse:
             for result in results:
                 assert result is not None, "All results should be non-None"
     
-    def test_client_locator_prevents_duplicate_clients(self, mcp_server_available, mcp_endpoint, mcp_client_tracker):
+    def test_client_locator_prevents_duplicate_clients(self, mcp_server_available, mcp_client_config, mcp_client_tracker):
         """Test that the client locator prevents duplicate clients for the same server"""
         # Get initial state
         initial_state = mcp_client_tracker.get_current_state()
         
         # Create multiple tools with same server parameters
-        config = JustMCPToolSetConfig(
-            mcp_endpoint=mcp_endpoint,
+        config = JustMCPServerParameters(
+            mcp_client_config=mcp_client_config,
             only_include_tools=["add", "fibonacci_calculator", "prime_factorization_summer"]
         )
         tools = JustToolFactory.create_tools_from_mcp(config)
@@ -583,7 +587,8 @@ class TestMCPServerReuse:
         )
         
         # Verify the client key matches our server command
-        expected_client_key = f"stdio:{mcp_endpoint}"
+        expected_transport_spec = MCPClient._parse_mcp_client_config(mcp_client_config)
+        expected_client_key = MCPClient._serialize_transport_spec_for_key(expected_transport_spec)
         actual_client_key = next(iter(client_keys))
         assert actual_client_key == expected_client_key, (
             f"Client key should match server command. Expected: {expected_client_key}, "
