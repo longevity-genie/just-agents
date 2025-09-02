@@ -58,7 +58,7 @@ run-agent = "just_agents.web.run_agent:app"
 deploy-agent = "just_agents.web.deploy_agent:app"
 
 [build-system]
-requires = ["poetry-core>=2.0.0", "poetry-dynamic-versioning>=1.4.1"]
+requires = ["poetry-core>=2.1.0", "poetry-dynamic-versioning>=1.9.1"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry-dynamic-versioning]

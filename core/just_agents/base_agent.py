@@ -20,6 +20,7 @@ from just_agents.just_tool import SubscriberCallback
 from just_agents.just_bus import JustLogBus
 from just_agents.just_locator import JustAgentsLocator
 from just_agents.just_schema import ModelHelper
+from pyrsistent import pvector
 
 
 class BaseAgent(
@@ -332,7 +333,7 @@ class BaseAgent(
         else:
             #new_memory = type(self.memory)()  # Call the default constructor of same class
             new_memory = self.memory.deepcopy()
-            new_memory.messages.clear()
+            new_memory.messages = pvector()
 
         return new_memory
 
@@ -514,8 +515,8 @@ class BaseAgent(
                 tool.reset() #reset tool calls, if set
         if remember_query is None:
             remember_query = self.remember_query
-        if remember_query: #replace with shallow copy of the fork if remember is set
-            self.memory.messages = memory_instance.messages.copy()
+        if remember_query: #replace with persistent vector (share structure)
+            self.memory.messages = memory_instance.messages
         return memory_instance
 
     def query(

@@ -1,9 +1,10 @@
-from pydantic import BaseModel, Field, PrivateAttr
+from pydantic import BaseModel, Field, PrivateAttr, field_validator
 from typing import Callable, List, Dict
 from functools import singledispatchmethod
 from just_agents.interfaces.memory import IMemory, IMessageFormatter
 from just_agents.data_classes import Message, Role, ToolCall
-from just_agents.types import MessageDict, SupportedMessages
+from just_agents.types import MessageDict, SupportedMessages, PVectorField
+from pyrsistent import PVector, pvector
 
 from abc import ABC
 
@@ -14,7 +15,7 @@ from rich.panel import Panel
 
 
 class MessageFormatter(IMessageFormatter):
-    messages: List[MessageDict] = Field(default_factory=list, validation_alias='conversation')
+    messages: PVectorField[MessageDict] = Field(default_factory=pvector, validation_alias='conversation')
 
     def pretty_print_message(self, msg: MessageDict) -> Panel:
         role = msg.get('role', 'unknown').capitalize()
@@ -89,7 +90,7 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC)
     Abstract Base Class to fulfill Pydantic schema requirements for concrete-attributes.
     """
 
-    messages: List[MessageDict] = Field(default_factory=list, validation_alias='conversation')
+    messages: PVectorField[MessageDict] = Field(default_factory=pvector, validation_alias='conversation')
 
     # Private dict of message handlers for each role
     _on_message: Dict[Role, List[OnMessageCallable]] = PrivateAttr(default_factory=lambda: {
@@ -126,14 +127,14 @@ class IBaseMemory(BaseModel, IMemory[Role, MessageDict], IMessageFormatter, ABC)
         for sys_prompt in self.prompt_messages:
             if not clear_non_empty and Message(**sys_prompt).get_text():
                 continue
-            self.messages.remove(sys_prompt)
+            self.messages = self.messages.remove(sys_prompt)
         if clear_non_empty and self.prompt_messages:
             raise ValueError("Failed to clear system prompts")
 
     def deepcopy(self) -> 'IBaseMemory':
         new_memory = type(self)()  # Call the default constructor of same class
         new_memory._on_message = self._on_message.copy() #shallow_copy collections instead
-        new_memory.messages = self.messages.copy()
+        new_memory.messages = self.messages
         return new_memory
         #return self.model_copy(deep=True)
 
@@ -248,7 +249,7 @@ class BaseMemory(IBaseMemory, MessageFormatter):
         if role is None:
             raise ValueError("Message does not have a role")
         if role == Role.system: # Bubble up the system message to the top of the list preserving order
-            self.messages.sort(key=lambda msg: msg.get("role","user") != Role.system)
+            self.messages = pvector(sorted(self.messages, key=lambda msg: msg.get("role","user") != Role.system))
         for handler in self._on_message.get(role, []):
             handler(message)
 
@@ -273,7 +274,7 @@ class BaseMemory(IBaseMemory, MessageFormatter):
         """
         Handles AbstractMessage instances.
         """
-        self.messages.append(message)
+        self.messages = self.messages.append(message)
         self.handle_message(message)
 
     @add_message.register
@@ -287,6 +288,13 @@ class BaseMemory(IBaseMemory, MessageFormatter):
     def _add_message_list(self, messages: list) -> None:
         """
         Handles lists of messages.
+        """
+        self.add_messages(messages)
+
+    @add_message.register
+    def _add_message_pvector(self, messages: PVector) -> None:
+        """
+        Handles pvectors of messages.
         """
         self.add_messages(messages)
 

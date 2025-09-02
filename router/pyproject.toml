@@ -25,7 +25,7 @@ pytest = ">=8.3.5"
 just-agents-core = {path = "../core", develop = true}
 
 [build-system]
-requires = ["poetry-core>=2.0.0", "poetry-dynamic-versioning>=1.4.1,<2.0.0"]
+requires = ["poetry-core>=2.1.0", "poetry-dynamic-versioning>=1.9.1,<2.0.0"]
 build-backend = "poetry.core.masonry.api"
 
 [tool.poetry-dynamic-versioning]

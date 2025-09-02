@@ -19,6 +19,7 @@ packages = [{include = "just_agents"}]
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
+pyrsistent = "^0.20.0"
 just-agents-core = "*"
 just-agents-tools = "*"
 just-agents-coding = "*"
@@ -44,7 +45,7 @@ run-agent = "just_agents.web.run_agent:app"
 deploy-agent = "just_agents.web.deploy_agent:app"
 
 [build-system]
-requires = ["poetry-core>=2.0.0", "poetry-dynamic-versioning>=1.4.1"]
+requires = ["poetry-core>=2.1.0", "poetry-dynamic-versioning>=1.9.1"]
 build-backend = "poetry_dynamic_versioning.backend"
 
 [tool.poetry-dynamic-versioning]

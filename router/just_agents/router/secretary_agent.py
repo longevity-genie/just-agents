@@ -176,6 +176,19 @@ class SecretaryAgent(BaseAgent, JustAgentFullProfile):
         # Parse the response as JSON to create a JustAgent instance
         try:
             profile_data = json.loads(response)
+            # Sanitize fields that frequently come back in non-conforming formats
+            # - prompt_tools should be a dict/list of tools; if a string like "None specified", drop it
+            pt = profile_data.get("prompt_tools", None)
+            if isinstance(pt, str) or pt is Ellipsis:
+                profile_data.pop("prompt_tools", None)
+            # - tools may also be returned as a string; drop on non-dict/list
+            tl = profile_data.get("tools", None)
+            if isinstance(tl, str) or tl is Ellipsis:
+                profile_data.pop("tools", None)
+            # - extras should be a dict if present
+            ex = profile_data.get("extras", None)
+            if ex is not None and not isinstance(ex, dict):
+                profile_data.pop("extras", None)
             agent.update(profile_data,overwrite=True)
         except json.JSONDecodeError as e:
             print("Failed to parse LLM response as JSON:", str(e))
