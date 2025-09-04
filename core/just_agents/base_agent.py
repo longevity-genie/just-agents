@@ -1,9 +1,11 @@
 import copy
+from copy import deepcopy
+
 from pydantic import Field, PrivateAttr, computed_field, BaseModel, field_serializer, field_validator, model_validator
-from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol, Type, Callable, AsyncGenerator
+from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol, Type, Callable, AsyncGenerator, get_args
 from functools import partial
 from pydantic_core import PydanticSerializationUnexpectedValue
-from just_agents.data_classes import FinishReason, ToolCall, Message, Role, ReasoningEffort
+from just_agents.data_classes import FinishReason, ToolCall, Message, Role, ReasoningEffort, GoogleBuiltInName
 from just_agents.types import MessageDict, SupportedMessages
 
 from just_agents.llm_options import LLMOptions
@@ -301,11 +303,12 @@ class BaseAgent(
                 log_name=self.codename
             )
 
+        # causes bugs, let LiteLLM handle it. https://github.com/BerriAI/litellm/issues/14271
         # If tools (functions) are defined, configure LLM to use them
-        if self.tools is not None:
-            # Enable automatic tool selection if not explicitly set
-            if not self.llm_options.get("tool_choice", None):
-                self.llm_options["tool_choice"] = "auto"
+        # if self.tools is not None:
+        #     # Enable automatic tool selection if not explicitly set
+        #     if not self.llm_options.get("tool_choice", None):
+        #         self.llm_options["tool_choice"] = "auto"
 
         # Set up API key rotation based on file or environment variable
         if self.key_list_path is not None:
@@ -361,9 +364,19 @@ class BaseAgent(
                         or self.tools[tool].remaining_calls > 0
                 )
             ]
-        else:
+        tool_count = len(opt.get("tools", [])) #active tools
+
+        if tool_count == 0:
             opt.pop("tools", None) #Ensure no tools are passed to adapter
-            opt.pop("tool_choice", None) # Also remove tool_choice if no tools are present
+        else:
+            for tool in opt["tools"]:
+                for built_in in get_args(GoogleBuiltInName):
+                    if built_in in tool:
+                        tool_count -= 1 #remove built-in tools
+
+        if tool_count == 0: #if no tools, or built-in tools only, remove tool_choice
+            opt.pop("tool_choice", None) 
+ 
 
         if self.use_proxy and self.proxy_address:
             opt["api_base"] = self.proxy_address

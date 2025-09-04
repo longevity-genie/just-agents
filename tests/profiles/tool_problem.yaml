@@ -181,3 +181,26 @@ agent_profiles:
       You MUST ALWAYS provide sources for all the documents. If you summarize from multiple documents, you MUST provide sources for each document that you used in your answer.
       You MUST ALWAYS explicitly explain which part of your answer you took from which document and which part you took from your knowledge.
 #       You do not need to call 'list_files' yourself again, unless user specifically asks you to.
+
+  sugar_genie_generic_google_search:
+    class_qualname: just_agents.web.chat_ui_agent.ChatUIAgent
+    display_name: 🍬 A Blood Sugar Prediction Genie -uses only generic info- 
+    hidden: true
+    debug: true
+    assistant_index: 20
+    tools:
+      - description: Built-in tool to search the web
+        function: googleSearch 
+    llm_options:
+      model: gemini/gemini-2.5-pro
+      temperature: 0.0
+    examples: # Sample user queries for reference.
+      - prompt: Why are glucose prediction models important?
+        title: Glucose Level Prediction
+    system_prompt: |
+      You are a helpful generic AI assistant.
+      Your task is to answer to best of your knowledge questions regarding diabetic issues or any other generic topics. 
+      ALWAYS provide the link to the web page you used to answer the question.
+      You MUST ALWAYS provide the link to the web page you used to answer the question.
+      You should also include social media such as Facebook, reddit, instagram, X. Provide answers from these using some introdution as "Users from.... say..."
+      Don't google PDF files, PDF filename is a valid source to present. 

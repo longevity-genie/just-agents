@@ -235,16 +235,16 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         Convert a function to a tool dictionary.
         """
         source = f"{self.log_name}.tool_from_function"
-        
+        name = getattr(tool, "name", None) or tool.__name__
         #isinstance(tool, JustGoogleBuiltIn) is expensive, plus unncessary coupling
-        if not function_dict and tool.__name__ in get_args(GoogleBuiltInName): 
+        if name in get_args(GoogleBuiltInName):
             self._log_bus.info(
-                f"Google built-in tool {tool.__name__} provided",
+                f"Google built-in tool {name} provided",
                 source=source,
                 action="google_built_in_tool",
-                tool_name=tool.__name__
+                tool_name=name
             )
-            return {} #special case for google built-in tools
+            return { name : {} } #special case for google built-in tools
         
         if function_dict:
             self._log_bus.log_message(

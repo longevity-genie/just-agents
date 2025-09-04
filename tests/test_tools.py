@@ -585,11 +585,11 @@ def test_google_builtin_litellm_adapter_integration():
     # Test that the adapter returns empty dict for Google built-in tools
     google_search_callable = google_search.get_callable(wrap=False)
     google_search_tool = adapter.tool_from_function(google_search_callable)
-    assert google_search_tool == {}
+    assert google_search_tool == { google_search.name : {}}
     
     code_execution_callable = code_execution.get_callable(wrap=False)
     code_execution_tool = adapter.tool_from_function(code_execution_callable)
-    assert code_execution_tool == {}
+    assert code_execution_tool == { code_execution.name : {}}
     
     # Verify that regular functions still work normally
     regular_tool = adapter.tool_from_function(tool_test_module.regular_function)

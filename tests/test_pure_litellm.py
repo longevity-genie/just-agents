@@ -71,10 +71,11 @@ def test_gemini_raw_google_search():
 
     tools = [{"googleSearch": {}}] # 👈 ADD GOOGLE SEARCH
     response = litellm.completion(
-        model = "gemini/gemini-2.5-flash",
+        model = "gemini/gemini-2.5-pro",
         temperature = 0.0,
         messages=[{"role": "user", "content": "Who is the main female founder of GlucoseDAO? Answer must be Name Surname and nothing else"}],
         tools=tools,
+    #    tool_choice="auto" ## https://github.com/BerriAI/litellm/issues/14271
     )
     assert "Livia" in response.choices[0].message.content, "it must have Livia in the response"
     assert "Zaharia" in response.choices[0].message.content, "it must have Zaharia in the response"

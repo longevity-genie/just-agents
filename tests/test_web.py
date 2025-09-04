@@ -43,6 +43,17 @@ def test_web_agent_tool(load_env, tmp_path):
     ill_agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="sugar_genie_good", parent_section="agent_profiles")
     assert "Zaharia" in ill_agent.query("Who is the founder of GlucoseDAO?")
    
+
+def test_google_search_tool(load_env, tmp_path):
+    config_path = Path(TESTS_DIR)  / "profiles" / "tool_problem.yaml"
+    agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="sugar_genie_generic_google_search", parent_section="agent_profiles")
+    result = agent.query("Which model of insulin pumps the users found to be more user friendly?")
+    assert "Omnipod" in result or "Tandem" in result
+    result = agent.query("Who is a founder of GlucoseDAO?")
+    assert "Livia Zaharia" in result
+
+
+
 def test_prompt_functions_and_agent_locator(load_env, tmp_path):
     config_path = Path(TESTS_DIR)  / "profiles" / "secret_service.yaml"
     key_agent: WebAgent = WebAgent.from_yaml(file_path=config_path, section_name="keys_agent", parent_section="agent_profiles")

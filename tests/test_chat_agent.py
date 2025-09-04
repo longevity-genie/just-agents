@@ -104,9 +104,9 @@ def test_query_structural():
                       "question": "",
                       "final_answer": "your complete answer to the user's question"
                     }""",
-                                 #llm_options=LLAMA3_3
-                                 #llm_options=llm_options.OPENAI_GPT4o,
-                                 llm_options=GEMINI_2_5_FLASH
+                                 llm_options=LLAMA3_3,
+                                 #llm_options=OPENAI_GPT4_1MINI,
+                                 #llm_options=GEMINI_2_5_FLASH,
                                  )
     
     # Ask the agent a question that doesn't require SQL or tool use

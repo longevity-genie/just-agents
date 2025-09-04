@@ -150,10 +150,10 @@ comprehensive_agent:
   - description: Safe division with remainder and verification signatures
     function: divide
     mcp_client_config: '{"mcpServers":{"math_wizardry":{"args":["mcp_stdio_server.py","--verbose"],"command":"python3","cwd":"/data/sources/just-agents/examples/just_agents/examples","env":{"DEBUG":"true"},"transport":"stdio"}}}'
+  - description: Calculate Least Common Multiple with step-by-step verification
+    function: lcm_calculator
+    mcp_client_config: '{"mcpServers":{"math_wizardry":{"args":["mcp_stdio_server.py","--verbose"],"command":"python3","cwd":"/data/sources/just-agents/examples/just_agents/examples","env":{"DEBUG":"true"},"transport":"stdio"}}}'
   - description: Calculate Greatest Common Divisor using Euclidean algorithm with
       step tracking
     function: gcd_calculator
-    mcp_client_config: '{"mcpServers":{"math_wizardry":{"args":["mcp_stdio_server.py","--verbose"],"command":"python3","cwd":"/data/sources/just-agents/examples/just_agents/examples","env":{"DEBUG":"true"},"transport":"stdio"}}}'
-  - description: Calculate Least Common Multiple with step-by-step verification
-    function: lcm_calculator
     mcp_client_config: '{"mcpServers":{"math_wizardry":{"args":["mcp_stdio_server.py","--verbose"],"command":"python3","cwd":"/data/sources/just-agents/examples/just_agents/examples","env":{"DEBUG":"true"},"transport":"stdio"}}}'
