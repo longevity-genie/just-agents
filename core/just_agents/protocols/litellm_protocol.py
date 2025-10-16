@@ -18,7 +18,7 @@ from litellm.litellm_core_utils.get_supported_openai_params import get_supported
 
 from just_agents.interfaces.function_call import IFunctionCall, ToolByNameCallback
 from just_agents.interfaces.protocol_adapter import IProtocolAdapter, ExecuteToolCallback
-from just_agents.data_classes import Role, ToolCall, FinishReason, GoogleBuiltInName
+from just_agents.data_classes import Role, ToolCall, FinishReason, GoogleBuiltInTools
 from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.types import MessageDict
 from just_agents.just_bus import JustLogBus
@@ -237,7 +237,7 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         source = f"{self.log_name}.tool_from_function"
         name = getattr(tool, "name", None) or tool.__name__
         #isinstance(tool, JustGoogleBuiltIn) is expensive, plus unncessary coupling
-        if name in get_args(GoogleBuiltInName):
+        if name in (GoogleBuiltInTools.search, GoogleBuiltInTools.code):
             self._log_bus.info(
                 f"Google built-in tool {name} provided",
                 source=source,

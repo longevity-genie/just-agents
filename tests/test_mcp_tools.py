@@ -14,7 +14,7 @@ import tests.tools.tool_test_module as tool_test_module
 from just_agents.base_agent import BaseAgentWithLogging
 from just_agents.llm_options import LLMOptions, OPENAI_GPT4_1MINI
 from just_agents.just_tool import JustToolsBus
-import just_agents.examples.mcp_stdio_server as mcp_server
+import just_agents.examples.toy_mcp_servers.mcp_stdio_server as mcp_server
 
 # Get the server path dynamically from the imported module
 _MCP_SERVER_PATH = mcp_server.__file__

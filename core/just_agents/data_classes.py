@@ -38,6 +38,10 @@ class EnumLiteral(str, Enum):
         # For print statements
         return self.value
 
+class GoogleBuiltInTools(EnumLiteral):
+    search = "googleSearch"
+    code = "codeExecution"
+
 class Role(EnumLiteral):
     """OpenAI compatible role enum class with string representation"""
     system = "system"
@@ -108,7 +112,7 @@ class Message(BaseModel):
         message.content = self.get_text(delimiter, preserve_trailing)
         return message
 
-GoogleBuiltInName = Literal["googleSearch", "codeExecution"]
+
 class ToolCall(BaseModel):
     """ OpenAI compatible Tool call class """
     model_config = ConfigDict(extra="allow")

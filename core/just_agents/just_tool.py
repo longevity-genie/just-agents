@@ -4,40 +4,40 @@ import warnings
 from functools import wraps
 from json import JSONDecodeError
 from abc import ABC, abstractmethod
-from typing import Callable, Optional, List, Dict, Any, Sequence, Union, TypeVar, Type, Tuple, get_origin
+from typing import Callable, Optional, List, Dict, Any, Sequence, Union, TypeVar, Type, Tuple, Literal, get_origin
 from pydantic import ConfigDict, BaseModel, Field, PrivateAttr, ValidationError, model_serializer
 from importlib import import_module
 
-from just_agents.data_classes import ToolDefinition
+from just_agents.data_classes import ToolDefinition, GoogleBuiltInTools
 from just_agents.just_async import run_async_function_synchronously
 from just_agents.just_schema import ModelHelper
 from just_agents.just_bus import JustToolsBus, SubscriberCallback
 
 from just_agents.mcp_client import MCPClient, JustMCPServerParameters
-from just_agents.data_classes import GoogleBuiltInName
 
 
 # Google built-in tool stub functions with proper names
-def googleSearch():
+def _googleSearchStub():
     """Google built-in tool stub - should not be called directly"""
     raise RuntimeError("Google built-in tool 'googleSearch' should not be called directly - it's handled by the model")
 
-def codeExecution():
+def _codeExecutionStub():
     """Google built-in tool stub - should not be called directly"""
     raise RuntimeError("Google built-in tool 'codeExecution' should not be called directly - it's handled by the model")
 
 # Map tool names to their stub functions
 _GOOGLE_BUILTIN_STUBS = {
-    "googleSearch": googleSearch,
-    "codeExecution": codeExecution
+    GoogleBuiltInTools.search: _googleSearchStub,
+    GoogleBuiltInTools.code: _codeExecutionStub
 }
 
 _GOOGLE_BUILTIN_STUBS_DESCRIPTIONS = {
-    "googleSearch": "Built-in tool to search the web",
-    "codeExecution": "Built-in tool to execute code"
+    GoogleBuiltInTools.search: "Built-in tool to search the web",
+    GoogleBuiltInTools.code: "Built-in tool to execute code"
 }
 
-
+GOOGLE_BUILTIN_SEARCH = {"name": GoogleBuiltInTools.search} 
+GOOGLE_BUILTIN_CODE = {"name": GoogleBuiltInTools.code} 
 
 def max_calls_decorator(tool_instance: 'JustToolBase', max_calls: int, tool_name: str):
     """
@@ -729,7 +729,7 @@ class JustGoogleBuiltIn(JustToolBase):
     A special tool class for Google built-in tools (googleSearch and codeExecution).
     These tools are handled natively by the Gemini model and should never be called directly.
     """
-    name: GoogleBuiltInName = Field(..., alias='function', description="The name of the Google built-in tool")
+    name: Literal[GoogleBuiltInTools.search, GoogleBuiltInTools.code] = Field(..., alias='function', description="The name of the Google built-in tool")
     
     def model_post_init(self, __context: Any) -> None:
         """Called after the model is initialized."""
@@ -1014,7 +1014,7 @@ class JustToolFactory:
         name = item_dict.get('name', item_dict.get('function', ''))
         
         # Check for Google built-in tools (highest priority - these are special)
-        if name in ['googleSearch', 'codeExecution']:
+        if name in [GoogleBuiltInTools.search, GoogleBuiltInTools.code]:
             for key in item_dict.keys():
                 if key not in ['name', 'function', 'description']:
                     raise ValueError(f"Invalid parameter '{key}' for Google built-in tool '{name}'")

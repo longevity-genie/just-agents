@@ -69,13 +69,38 @@ class Annotation(BaseModel):
 def test_gemini_raw_google_search():
     load_dotenv(override=True)
 
-    tools = [{"googleSearch": {}}] # 👈 ADD GOOGLE SEARCH
+    #func_dict = JustTool.function_to_llm_dict(get_current_weather)
+    #print(json.dumps(func_dict, indent=2))
+
+    func_dict = {
+        "name": "get_current_weather",
+        "description": "Gets the current weather in a given location",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "location": {
+                    "type": "string"
+                }
+            },
+            "required": [
+                "location"
+            ]
+        }
+    }
+
+    tools = [
+            {
+               "type": "function",
+               "function": func_dict
+            }
+             ]
     response = litellm.completion(
         model = "gemini/gemini-2.5-pro",
         temperature = 0.0,
         messages=[{"role": "user", "content": "Who is the main female founder of GlucoseDAO? Answer must be Name Surname and nothing else"}],
-        tools=tools,
-    #    tool_choice="auto" ## https://github.com/BerriAI/litellm/issues/14271
+    #    tools=tools,
+    #    tool_choice="auto", ## https://github.com/BerriAI/litellm/issues/14271
+        web_search_options={"search_context_size": "low"},
     )
     assert "Livia" in response.choices[0].message.content, "it must have Livia in the response"
     assert "Zaharia" in response.choices[0].message.content, "it must have Zaharia in the response"

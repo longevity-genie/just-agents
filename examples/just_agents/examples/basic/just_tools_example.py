@@ -29,11 +29,11 @@ from dotenv import load_dotenv
 #import keys from .env file
 load_dotenv(override=True)
 
-from just_agents.data_classes import JustMCPServerParameters, MCPServersConfig
+from just_agents.data_classes import JustMCPServerParameters, MCPServersConfig, GoogleBuiltInTools
 from just_agents.base_agent import BaseAgentWithLogging
 from just_agents import llm_options
-import just_agents.examples.mcp_stdio_server as mcp_server
-import just_agents.examples.bip_bop_server as bip_bop_server
+import just_agents.examples.toy_mcp_servers.mcp_stdio_server as mcp_server
+import just_agents.examples.toy_mcp_servers.bip_bop_server as bip_bop_server
 
 from just_agents.examples.tools import (
     get_current_weather, 
@@ -155,8 +155,8 @@ def get_stateful_tools() -> List[Callable]:
 def get_google_builtin_tools() -> List[Dict[str, str]]:
     """Get Google built-in tools as configuration dictionaries."""
     return [
-        {"name": "googleSearch"},
-        {"name": "codeExecution"}
+        {"name": GoogleBuiltInTools.search},
+        {"name": GoogleBuiltInTools.code}
     ]
 
 
@@ -485,7 +485,7 @@ def demonstrate_individual_tool_types():
     # 4. Google Built-in Tools
     print("\n4. GOOGLE BUILT-IN TOOLS")
     print("-" * 50)
-    print("INTENDED USAGE: tools=[{'name': 'googleSearch'}, {'name': 'codeExecution'}]")
+    print(f"INTENDED USAGE: tools=[{{'name': '{GoogleBuiltInTools.search}'}}, {{'name': '{GoogleBuiltInTools.code}'}}]")
     print()
     
     google_tools = get_google_builtin_tools()
@@ -903,7 +903,7 @@ def main():
         print("   ✓ Stateless tools (4) - pure functions like weather, fibonacci")
         print("   ✓ Static method tools (4) - Class.method, nested classes")
         print("   ✓ Stateful tools (6) - instance methods that maintain state")
-        print("   ✓ Google built-in tools (2) - googleSearch, codeExecution")
+        print(f"   ✓ Google built-in tools (2) - {GoogleBuiltInTools.search}, {GoogleBuiltInTools.code}")
         print("   ✓ MCP tools (11) - distributed across 3 server instances")
         print("   ✓ Prompt tools (6) - pre-configured callable + arguments")
         print("   ✓ YAML serialization - transient tools excluded by design")
@@ -931,7 +931,7 @@ def main():
         print("           function_a,                    # Pure function")
         print("           Class.static_method,           # Static method")
         print("           instance.method,               # Instance method (becomes transient)")
-        print("           {'name': 'googleSearch'},      # Google built-in")
+        print(f"           {{'name': '{GoogleBuiltInTools.search}'}},      # Google built-in")
         print("           'path/to/mcp_server.py',       # MCP tools (string config)")
         print("           JustMCPServerParameters(...),  # MCP tools (granular config)")
         print("       ],")

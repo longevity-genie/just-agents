@@ -5,7 +5,7 @@ from pydantic import Field, PrivateAttr, computed_field, BaseModel, field_serial
 from typing import Optional, List, Union, Any, Generator, Dict, ClassVar, Protocol, Type, Callable, AsyncGenerator, get_args
 from functools import partial
 from pydantic_core import PydanticSerializationUnexpectedValue
-from just_agents.data_classes import FinishReason, ToolCall, Message, Role, ReasoningEffort, GoogleBuiltInName
+from just_agents.data_classes import FinishReason, ToolCall, Message, Role, ReasoningEffort, GoogleBuiltInTools
 from just_agents.types import MessageDict, SupportedMessages
 
 from just_agents.llm_options import LLMOptions
@@ -18,7 +18,7 @@ from just_agents.just_profile import JustAgentProfile, JustAgentProfileChatMixin
 from just_agents.rotate_keys import RotateKeys
 from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.protocols.protocol_factory import StreamingMode, ProtocolAdapterFactory
-from just_agents.just_tool import SubscriberCallback
+from just_agents.just_tool import SubscriberCallback, GOOGLE_BUILTIN_SEARCH, GOOGLE_BUILTIN_CODE
 from just_agents.just_bus import JustLogBus
 from just_agents.just_locator import JustAgentsLocator
 from just_agents.just_schema import ModelHelper
@@ -370,7 +370,7 @@ class BaseAgent(
             opt.pop("tools", None) #Ensure no tools are passed to adapter
         else:
             for tool in opt["tools"]:
-                for built_in in get_args(GoogleBuiltInName):
+                for built_in in get_args([GoogleBuiltInTools.search, GoogleBuiltInTools.code]):
                     if built_in in tool:
                         tool_count -= 1 #remove built-in tools
 

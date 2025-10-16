@@ -16,7 +16,8 @@ just-agents-tools = "*"
 just-agents-coding = "*"
 just-agents-web = "*"
 just-agents-router = "*"
-docker = ">=7.1.0"
+coolname = ">=2.2.0"
+fastmcp = ">=2.2.10"
 
 [tool.poetry.group.dev.dependencies]
 pytest = ">=8.3.5"

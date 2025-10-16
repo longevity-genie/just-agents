@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-coding"
-version = "0.6.1"  # This will be replaced by poetry-dynamic-versioning
+version = "0.0.0"  # This will be replaced by poetry-dynamic-versioning
 description = "Just Agents - Coding Components"
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",
@@ -21,6 +21,7 @@ license = "MIT"
 python = ">=3.10,<3.15"
 just-agents-core = "*"
 requests = ">=2.32.3"
+docker = ">=7.1.0"
 llm-sandbox = {version = ">=0.3.4", extras = ["podman"]}
 
 # Add this section for development

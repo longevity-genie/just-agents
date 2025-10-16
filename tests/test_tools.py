@@ -10,10 +10,11 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(current_dir, '..'))
 
 from just_agents.just_tool import JustTool, JustGoogleBuiltIn, JustToolFactory, JustImportedTool, JustPromptTool, JustTransientTool
+from just_agents.data_classes import GoogleBuiltInTools
 import tests.tools.tool_test_module as tool_test_module
 from just_agents.base_agent import BaseAgentWithLogging
 from just_agents.llm_options import LLMOptions, OPENAI_GPT4_1MINI, OPENAI_GPT4_1NANO
-from just_agents.just_tool import JustToolsBus
+from just_agents.just_tool import JustToolsBus, GOOGLE_BUILTIN_SEARCH, GOOGLE_BUILTIN_CODE
 from just_agents.protocols.litellm_protocol import LiteLLMAdapter
 from pydantic import ValidationError
 
@@ -536,7 +537,7 @@ def test_google_builtin_tool_callable_raises_error():
 def test_google_builtin_tool_factory_creation():
     """Test creating JustGoogleBuiltIn tools via JustToolFactory."""
     # Test creation from dictionary
-    google_dict = {"name": "googleSearch"}
+    google_dict = GOOGLE_BUILTIN_SEARCH
     google_tool = JustToolFactory.create_tool(google_dict)
     
     assert isinstance(google_tool, JustGoogleBuiltIn)
@@ -545,7 +546,7 @@ def test_google_builtin_tool_factory_creation():
     assert google_tool.parameters == {}
     
     # Test creation from dictionary for codeExecution
-    code_dict = {"name": "codeExecution"}
+    code_dict = GOOGLE_BUILTIN_CODE
     code_tool = JustToolFactory.create_tool(code_dict)
     
     assert isinstance(code_tool, JustGoogleBuiltIn)
@@ -556,8 +557,8 @@ def test_google_builtin_tool_factory_creation():
 def test_google_builtin_tools_in_tools_dict():
     """Test that Google built-in tools work correctly when processed by create_tools_dict."""
     tools_dict_input = {
-        "search": {"name": "googleSearch"},
-        "code": {"name": "codeExecution"},
+        "search": GOOGLE_BUILTIN_SEARCH,
+        "code": GOOGLE_BUILTIN_CODE,
         "regular": tool_test_module.regular_function
     }
     
@@ -679,7 +680,7 @@ def test_tool_deserialization_from_dict():
     """Test that JustToolFactory can handle serialized tool dictionaries (as from JSON/YAML deserialization)."""
     
     # Test Google built-in tool from dict
-    google_dict = {"name": "googleSearch"}
+    google_dict = GOOGLE_BUILTIN_SEARCH
     google_tool = JustToolFactory.create_tool(google_dict)
     assert isinstance(google_tool, JustGoogleBuiltIn)
     assert google_tool.name == "googleSearch"
@@ -712,7 +713,7 @@ def test_tools_dict_creation_with_serialized_dicts():
     
     # Simulate what we'd get from JSON deserialization
     tools_input = {
-        "google_search": {"name": "googleSearch"},
+        "google_search": GOOGLE_BUILTIN_SEARCH,
         "my_function": {
             "name": "regular_function",
             "package": "tests.tools.tool_test_module"
@@ -731,7 +732,7 @@ def test_tools_dict_creation_with_serialized_dicts():
     
     # Test with sequence of dicts
     tools_sequence = [
-        {"name": "googleSearch"},
+        GOOGLE_BUILTIN_SEARCH,
         {
             "name": "regular_function", 
             "package": "tests.tools.tool_test_module"
@@ -792,7 +793,7 @@ def test_integration_json_deserialization_simulation():
     profile_data = {
         "name": "TestProfile",
         "tools": [
-            {"name": "googleSearch"},
+            GOOGLE_BUILTIN_SEARCH,
             {
                 "name": "regular_function",
                 "package": "tests.tools.tool_test_module",
@@ -859,7 +860,7 @@ def test_roundtrip_serialization_mixed_tool_types():
         llm_options=OPENAI_GPT4_1NANO,
         system_prompt="Test agent with mixed tools",
         tools=[
-            {"name": "googleSearch"},  # Google built-in
+            GOOGLE_BUILTIN_SEARCH,  # Google built-in
             tool_test_module.regular_function,  # Regular callable  
             {  # Imported tool dict
                 "name": "static_method_top",
@@ -952,7 +953,7 @@ def test_roundtrip_serialization_comprehensive_agent():
         max_tool_calls=5,
         debug=True,
         tools=[
-            {"name": "googleSearch"},
+            GOOGLE_BUILTIN_SEARCH,
             tool_test_module.regular_function,
             {
                 "name": "static_method_nested",
@@ -1113,7 +1114,7 @@ def test_transient_tool_serialization_exclusion():
     tools_dict = {
         "regular": tool_test_module.regular_function,
         "static": tool_test_module.TopLevelClass.static_method_top,
-        "google": {"name": "googleSearch"},
+        "google": GOOGLE_BUILTIN_SEARCH,
         "transient_pdf": pdf_reader.get_next_page,
         "transient_current": pdf_reader.get_current_page
     }
@@ -1261,8 +1262,8 @@ def test_roundtrip_serialization_google_builtin_tools():
         llm_options=OPENAI_GPT4_1NANO,
         system_prompt="Test agent with Google tools",
         tools=[
-            {"name": "googleSearch", "description": "Built-in tool to search the web"},
-            {"name": "codeExecution", "description": "Built-in tool to execute code"}
+            {"name": GoogleBuiltInTools.search, "description": "Built-in tool to search the web"},
+            {"name": GoogleBuiltInTools.code, "description": "Built-in tool to execute code"}
         ],
         config_path=config_path
     )
