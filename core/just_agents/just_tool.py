@@ -17,18 +17,18 @@ from just_agents.mcp_client import MCPClient, JustMCPServerParameters
 
 
 # Google built-in tool stub functions with proper names
-def _googleSearchStub():
+def _googleSearch(query: str = "") -> str:
     """Google built-in tool stub - should not be called directly"""
     raise RuntimeError("Google built-in tool 'googleSearch' should not be called directly - it's handled by the model")
 
-def _codeExecutionStub():
+def _codeExecution(code: str = "") -> str:
     """Google built-in tool stub - should not be called directly"""
     raise RuntimeError("Google built-in tool 'codeExecution' should not be called directly - it's handled by the model")
 
 # Map tool names to their stub functions
 _GOOGLE_BUILTIN_STUBS = {
-    GoogleBuiltInTools.search: _googleSearchStub,
-    GoogleBuiltInTools.code: _codeExecutionStub
+    GoogleBuiltInTools.search: _googleSearch,
+    GoogleBuiltInTools.code: _codeExecution
 }
 
 _GOOGLE_BUILTIN_STUBS_DESCRIPTIONS = {
@@ -758,7 +758,6 @@ class JustGoogleBuiltIn(JustToolBase):
         }
         
         return stub_callable, schema, None
-
 
 class JustPromptTool(JustImportedTool):
     call_arguments: Optional[Dict[str,Any]] = Field(..., description="Input parameters to call the function with.")

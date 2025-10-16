@@ -6,7 +6,6 @@ TypeTestAgent:
   llm_options:
     model: gpt-4.1-nano
     temperature: 0.0
-    tool_choice: auto
   max_tool_calls: 4
   system_prompt: You are an agent tool call assistant. When calling tools, you must
     include all parameters specified in the tool's schema. You never omit any required

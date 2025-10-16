@@ -497,7 +497,7 @@ def test_google_builtin_tool_creation():
 
 def test_google_builtin_tool_invalid_name():
     """Test that JustGoogleBuiltIn rejects invalid tool names."""
-    with pytest.raises(ValueError, match=r"Input should be 'googleSearch' or 'codeExecution'"):
+    with pytest.raises(ValidationError, match=r"Input should be googleSearch or codeExecution"):
         JustGoogleBuiltIn(name="invalidTool")
 
 def test_google_builtin_tool_litellm_format():
@@ -599,21 +599,22 @@ def test_google_builtin_litellm_adapter_integration():
 
 def test_google_builtin_tool_raw_callable_properties():
     """Test that the raw callable for Google built-in tools has the correct properties."""
-    google_search = JustGoogleBuiltIn(name="googleSearch")
+    google_search = JustGoogleBuiltIn(name=GoogleBuiltInTools.search)
     raw_callable = google_search.get_callable(wrap=False)
     
     # Verify the callable has the correct name
-    assert raw_callable.__name__ == "googleSearch"
+    assert raw_callable.__name__[1:] == GoogleBuiltInTools.search
     assert callable(raw_callable)
     
     # Verify it has a docstring
     assert raw_callable.__doc__ is not None
     assert "Google built-in tool stub" in raw_callable.__doc__
     
-    code_execution = JustGoogleBuiltIn(name="codeExecution")
+    code_execution = JustGoogleBuiltIn(name=GoogleBuiltInTools.code)
     raw_callable = code_execution.get_callable(wrap=False)
     
-    assert raw_callable.__name__ == "codeExecution"
+    # The stub function is named with underscore prefix (_codeExecution)
+    assert raw_callable.__name__[1:] == GoogleBuiltInTools.code
     assert callable(raw_callable)
     assert raw_callable.__doc__ is not None
     assert "Google built-in tool stub" in raw_callable.__doc__

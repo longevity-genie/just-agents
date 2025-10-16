@@ -6,7 +6,6 @@ ComprehensiveAgent:
   llm_options:
     model: gpt-4.1-nano
     temperature: 0.0
-    tool_choice: auto
   max_tool_calls: 5
   prompt_tools:
   - call_arguments:

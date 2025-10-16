@@ -236,8 +236,9 @@ class LiteLLMAdapter(BaseModel, IProtocolAdapter[ModelResponse, MessageDict, Uni
         """
         source = f"{self.log_name}.tool_from_function"
         name = getattr(tool, "name", None) or tool.__name__
-        #isinstance(tool, JustGoogleBuiltIn) is expensive, plus unncessary coupling
-        if name in (GoogleBuiltInTools.search, GoogleBuiltInTools.code):
+        
+        if name[1:] in (GoogleBuiltInTools.search, GoogleBuiltInTools.code):
+            name = name[1:]
             self._log_bus.info(
                 f"Google built-in tool {name} provided",
                 source=source,

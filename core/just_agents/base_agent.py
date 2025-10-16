@@ -370,7 +370,7 @@ class BaseAgent(
             opt.pop("tools", None) #Ensure no tools are passed to adapter
         else:
             for tool in opt["tools"]:
-                for built_in in get_args([GoogleBuiltInTools.search, GoogleBuiltInTools.code]):
+                for built_in in [GoogleBuiltInTools.search, GoogleBuiltInTools.code]:
                     if built_in in tool:
                         tool_count -= 1 #remove built-in tools
 
