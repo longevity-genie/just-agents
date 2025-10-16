@@ -10,10 +10,11 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 sys.path.insert(0, os.path.join(current_dir, '..'))
 
 from just_agents.just_tool import JustTool, JustGoogleBuiltIn, JustToolFactory, JustImportedTool, JustPromptTool, JustTransientTool
-from just_agents.data_classes import GoogleBuiltInTools
+from just_agents.data_classes import GoogleBuiltInTools, JustMCPServerParameters
 import tests.tools.tool_test_module as tool_test_module
 from just_agents.base_agent import BaseAgentWithLogging
 from just_agents.llm_options import LLMOptions, OPENAI_GPT4_1MINI, OPENAI_GPT4_1NANO
+from just_agents import llm_options
 from just_agents.just_tool import JustToolsBus, GOOGLE_BUILTIN_SEARCH, GOOGLE_BUILTIN_CODE
 from just_agents.protocols.litellm_protocol import LiteLLMAdapter
 from pydantic import ValidationError
@@ -1340,4 +1341,37 @@ def test_add_task_schema_bug_minimal_reproduction():
             f"but missing from properties {list(properties.keys())}. "
             f"This causes LiteLLM to fail with 'property is not defined' error."
         )
+
+
+def test_mcp_server_integration():
+    """Test integration with external MCP server (Exa AI search)."""
+
+    exa_mcp_config = {
+        "mcpServers": {
+            "exa-ai-serch": {
+                "type": "streamable-http",
+                "url": "https://mcp.exa.ai/mcp" 
+            }
+        }
+    }
+
+    all_tools_from_mcp_server = JustMCPServerParameters(
+        mcp_client_config=exa_mcp_config
+    )
+
+    mcp_search_agent: BaseAgentWithLogging = BaseAgentWithLogging(
+        llm_options=llm_options.GEMINI_2_5_FLASH,
+        tools=[all_tools_from_mcp_server]  
+    )
+
+    prompt = "When was the latest starship launch, did it succeed?"
+
+    response = mcp_search_agent.query(prompt)
+    
+    # Verify we got a response
+    assert response is not None
+    assert len(response) > 0
+    assert "launch" in response
+    assert "Starship" in response
+
 

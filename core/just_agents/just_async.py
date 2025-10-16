@@ -148,17 +148,10 @@ def run_async_function_synchronously(
 
     # First, check if we're already in an event loop
     try:
-        # If there's a running loop in this thread, use run_in_executor to avoid
-        # potential deadlocks or conflicts with the existing loop
+        # If there's a running loop in this thread, we can't use run_until_complete
+        # so we fall through to the thread-based approach
         loop = asyncio.get_running_loop()
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as pool:
-            future = loop.run_in_executor(
-                pool, 
-                lambda: asyncio.run(async_func(*args, **kwargs))
-            )
-            # Create the wait_for coroutine and run it properly
-            wait_coro = asyncio.wait_for(future, timeout)
-            return loop.run_until_complete(wait_coro)
+        # If we get here, there's a running loop, so use the thread approach below
     except RuntimeError:
         # No running event loop, we can create a new one
         pass
