@@ -17,7 +17,7 @@ def test_function_query():
     # FOR LLAMA 4 THERE IS A BUG FROM GROQ SIDE ON COMBINED USE OF STRUCTURED OUTPUT AND TOOLS ON V4 MODELS
     # https://community.groq.com/discussion-forum-7/tool-use-failed-on-llama4-models-230
     # PPS: as of 15 aug completely broken for GROQ
-    llm_options = just_agents.llm_options.OPENAI_GPT4_1NANO
+    llm_options = just_agents.llm_options.OPENAI_GPT5_NANO
     agent: ChainOfThoughtAgent = ChainOfThoughtAgent(llm_options=llm_options, tools=[count_letters])
     result, thoughts = agent.think("Count the number of occurrences of the letter 'L' in the word - 'LOLLAPALOOZA'.")
     print("Thoughts: ", thoughts)

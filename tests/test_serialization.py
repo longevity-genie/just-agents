@@ -84,7 +84,7 @@ def test_just_agent(load_env):
 
     # Create a JustAgent instance
     agent = BaseAgent(
-        llm_options=just_agents.llm_options.OPENAI_GPT4_1NANO,
+        llm_options=just_agents.llm_options.OPENAI_GPT5_NANO,
         config_path=config_path,
         tools=[get_current_weather],
     )

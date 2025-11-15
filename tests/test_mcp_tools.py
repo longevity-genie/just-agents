@@ -5,14 +5,14 @@ import json
 from typing import Dict, Any
 from dotenv import load_dotenv
 
-from just_agents.llm_options import OPENAI_GPT4_1NANO
+from just_agents.llm_options import OPENAI_GPT5_NANO
 from just_agents.mcp_client import MCPClient
 
 from just_agents.data_classes import JustMCPServerParameters
 from just_agents.just_tool import JustTool, JustMCPTool, JustToolFactory
 import tests.tools.tool_test_module as tool_test_module
 from just_agents.base_agent import BaseAgentWithLogging
-from just_agents.llm_options import LLMOptions, OPENAI_GPT4_1MINI
+from just_agents.llm_options import LLMOptions
 from just_agents.just_tool import JustToolsBus
 import just_agents.examples.mcp_stdio_server as mcp_server
 
@@ -79,7 +79,7 @@ def mcp_client_tracker():
 
 def create_agent_with_tools(tools, system_prompt_suffix=""):
     """Helper function to create an agent with specified tools"""
-    options: LLMOptions = OPENAI_GPT4_1NANO
+    options: LLMOptions = OPENAI_GPT5_NANO
     
     enhanced_system_prompt = (
         "You are an agent tool call assistant. When calling tools, you must include all parameters specified in the tool's schema. "
@@ -91,7 +91,7 @@ def create_agent_with_tools(tools, system_prompt_suffix=""):
     return BaseAgentWithLogging(
         llm_options=options,
         system_prompt=enhanced_system_prompt,
-        backup_options=OPENAI_GPT4_1MINI,
+        backup_options=OPENAI_GPT5_NANO,
         max_tool_calls=4,
         debug=True,
         tools=tools

@@ -33,12 +33,12 @@ classifiers = [
 python = ">=3.10,<3.15"
 just-agents-core = "*"
 pycomfort = ">=0.0.18"
-fastapi = ">=0.115.12"
-uvicorn = ">=0.34.0"
-aiofiles = ">=24.1.0"
-python-dotenv = ">=1.1.0"
+fastapi = ">=0.121.2"
+uvicorn = ">=0.38.0"
+aiofiles = ">=25.1.0"
+python-dotenv = ">=1.2.1"
 coolname = ">=2.2.0"
-fastmcp = ">=2.2.10"
+fastmcp = ">=2.13.0.2"
 
 [tool.poetry.group.dev.dependencies]
 just-agents-core = { path = "../core", develop = true }

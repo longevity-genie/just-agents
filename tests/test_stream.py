@@ -5,7 +5,7 @@ from typing import Callable, Any
 
 from just_agents.protocols.sse_streaming import ServerSentEventsStream as SSE
 from just_agents.base_agent import BaseAgent, BaseAgentWithLogging
-from just_agents.llm_options import LLMOptions, LLAMA3_3, OPENAI_GPT4_1NANO, OPENAI_GPT4_1MINI
+from just_agents.llm_options import LLMOptions, LLAMA3_3, OPENAI_GPT5_NANO
 from just_agents.just_tool import JustToolsBus
 
 
@@ -130,7 +130,7 @@ def memory_management_test(callback_func):
     
     # Create agent session
     session: BaseAgent = BaseAgentWithLogging(
-        llm_options=OPENAI_GPT4_1NANO,
+        llm_options=OPENAI_GPT5_NANO,
         tools=[get_current_weather]
     )
     
@@ -194,12 +194,12 @@ def test_stream_amnesia_complete():
 
 
 def test_stream():
-    result = agent_call("Why is the sky blue, describe in 10 words?", OPENAI_GPT4_1NANO, False)
+    result = agent_call("Why is the sky blue, describe in 10 words?", OPENAI_GPT5_NANO, False)
     assert "Rayleigh" in result or "scatter" in result
 
 def test_stream_amnesia():
     # Test: continue_conversation=False, remember_query=False
-    result = agent_call("Why is the sky blue?", OPENAI_GPT4_1NANO, False, continue_conversation=False, remember_query=False)
+    result = agent_call("Why is the sky blue?", OPENAI_GPT5_NANO, False, continue_conversation=False, remember_query=False)
     assert "wavelength" in result
 
 def test_stream_grok():
@@ -207,7 +207,7 @@ def test_stream_grok():
     assert "wavelength" in result
 
 def test_stream_recon():
-    result = agent_call("Why is the grass green?", OPENAI_GPT4_1NANO, True)
+    result = agent_call("Why is the grass green?", OPENAI_GPT5_NANO, True)
     assert "chlorophyll" in result
 
 def test_stream_grok_recon():
@@ -236,10 +236,10 @@ def validate_tool_call(call : Callable[[Any,...],str],*args,**kwargs):
     assert any('10' in item for item in results), "Tokyo weather call missing"
 
 def test_query_tool():
-    validate_tool_call(agent_query, OPENAI_GPT4_1NANO)
+    validate_tool_call(agent_query, OPENAI_GPT5_NANO)
 
 def test_stream_tool():
-    validate_tool_call(agent_call, OPENAI_GPT4_1NANO, False)
+    validate_tool_call(agent_call, OPENAI_GPT5_NANO, False)
 
 def test_stream_tool_grok():
     validate_tool_call(agent_call, LLAMA3_3, False)

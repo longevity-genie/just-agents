@@ -5,7 +5,7 @@ from dotenv import load_dotenv
 from just_agents import llm_options
 from just_agents.base_agent import ChatAgent, ChatAgentWithLogging
 from just_agents.data_classes import ImageContent, Message, Role, TextContent
-from just_agents.llm_options import LLAMA3_3, LLAMA4_SCOUT, LLAMA4_MAVERICK, OPENAI_GPT4_1NANO, GEMINI_2_5_FLASH
+from just_agents.llm_options import LLAMA3_3, LLAMA4_SCOUT, LLAMA4_MAVERICK, OPENAI_GPT5_NANO, GEMINI_2_5_FLASH
 from pprint import pprint
 
 from just_agents.tools.db import sqlite_query
@@ -240,7 +240,7 @@ def test_delegation():
         "question": "question_to_delegate",
         "final_answer": "final answer to the question"
         } If you do not delegate then delegate_to and question should be empty. if you are ready to answer the question then final_answer should be your answer, if not it must be empty""",
-        llm_options=OPENAI_GPT4_1NANO
+        llm_options=OPENAI_GPT5_NANO
     )
 
     for i in range(2):

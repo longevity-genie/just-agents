@@ -13,7 +13,7 @@ from just_agents.web.web_agent import WebAgent
 from just_agents.just_tool import JustToolsBus
 from just_agents.web.chat_ui_agent import ChatUIAgent
 from just_agents.web.streaming import response_from_stream
-from just_agents.llm_options import OPENAI_GPT4_1NANO
+from just_agents.llm_options import OPENAI_GPT5_NANO
 import tests.tools.tool_test_module as tool_test_module
 
 TESTS_DIR = os.path.dirname(__file__)  # Get the directory where this test file is located
@@ -107,7 +107,7 @@ def test_bound_method_double_self_regression(load_env):
     # Create agent exactly like in the original problematic code
     # Role + Task pattern, bound method tools, realistic PDF analysis prompt
     agent = BaseAgentWithLogging(
-        llm_options=OPENAI_GPT4_1NANO,
+        llm_options=OPENAI_GPT5_NANO,
         system_prompt="You are a magical PDF analysis assistant. Navigate the PDF using the tools to gather spell components.",
         tools=[pdf_reader.get_next_page, pdf_reader.get_previous_page, pdf_reader.get_current_page, pdf_reader.jump_to_page],
         max_tool_calls=10,  # Allow multiple tool calls for spell composition

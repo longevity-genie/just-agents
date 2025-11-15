@@ -12,7 +12,7 @@ sys.path.insert(0, os.path.join(current_dir, '..'))
 from just_agents.just_tool import JustTool, JustGoogleBuiltIn, JustToolFactory, JustImportedTool, JustPromptTool, JustTransientTool
 import tests.tools.tool_test_module as tool_test_module
 from just_agents.base_agent import BaseAgentWithLogging
-from just_agents.llm_options import LLMOptions, OPENAI_GPT4_1MINI, OPENAI_GPT4_1NANO
+from just_agents.llm_options import LLMOptions, OPENAI_GPT5_NANO
 from just_agents.just_tool import JustToolsBus
 from just_agents.protocols.litellm_protocol import LiteLLMAdapter
 from pydantic import ValidationError
@@ -197,7 +197,7 @@ def test_from_callable_name_handling_robustness():
 @pytest.fixture(scope="function")
 def type_test_agent():
     """Fixture to create an agent with the type_tester_function tool."""
-    options: LLMOptions = OPENAI_GPT4_1NANO
+    options: LLMOptions = OPENAI_GPT5_NANO
 
     # Construct the enhanced system prompt
     tool_calling_instructions = (
@@ -211,7 +211,7 @@ def type_test_agent():
     agent = BaseAgentWithLogging(
         llm_options=options,
         system_prompt=enhanced_system_prompt,  # Use the enhanced system prompt
-        backup_options=OPENAI_GPT4_1MINI,
+        backup_options=OPENAI_GPT5_NANO,
         max_tool_calls=4,
         debug=True,
         tools=[tool_test_module.type_tester_function]
@@ -221,7 +221,7 @@ def type_test_agent():
 @pytest.fixture(scope="function")
 def type_test_agent_with_roundtrip():
     """Fixture to create an agent with roundtrip serialization testing."""
-    options: LLMOptions = OPENAI_GPT4_1NANO
+    options: LLMOptions = OPENAI_GPT5_NANO
 
     # Construct the enhanced system prompt
     tool_calling_instructions = (
@@ -241,7 +241,7 @@ def type_test_agent_with_roundtrip():
     original_agent = BaseAgentWithLogging(
         llm_options=options,
         system_prompt=enhanced_system_prompt,
-        backup_options=OPENAI_GPT4_1MINI,
+        backup_options=OPENAI_GPT5_NANO,
         max_tool_calls=4,
         debug=True,
         tools=[tool_test_module.type_tester_function],
@@ -856,7 +856,7 @@ def test_roundtrip_serialization_mixed_tool_types():
     
     # Create agent with mixed tool types
     original_agent = BaseAgentWithLogging(
-        llm_options=OPENAI_GPT4_1NANO,
+        llm_options=OPENAI_GPT5_NANO,
         system_prompt="Test agent with mixed tools",
         tools=[
             {"name": "googleSearch"},  # Google built-in
@@ -907,7 +907,7 @@ def test_roundtrip_serialization_prompt_tools():
     
     # Create agent with prompt tools
     original_agent = BaseAgentWithLogging(
-        llm_options=OPENAI_GPT4_1NANO,
+        llm_options=OPENAI_GPT5_NANO,
         system_prompt="Test agent with prompt tools",
         prompt_tools=[
             {
@@ -946,9 +946,9 @@ def test_roundtrip_serialization_comprehensive_agent():
     
     # Create comprehensive agent
     original_agent = BaseAgentWithLogging(
-        llm_options=OPENAI_GPT4_1NANO,
+        llm_options=OPENAI_GPT5_NANO,
         system_prompt="Comprehensive test agent",
-        backup_options=OPENAI_GPT4_1MINI,
+        backup_options=OPENAI_GPT5_NANO,
         max_tool_calls=5,
         debug=True,
         tools=[
@@ -1210,7 +1210,7 @@ def test_agent_with_transient_tools():
     
     # Create agent with mix of regular and transient tools
     agent = BaseAgentWithLogging(
-        llm_options=OPENAI_GPT4_1NANO,
+        llm_options=OPENAI_GPT5_NANO,
         system_prompt="Test agent with transient tools",
         tools=[
             tool_test_module.regular_function,  # Regular tool
@@ -1258,7 +1258,7 @@ def test_roundtrip_serialization_google_builtin_tools():
     
     # Create agent with Google built-in tools
     original_agent = BaseAgentWithLogging(
-        llm_options=OPENAI_GPT4_1NANO,
+        llm_options=OPENAI_GPT5_NANO,
         system_prompt="Test agent with Google tools",
         tools=[
             {"name": "googleSearch", "description": "Built-in tool to search the web"},

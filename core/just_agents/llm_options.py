@@ -59,6 +59,16 @@ class ModelOptions(BaseModel):
         description="Whether to automatically select the best tool to use. If set to 'none', the model will not use any tools. If set to 'required', the model will only use tools."
     )
 
+ANTHROPIC_CLAUDE_4_5_HAIKU: LLMOptions = {
+    "model": "claude-haiku-4-5",
+    "temperature": 0.0
+}
+
+ANTHROPIC_CLAUDE_4_5_SONNET: LLMOptions = {
+    "model": "claude-sonnet-4-5",
+    "temperature": 0.0
+}
+
 ANTHROPIC_CLAUDE_4_SONNET: LLMOptions = {
     "model": "claude-sonnet-4-20250514",
     "temperature": 0.0
@@ -164,6 +174,13 @@ MISTRAL_8x22B: LLMOptions = {
     "temperature": 0.0
 }
 
+OPENAI_GPT5: LLMOptions = {
+    "model": "gpt-4o",
+    "temperature": 0.0
+}
+
+
+
 OPENAI_GPT4o: LLMOptions = {
     "model": "gpt-4o",
     "temperature": 0.0
@@ -191,28 +208,43 @@ OPENAI_GPT4oMINI: LLMOptions = {
 
 
 OPENAI_GPT5: LLMOptions = {
-    "model": "gpt-5",
-    "temperature": 0.0
+    "model": "gpt-5"
 }
 
 OPENAI_GPT5_MINI: LLMOptions = {
-    "model": "gpt-5-mini",
-    "temperature": 0.0
+    "model": "gpt-5-mini"
 }
 
 OPENAI_GPT5_NANO: LLMOptions = {
-    "model": "gpt-5-nano",
-    "temperature": 0.0
+    "model": "gpt-5-nano"
 }
 
 OPENAI_GPT5_CHAT: LLMOptions = {
-    "model": "gpt-5-chat",
-    "temperature": 0.0
+    "model": "gpt-5-chat"
 }
 
 OPENAI_GPT5_CHAT_LATEST: LLMOptions = {
-    "model": "gpt-5-chat-latest",
-    "temperature": 0.0
+    "model": "gpt-5-chat-latest"
+}
+
+OPENAI_GPT5_1: LLMOptions = {
+    "model": "gpt-5.1"
+}
+
+OPENAI_GPT5_1_CHAT: LLMOptions = {
+    "model": "gpt-5.1-chat"
+}
+
+OPENAI_GPT5_1_CHAT_LATEST: LLMOptions = {
+    "model": "gpt-5.1-chat-latest"
+}
+
+OPENAI_GPT5_1_CODEX: LLMOptions = {
+    "model": "gpt-5.1-codex"
+}
+
+OPENAI_GPT5_1_CODEX_MINI: LLMOptions = {
+    "model": "gpt-5.1-codex-mini"
 }
 
 
@@ -301,6 +333,15 @@ DEEPSEEK_R1: LLMOptions = {
     "model": "deepseek/deepseek-reasoner",
     "temperature": 0.0
 }
+
+NEBIUS_KIMI_K2: LLMOptions =  {
+    "model": 'nebius/moonshotai/Kimi-K2-Instruct',
+    "temperature": 0.0,
+    "api_base": 'https://api.tokenfactory.nebius.com/v1/',
+    "custom_llm_provider": "nebius",
+    #"api_key": os.environ.get("NEBIUS_AI_API_KEY")
+}
+
 
 def local_vllm_model(model: str = "models/granite-7b-lab.Q4_K_M.gguf", host: str="http://localhost:8000") -> LLMOptions:
     return {
