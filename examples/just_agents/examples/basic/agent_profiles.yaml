@@ -2,7 +2,7 @@ agent_profiles:
   ChainOfThoughtAgent:
     class_qualname: just_agents.patterns.chain_of_throught.ChainOfThoughtAgent
     llm_options:
-      model: groq/meta-llama/llama-4-scout-17b-16e-instruct
+      model: gemini/gemini-2.5-flash
       temperature: 0.0
       tool_choice: auto
     tools:

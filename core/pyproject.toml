@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "just-agents-core"
-version = "0.0.0"  # This will be replaced by poetry-dynamic-versioning
+version = "0.8.7-post.5+a72fbfe"  # This will be replaced by poetry-dynamic-versioning
 description = "Just Agents - Base Package"
 authors = [
     "Alex Karmazin <karmazinalex@gmail.com>",
@@ -29,12 +29,13 @@ classifiers = [
 
 [tool.poetry.dependencies]
 python = ">=3.10,<3.15"
-litellm = ">=1.72.1"
+litellm = ">=1.80.0,<2.0.0"
 pydantic = ">=2.0.0,<3.0.0"
 docstring_parser = ">=0.16"
 python-dotenv = ">=1.1.0"
 rich = ">=14.0.0"
-mcp = ">=1.9.2"
+fastmcp = ">=2.13.1"
+mcp = ">=1.22.0"
 #makefun =">=1.16.0"
 
 [tool.poetry.group.dev.dependencies]

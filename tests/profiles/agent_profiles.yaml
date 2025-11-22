@@ -1,4 +1,26 @@
 agent_profiles:
+  ChainOfThoughtAgent:
+    class_qualname: just_agents.patterns.chain_of_throught.ChainOfThoughtAgent
+    llm_options:
+      model: gemini/gemini-2.5-flash
+      temperature: 0.0
+      tool_choice: auto
+    tools:
+      letter_count:
+        description: 'returns number of letters in the word '
+        function: letter_count
+        name: letter_count
+        package: just_agents.examples.tools
+        parameters:
+          properties:
+            letter:
+              type: string
+            word:
+              type: string
+          required:
+          - word
+          - letter
+          type: object
   sugar_genie:
     class_qualname: just_agents.base_agent.BaseAgent
     display_name: 🍬 A blood Sugar prediction Genie

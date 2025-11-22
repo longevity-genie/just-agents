@@ -59,24 +59,38 @@ class ModelOptions(BaseModel):
         description="Whether to automatically select the best tool to use. If set to 'none', the model will not use any tools. If set to 'required', the model will only use tools."
     )
 
-ANTHROPIC_CLAUDE_4_SONNET: LLMOptions = {
+ANTHROPIC_CLAUDE_3_5_HAIKU: LLMOptions = {
+    "model": "claude-3-5-haiku-latest",
+    "temperature": 0.0
+}
+
+ANTHROPIC_CLAUDE_4_5_HAIKU: LLMOptions = {
+    "model": "claude-4-5-haiku",
+    "temperature": 0.0
+}
+
+ANTHROPIC_CLAUDE_SONNET_4_5: LLMOptions = {
+    "model": "claude-sonnet-4-5",
+    "temperature": 0.0
+}
+
+ANTHROPIC_CLAUDE_SONNET_4_0: LLMOptions = {
     "model": "claude-sonnet-4-20250514",
     "temperature": 0.0
 }
 
-ANTHROPIC_CLAUDE_4_OPUS: LLMOptions = {
+ANTHROPIC_CLAUDE_OPUS_4_1: LLMOptions = {
+    "model": "claude-opus-4-1",
+    "temperature": 0.0
+}
+
+ANTHROPIC_CLAUDE_OPUS_4_0: LLMOptions = {
     "model": "claude-opus-4-20250514",
     "temperature": 0.0
 }
 
-
-ANTHROPIC_CLAUDE_3_7_SONNET: LLMOptions = {
-    "model": "claude-3-7-sonnet",
-    "temperature": 0.0
-}
-
-ANTHROPIC_CLAUDE_3_5_SONNET: LLMOptions = {
-    "model": "claude-3-5-sonnet",
+ANTHROPIC_CLAUDE_OPUS_3_0: LLMOptions = {
+    "model": "claude-3-opus-latest",
     "temperature": 0.0
 }
 
@@ -87,7 +101,7 @@ LLAMA3_3: LLMOptions = {
 }
 
 LLAMA4_MAVERICK: LLMOptions = {
-    "model": "groq/meta-llama/llama-4-scout-17b-16e-instruct",
+    "model": "groq/meta-llama/llama-4-maverick-17b-128e-instruct",
     "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0,
 }
@@ -97,6 +111,19 @@ LLAMA4_SCOUT: LLMOptions = {
     "api_base": "https://api.groq.com/openai/v1",
     "temperature": 0.0,
 }
+
+KIMI_K2_INSTRUCT: LLMOptions = {
+    "model": "groq/moonshotai/kimi-k2-instruct",
+    "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0,
+}
+
+KIMI_K2_INSTRUCT_0905: LLMOptions = {
+    "model": "groq/moonshotai/kimi-k2-instruct-0905",
+    "api_base": "https://api.groq.com/openai/v1",
+    "temperature": 0.0,
+}
+
 
 GPT_OSS_20B: LLMOptions = {
     "model": "groq/openai/gpt-oss-20b",
@@ -216,11 +243,32 @@ OPENAI_GPT5_CHAT_LATEST: LLMOptions = {
 }
 
 
-OPENAI_O1_MINI: LLMOptions = {
-    "model": "o1-mini",
+OPENAI_GPT5_CHAT: LLMOptions = {
+    "model": "gpt-5-chat",
     "temperature": 0.0
 }
 
+OPENAI_GPT5_1: LLMOptions = {
+    "model": "gpt-5.1",
+    "temperature": 0.0
+}
+
+OPENAI_GPT5_1_CHAT_LATEST: LLMOptions = {
+    "model": "gpt-5.1-chat-latest",
+    "temperature": 0.0
+}
+
+OPENAI_GPT5_1_CHAT = OPENAI_GPT5_1_CHAT_LATEST
+
+OPENAI_GPT5_1_CODEX: LLMOptions = {
+    "model": "gpt-5.1-codex",
+    "temperature": 0.0
+}
+
+OPENAI_GPT5_1_CODEX_MINI: LLMOptions = {
+    "model": "gpt-5.1-codex-mini",
+    "temperature": 0.0
+}
 
 OPENAI_O3_MINI_2025_01_31: LLMOptions = {
     "model": "o3-mini-2025-01-31",
@@ -278,6 +326,11 @@ GEMINI_2_5_FLASH: LLMOptions = {
 
 GEMINI_2_5_PRO: LLMOptions = {
     "model": "gemini/gemini-2.5-pro",
+    "temperature": 0.0
+}
+
+GEMINI_3_PRO: LLMOptions = {
+    "model": "gemini/gemini-3-pro-preview",
     "temperature": 0.0
 }
 
